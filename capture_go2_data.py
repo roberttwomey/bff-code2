@@ -92,7 +92,10 @@ class Go2DataCapturer:
     def stop_writers(self):
         self.stop_event.set()
         for t in self.threads:
-            t.join()
+            try:
+                t.join()
+            except BaseException as e:
+                logging.error(f"Interrupted while joining thread {t.name}: {e}")
         print("\nAll background writers stopped and files closed successfully.")
 
     def _video_writer_worker(self):
@@ -273,20 +276,24 @@ class Go2DataCapturer:
             pass
         finally:
             print("\nShutting down stream capture...")
-            # Turn off LiDAR sensor
-            if self.capture_lidar and self.conn and self.conn.datachannel:
-                try:
-                    self.conn.datachannel.pub_sub.publish_without_callback("rt/utlidar/switch", "off")
-                    print("Sent switch off command to LiDAR.")
-                except Exception as e:
-                    logging.error(f"Failed to turn off LiDAR: {e}")
-            
-            # Disconnect WebRTC connection
-            if self.conn:
-                await self.conn.disconnect()
-            
-            # Stop background threads
-            self.stop_writers()
+            try:
+                # Turn off LiDAR sensor
+                if self.capture_lidar and self.conn and self.conn.datachannel:
+                    try:
+                        self.conn.datachannel.pub_sub.publish_without_callback("rt/utlidar/switch", "off")
+                        print("Sent switch off command to LiDAR.")
+                    except Exception as e:
+                        logging.error(f"Failed to turn off LiDAR: {e}")
+                
+                # Disconnect WebRTC connection
+                if self.conn:
+                    try:
+                        await self.conn.disconnect()
+                    except BaseException as e:
+                        logging.error(f"Disconnect interrupted: {e}")
+            finally:
+                # Stop background threads
+                self.stop_writers()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Go2 Multi-modal Data Capture Tool")
