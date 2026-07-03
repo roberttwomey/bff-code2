@@ -533,11 +533,11 @@
             </div>
 
             <!-- Panel 4: LLM Reasoning Console (with Minimize Toggle) -->
-            <div class="panel" id="logPanel" style="flex: 1; border-top: 1px solid var(--panel-border); transition: flex 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);">
+            <div class="panel minimized" id="logPanel" style="flex: 1; border-top: 1px solid var(--panel-border); transition: flex 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);">
                 <div class="panel-header">
                     <div class="panel-title">Session Logs</div>
                     <div class="panel-controls">
-                        <button id="toggleChatBtn" style="background: none; border: 1px solid var(--panel-border); color: var(--text-muted); font-size: 0.65rem; padding: 2px 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font-mono); outline: none;">MINIMIZE</button>
+                        <button id="toggleChatBtn" style="background: none; border: 1px solid var(--panel-border); color: var(--text-muted); font-size: 0.65rem; padding: 2px 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font-mono); outline: none;">EXPAND</button>
                     </div>
                 </div>
                 <div class="panel-content">
@@ -675,8 +675,14 @@
 
         function startCanvasRecording() {
             if (isRecording) return;
+            
+            // Force resizing to container layout size and render the frame
+            onWindowResize();
+            renderer.render(scene, camera);
+            
             try {
                 const canvasWebGL = renderer.domElement;
+                console.log(`[Lidar Recorder] Starting capture stream with canvas size: ${canvasWebGL.width}x${canvasWebGL.height}`);
                 const stream = canvasWebGL.captureStream(30); // 30 FPS stream
                 
                 let options = { mimeType: 'video/webm; codecs=vp9', videoBitsPerSecond: 2500000 };
