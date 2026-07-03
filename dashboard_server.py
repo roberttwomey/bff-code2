@@ -32,21 +32,13 @@ except ImportError as e:
 # Global video frame state
 latest_frame = None
 frame_lock = threading.Lock()
-frame_event = threading.Event()   # signals generate_mjpeg that a new frame is ready
-frame_counter = 0                 # monotonic ID; incremented under frame_lock on each new frame
 capturer = None
 
 def video_callback(img):
     """Callback triggered whenever a new camera frame is decoded."""
-    global latest_frame, frame_counter
-    # Make a defensive copy *before* acquiring the lock so the aiortc buffer
-    # cannot be overwritten while the generator is mid-copy (fixes torn frames).
-    safe_copy = img.copy()
+    global latest_frame
     with frame_lock:
-        latest_frame = safe_copy
-        frame_counter += 1
-    # Wake the MJPEG generator immediately instead of waiting for its next poll.
-    frame_event.set()
+        latest_frame = img
 
 # Optional YOLO Object Detection integration
 YOLO_AVAILABLE = False
@@ -72,44 +64,30 @@ def annotate_frame(frame):
     return frame
 
 def generate_mjpeg():
-    """Generator function that yields JPEG-encoded frames, waking only on new data.
-
-    Key design decisions:
-    - Uses frame_event.wait() so the loop sleeps until video_callback fires,
-      eliminating the busy-poll that re-sent stale frames every 40ms.
-    - Tracks a monotonic frame_counter (set under frame_lock in video_callback)
-      so that if two wakeups race and deliver the same frame we skip the second
-      encode entirely.
-    - JPEG quality lowered slightly to 75 to reduce per-frame byte cost while
-      keeping perceptual quality acceptable for a robot dashboard.
-    - A 200ms timeout on wait() keeps the HTTP connection alive even if the
-      robot stream pauses momentarily.
-    """
-    last_sent_id = -1
-
+    """Generator function that yields JPEG-encoded frames at a throttled rate."""
+    global latest_frame
     while True:
-        # Block until video_callback signals a new frame (or 200ms keepalive).
-        frame_event.wait(timeout=0.2)
-        frame_event.clear()
-
         with frame_lock:
             if latest_frame is None:
-                continue
-            frame = latest_frame.copy()
-            current_id = frame_counter
+                frame = None
+            else:
+                frame = latest_frame.copy()
 
-        # Skip encoding if we already sent this exact frame (e.g. double-wakeup).
-        if current_id == last_sent_id:
-            continue
-
-        # Run YOLO annotation outside the lock (can be slow on CPU).
-        frame = annotate_frame(frame)
-
-        ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
-        if ret:
-            last_sent_id = current_id
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
+        if frame is not None:
+            # Overlay detection annotations
+            frame = annotate_frame(frame)
+            
+            # Compress NumPy frame to JPEG
+            ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            if ret:
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n')
+        else:
+            # Yield brief wait if no frame is received yet
+            time.sleep(0.05)
+        
+        # Throttled delay to enforce maximum ~25 FPS to conserve local host bandwidth
+        time.sleep(0.04)
 
 # Initialize Flask & SocketIO
 app = Flask(__name__, template_folder='templates')
