@@ -446,6 +446,12 @@
             <div class="panel" style="flex: 1; border-bottom: 1px solid var(--panel-border);">
                 <div class="panel-header">
                     <div class="panel-title">Video Feed</div>
+                    <div class="panel-controls">
+                        <div class="ui-checkbox">
+                            <input type="checkbox" id="yoloDetect" checked>
+                            <label for="yoloDetect">YOLO DETECT</label>
+                        </div>
+                    </div>
                 </div>
                 <div class="panel-content">
                     <div class="video-container">
@@ -977,6 +983,16 @@
             }
             // Trigger WebGL scene update recalculation
             setTimeout(onWindowResize, 350);
+        });
+
+        // Toggle YOLO object detection overlay
+        const yoloDetectCheckbox = document.getElementById('yoloDetect');
+        yoloDetectCheckbox.addEventListener('change', () => {
+            fetch('/toggle_yolo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: yoloDetectCheckbox.checked })
+            });
         });
     </script>
 </body>

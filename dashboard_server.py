@@ -43,6 +43,7 @@ def video_callback(img):
 # Optional YOLO Object Detection integration
 YOLO_AVAILABLE = False
 yolo_model = None
+yolo_enabled = True   # toggled via /toggle_yolo endpoint
 try:
     from ultralytics import YOLO
     # Try loading a local YOLO model if present
@@ -53,8 +54,8 @@ except ImportError:
     print("[YOLO] ultralytics/YOLO not installed. Stream will show raw frames.")
 
 def annotate_frame(frame):
-    """Run real-time object detection overlays on the frame if YOLO is available."""
-    if YOLO_AVAILABLE and yolo_model is not None:
+    """Run real-time object detection overlays on the frame if YOLO is available and enabled."""
+    if YOLO_AVAILABLE and yolo_model is not None and yolo_enabled:
         try:
             results = yolo_model(frame, verbose=False)
             frame = results[0].plot()
@@ -102,6 +103,19 @@ def index():
 def video_feed():
     """HTTP streaming endpoint returning MJPEG multipart response."""
     return Response(generate_mjpeg(), mimetype='multipart/x-mixed-replace; boundary=frame')
+
+@app.route('/toggle_yolo', methods=['POST'])
+def toggle_yolo():
+    """Enable or disable YOLO bounding-box overlays on the live stream."""
+    global yolo_enabled
+    from flask import request, jsonify
+    data = request.get_json(silent=True) or {}
+    if 'enabled' in data:
+        yolo_enabled = bool(data['enabled'])
+    else:
+        yolo_enabled = not yolo_enabled
+    print(f"[YOLO] Detection overlay {'enabled' if yolo_enabled else 'disabled'}.")
+    return jsonify({'yolo_enabled': yolo_enabled})
 
 @socketio.on('ping_latency')
 def handle_ping():
