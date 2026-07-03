@@ -17,6 +17,10 @@ from pathlib import Path
 import cv2
 from flask import Flask, render_template, Response
 from flask_socketio import SocketIO
+import dotenv
+
+# Load .env file
+dotenv.load_dotenv()
 
 # Import Go2DataCapturer from local script
 try:
@@ -237,14 +241,37 @@ def start_capturer_async(ip, aes_key, no_video, no_audio, no_lowstate, no_lidar)
 def main():
     global capturer
     parser = argparse.ArgumentParser(description="BFF Go2 Dashboard Server")
-    parser.add_argument("--ip", type=str, default="192.168.4.30", help="Go2 IP Address")
+    parser.add_argument("--ip", type=str, default=None, help="Go2 IP Address")
     parser.add_argument("--aes-key", type=str, default=None, help="Go2 WebRTC AES Key")
-    parser.add_argument("--port", type=int, default=8080, help="Dashboard port")
-    parser.add_argument("--no-video", action="store_true", help="Disable camera stream")
-    parser.add_argument("--no-audio", action="store_true", help="Disable audio capture and recording")
-    parser.add_argument("--no-lowstate", action="store_true", help="Disable telemetry data")
-    parser.add_argument("--no-lidar", action="store_true", help="Disable LiDAR mapping")
+    parser.add_argument("--port", type=int, default=None, help="Dashboard port")
+    parser.add_argument("--no-video", action="store_true", default=None, help="Disable camera stream")
+    parser.add_argument("--no-audio", action="store_true", default=None, help="Disable audio capture and recording")
+    parser.add_argument("--no-lowstate", action="store_true", default=None, help="Disable telemetry data")
+    parser.add_argument("--no-lidar", action="store_true", default=None, help="Disable LiDAR mapping")
     args = parser.parse_args()
+
+    # Fallback to env vars or default values
+    if args.ip is None:
+        args.ip = os.getenv("UNITREE_ROBOT_IP", "192.168.4.30")
+    if args.aes_key is None:
+        args.aes_key = os.getenv("UNITREE_AES_KEY")
+    if args.port is None:
+        args.port = int(os.getenv("BFF_DASHBOARD_PORT", "8080"))
+
+    def get_env_bool(name, default_val):
+        val = os.getenv(name)
+        if val is None:
+            return default_val
+        return val.lower() in ("true", "1", "yes", "on")
+
+    if args.no_video is None:
+        args.no_video = not get_env_bool("BFF_CAPTURE_VIDEO", True)
+    if args.no_audio is None:
+        args.no_audio = not get_env_bool("BFF_CAPTURE_AUDIO", True)
+    if args.no_lowstate is None:
+        args.no_lowstate = not get_env_bool("BFF_CAPTURE_LOWSTATE", True)
+    if args.no_lidar is None:
+        args.no_lidar = not get_env_bool("BFF_CAPTURE_LIDAR", True)
 
     # Start Go2 connection
     print(f"Connecting to Go2 client at {args.ip}...")

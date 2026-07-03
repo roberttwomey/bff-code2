@@ -12,6 +12,10 @@ import argparse
 from datetime import datetime
 import numpy as np
 import cv2
+import dotenv
+
+# Load .env file
+dotenv.load_dotenv()
 
 # Import SDK modules
 try:
@@ -384,15 +388,42 @@ class Go2DataCapturer:
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Go2 Multi-modal Data Capture Tool")
-    parser.add_argument("--ip", type=str, default="192.168.4.30", help="Robot local IP address")
+    parser.add_argument("--ip", type=str, default=None, help="Robot local IP address")
     parser.add_argument("--aes-key", type=str, default=None, help="16-byte AES key (32 hex characters) for authentication on newer firmware")
-    parser.add_argument("--output-dir", type=str, default="captures", help="Base directory to save captured data")
-    parser.add_argument("--fps", type=int, default=30, help="Target frame rate for output video file")
-    parser.add_argument("--no-video", action="store_true", help="Disable video stream capture")
-    parser.add_argument("--no-audio", action="store_true", help="Disable audio stream capture")
-    parser.add_argument("--no-lowstate", action="store_true", help="Disable lowstate data capture")
-    parser.add_argument("--no-lidar", action="store_true", help="Disable LiDAR snapshots capture")
-    return parser.parse_args()
+    parser.add_argument("--output-dir", type=str, default=None, help="Base directory to save captured data")
+    parser.add_argument("--fps", type=int, default=None, help="Target frame rate for output video file")
+    parser.add_argument("--no-video", action="store_true", default=None, help="Disable video stream capture")
+    parser.add_argument("--no-audio", action="store_true", default=None, help="Disable audio stream capture")
+    parser.add_argument("--no-lowstate", action="store_true", default=None, help="Disable lowstate data capture")
+    parser.add_argument("--no-lidar", action="store_true", default=None, help="Disable LiDAR snapshots capture")
+    args = parser.parse_args()
+
+    # Fallback to env vars or default values
+    if args.ip is None:
+        args.ip = os.getenv("UNITREE_ROBOT_IP", "192.168.4.30")
+    if args.aes_key is None:
+        args.aes_key = os.getenv("UNITREE_AES_KEY")
+    if args.output_dir is None:
+        args.output_dir = os.getenv("BFF_OUTPUT_DIR", "captures")
+    if args.fps is None:
+        args.fps = int(os.getenv("BFF_VIDEO_FPS", "30"))
+
+    def get_env_bool(name, default_val):
+        val = os.getenv(name)
+        if val is None:
+            return default_val
+        return val.lower() in ("true", "1", "yes", "on")
+
+    if args.no_video is None:
+        args.no_video = not get_env_bool("BFF_CAPTURE_VIDEO", True)
+    if args.no_audio is None:
+        args.no_audio = not get_env_bool("BFF_CAPTURE_AUDIO", True)
+    if args.no_lowstate is None:
+        args.no_lowstate = not get_env_bool("BFF_CAPTURE_LOWSTATE", True)
+    if args.no_lidar is None:
+        args.no_lidar = not get_env_bool("BFF_CAPTURE_LIDAR", True)
+
+    return args
 
 def main():
     args = parse_args()
