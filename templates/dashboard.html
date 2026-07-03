@@ -267,6 +267,13 @@
             outline: none;
         }
 
+        #lidarWebGL canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+            object-fit: cover;
+        }
+
         .canvas-instructions {
             position: absolute;
             bottom: 12px;
@@ -583,13 +590,13 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x000000);
 
-        const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100);
+        const camera = new THREE.PerspectiveCamera(60, 1280 / 720, 0.1, 100);
         // Default position: slightly elevated looking down at the origin
         camera.position.set(0, 5, 8); 
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(1280, 720);
+        renderer.setPixelRatio(1); // Lock internal backing store resolution to exactly 1280x720
         container.appendChild(renderer.domElement);
 
         let currentDogPitch = 0;
@@ -625,9 +632,8 @@
 
         // Handle Resizing
         function onWindowResize() {
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            // Locked at 1280x720 internal rendering resolution.
+            // Responsive screen fitting is handled cleanly by CSS 'object-fit: cover'.
         }
         window.addEventListener('resize', onWindowResize);
         setTimeout(onWindowResize, 100);
@@ -676,8 +682,7 @@
         function startCanvasRecording() {
             if (isRecording) return;
             
-            // Force resizing to container layout size and render the frame
-            onWindowResize();
+            // Force a WebGL frame draw call before stream capture starts
             renderer.render(scene, camera);
             
             try {
