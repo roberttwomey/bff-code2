@@ -57,11 +57,16 @@ class Go2DataCapturer:
         self.lowstate_count = 0
         self.lidar_count = 0
 
+        # Throttle timestamps – limit lowstate/lidar to video_fps rate
+        self._last_lowstate_time = 0.0
+        self._last_lidar_time = 0.0
+
         # Queues and control
         self.video_queue = queue.Queue()
         self.audio_queue = queue.Queue()
         self.lowstate_queue = queue.Queue()
         self.lidar_queue = queue.Queue()
+        self.yolo_queue = queue.Queue()   # fed by video writer, drained by yolo worker
         self.stop_event = threading.Event()
         self.threads = []
 
@@ -92,6 +97,11 @@ class Go2DataCapturer:
     def start_writers(self):
         if self.capture_video:
             t = threading.Thread(target=self._video_writer_worker, daemon=True, name="VideoWriter")
+            t.start()
+            self.threads.append(t)
+
+        if self.capture_video and YOLO_AVAILABLE and yolo_model:
+            t = threading.Thread(target=self._yolo_worker, daemon=True, name="YoloWorker")
             t.start()
             self.threads.append(t)
 
@@ -130,17 +140,11 @@ class Go2DataCapturer:
         print("\nAll background writers stopped and files closed successfully.")
 
     def _video_writer_worker(self):
+        """Write incoming video frames to disk as fast as possible.
+        YOLO inference is handled separately in _yolo_worker so this
+        thread is never blocked by model inference.
+        """
         writer = None
-        detections_file = None
-        
-        if YOLO_AVAILABLE and yolo_model:
-            detections_path = os.path.join(self.output_dir, "detections.jsonl")
-            try:
-                detections_file = open(detections_path, "w", encoding="utf-8")
-                print(f"Initialized Detections JSONL Logger: {detections_path}")
-            except Exception as e:
-                logging.error(f"Failed to open detections.jsonl: {e}")
-
         frame_idx = 0
         while not self.stop_event.is_set() or not self.video_queue.empty():
             try:
@@ -156,34 +160,10 @@ class Go2DataCapturer:
                 print(f"\nInitialized VideoWriter: {video_path} ({width}x{height} @ {self.video_fps} FPS)")
 
             writer.write(frame)
-            
-            # If YOLO is active, run inference and write to detections.jsonl
-            if detections_file and yolo_model:
-                try:
-                    results = yolo_model(frame, verbose=False)
-                    frame_detections = []
-                    for r in results:
-                        for box in r.boxes:
-                            xyxy = box.xyxy[0].tolist()
-                            conf = float(box.conf[0])
-                            cls_id = int(box.cls[0])
-                            cls_name = yolo_model.names[cls_id] if hasattr(yolo_model, 'names') else str(cls_id)
-                            
-                            frame_detections.append({
-                                "class": cls_name,
-                                "confidence": conf,
-                                "bbox": [round(val, 1) for val in xyxy]
-                            })
-                    if frame_detections:
-                        entry = {
-                            "frame_index": frame_idx,
-                            "timestamp": time.time(),
-                            "detections": frame_detections
-                        }
-                        detections_file.write(json.dumps(entry) + "\n")
-                        detections_file.flush()
-                except Exception as yolo_err:
-                    logging.error(f"YOLO inference error on frame {frame_idx}: {yolo_err}")
+
+            # Hand frame off to YOLO worker (non-blocking) if active
+            if YOLO_AVAILABLE and yolo_model:
+                self.yolo_queue.put((frame_idx, frame))
 
             self.video_count += 1
             frame_idx += 1
@@ -192,10 +172,54 @@ class Go2DataCapturer:
         if writer is not None:
             writer.release()
             print("VideoWriter released.")
-            
-        if detections_file is not None:
-            detections_file.close()
-            print("Detections JSONL file closed.")
+
+    def _yolo_worker(self):
+        """Run YOLO inference in a dedicated thread, independent of video writing.
+        Reads (frame_idx, frame) pairs from yolo_queue and writes results to
+        detections.jsonl without ever blocking the VideoWriter thread.
+        """
+        detections_path = os.path.join(self.output_dir, "detections.jsonl")
+        try:
+            detections_file = open(detections_path, "w", encoding="utf-8")
+            print(f"Initialized Detections JSONL Logger: {detections_path}")
+        except Exception as e:
+            logging.error(f"Failed to open detections.jsonl: {e}")
+            return
+
+        while not self.stop_event.is_set() or not self.yolo_queue.empty():
+            try:
+                frame_idx, frame = self.yolo_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            try:
+                results = yolo_model(frame, verbose=False)
+                frame_detections = []
+                for r in results:
+                    for box in r.boxes:
+                        xyxy = box.xyxy[0].tolist()
+                        conf = float(box.conf[0])
+                        cls_id = int(box.cls[0])
+                        cls_name = yolo_model.names[cls_id] if hasattr(yolo_model, 'names') else str(cls_id)
+                        frame_detections.append({
+                            "class": cls_name,
+                            "confidence": conf,
+                            "bbox": [round(val, 1) for val in xyxy]
+                        })
+                if frame_detections:
+                    entry = {
+                        "frame_index": frame_idx,
+                        "timestamp": time.time(),
+                        "detections": frame_detections
+                    }
+                    detections_file.write(json.dumps(entry) + "\n")
+                    detections_file.flush()
+            except Exception as yolo_err:
+                logging.error(f"YOLO inference error on frame {frame_idx}: {yolo_err}")
+            finally:
+                self.yolo_queue.task_done()
+
+        detections_file.close()
+        print("Detections JSONL file closed.")
 
     def _audio_writer_worker(self):
         wf = None
@@ -291,12 +315,19 @@ class Go2DataCapturer:
 
         # 4. Setup lowstate callback
         if self.capture_lowstate:
+            lowstate_interval = 1.0 / self.video_fps
+
             def lowstate_callback(message):
                 try:
+                    now = time.time()
+                    if now - self._last_lowstate_time < lowstate_interval:
+                        return  # throttle to video FPS rate
+                    self._last_lowstate_time = now
+
                     current_message = message.get('data')
                     if current_message:
                         payload = {
-                            "timestamp": time.time(),
+                            "timestamp": now,
                             "data": current_message
                         }
                         self.lowstate_queue.put(payload)
@@ -320,8 +351,15 @@ class Go2DataCapturer:
             # Turn LiDAR sensor on
             self.conn.datachannel.pub_sub.publish_without_callback("rt/utlidar/switch", "on")
 
+            lidar_interval = 1.0 / self.video_fps
+
             def lidar_callback(message):
                 try:
+                    now = time.time()
+                    if now - self._last_lidar_time < lidar_interval:
+                        return  # throttle to video FPS rate
+                    self._last_lidar_time = now
+
                     data_field = message.get("data", {})
                     inner_data = data_field.get("data", {})
                     points = inner_data.get("points")
@@ -330,7 +368,7 @@ class Go2DataCapturer:
                         # Convert numpy array points to standard list structure
                         points_list = points.tolist() if hasattr(points, "tolist") else list(points)
                         payload = {
-                            "timestamp": time.time(),
+                            "timestamp": now,
                             "stamp": data_field.get("stamp"),
                             "frame_id": data_field.get("frame_id"),
                             "resolution": data_field.get("resolution"),
