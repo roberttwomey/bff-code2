@@ -82,10 +82,14 @@ class Go2DataCapturer:
         self.video_listeners = []
         self.lowstate_listeners = []
         self.lidar_listeners = []
+        self.detection_listeners = []   # fired by _yolo_worker with each inference result
+
+        # YOLO enable flag — set to False to pause inference and overlay
+        self.yolo_enabled = True
 
     def add_listener(self, listener_type, callback):
         """Add a callback listener for real-time streaming.
-        listener_type: 'video', 'lowstate', or 'lidar'
+        listener_type: 'video', 'lowstate', 'lidar', or 'detection'
         """
         if listener_type == 'video':
             self.video_listeners.append(callback)
@@ -93,6 +97,8 @@ class Go2DataCapturer:
             self.lowstate_listeners.append(callback)
         elif listener_type == 'lidar':
             self.lidar_listeners.append(callback)
+        elif listener_type == 'detection':
+            self.detection_listeners.append(callback)
 
     def start_writers(self):
         if self.capture_video:
@@ -161,8 +167,8 @@ class Go2DataCapturer:
 
             writer.write(frame)
 
-            # Hand frame off to YOLO worker (non-blocking) if active
-            if YOLO_AVAILABLE and yolo_model:
+            # Hand frame off to YOLO worker (non-blocking) only when enabled
+            if YOLO_AVAILABLE and yolo_model and self.yolo_enabled:
                 self.yolo_queue.put((frame_idx, frame))
 
             self.video_count += 1
@@ -205,13 +211,22 @@ class Go2DataCapturer:
                             "confidence": conf,
                             "bbox": [round(val, 1) for val in xyxy]
                         })
+
+                # Always fire detection listeners (even with empty list) so the
+                # dashboard can clear stale boxes when nothing is detected
+                detection_payload = {
+                    "frame_index": frame_idx,
+                    "timestamp": time.time(),
+                    "detections": frame_detections
+                }
+                for cb in self.detection_listeners:
+                    try:
+                        cb(detection_payload)
+                    except Exception as cb_err:
+                        logging.error(f"Error in detection listener callback: {cb_err}")
+
                 if frame_detections:
-                    entry = {
-                        "frame_index": frame_idx,
-                        "timestamp": time.time(),
-                        "detections": frame_detections
-                    }
-                    detections_file.write(json.dumps(entry) + "\n")
+                    detections_file.write(json.dumps(detection_payload) + "\n")
                     detections_file.flush()
             except Exception as yolo_err:
                 logging.error(f"YOLO inference error on frame {frame_idx}: {yolo_err}")

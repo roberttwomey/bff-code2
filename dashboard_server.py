@@ -40,28 +40,31 @@ def video_callback(img):
     with frame_lock:
         latest_frame = img
 
-# Optional YOLO Object Detection integration
-YOLO_AVAILABLE = False
-yolo_model = None
-yolo_enabled = True   # toggled via /toggle_yolo endpoint
-try:
-    from ultralytics import YOLO
-    # Try loading a local YOLO model if present
-    yolo_model = YOLO("yolov8n.pt")
-    YOLO_AVAILABLE = True
-    print("[YOLO] ultralytics package loaded. Bounding boxes enabled.")
-except ImportError:
-    print("[YOLO] ultralytics/YOLO not installed. Stream will show raw frames.")
+# Live detection overlay state — updated by the capturer's _yolo_worker via listener
+latest_detections = []
+detections_lock = threading.Lock()
+yolo_enabled = True   # toggled via /toggle_yolo; also propagated to capturer.yolo_enabled
 
-def annotate_frame(frame):
-    """Run real-time object detection overlays on the frame if YOLO is available and enabled."""
-    if YOLO_AVAILABLE and yolo_model is not None and yolo_enabled:
-        try:
-            results = yolo_model(frame, verbose=False)
-            frame = results[0].plot()
-        except Exception as e:
-            # Silently fallback to raw frame on any inference error
-            pass
+def detections_callback(payload):
+    """Receives detection results from _yolo_worker and stores them for the MJPEG overlay."""
+    global latest_detections
+    with detections_lock:
+        latest_detections = payload.get('detections', [])
+
+def draw_detections(frame):
+    """Draw bounding boxes from the latest _yolo_worker results onto frame (in-place copy)."""
+    with detections_lock:
+        dets = list(latest_detections)
+    if not dets or not yolo_enabled:
+        return frame
+    frame = frame.copy()
+    for det in dets:
+        x1, y1, x2, y2 = [int(v) for v in det['bbox']]
+        label = f"{det['class']} {det['confidence']:.2f}"
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+        cv2.rectangle(frame, (x1, y1 - th - 6), (x1 + tw + 4, y1), (0, 255, 0), -1)
+        cv2.putText(frame, label, (x1 + 2, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
     return frame
 
 def generate_mjpeg():
@@ -75,8 +78,8 @@ def generate_mjpeg():
                 frame = latest_frame.copy()
 
         if frame is not None:
-            # Overlay detection annotations
-            frame = annotate_frame(frame)
+            # Overlay detection annotations from _yolo_worker results
+            frame = draw_detections(frame)
             
             # Compress NumPy frame to JPEG
             ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
@@ -106,15 +109,21 @@ def video_feed():
 
 @app.route('/toggle_yolo', methods=['POST'])
 def toggle_yolo():
-    """Enable or disable YOLO bounding-box overlays on the live stream."""
-    global yolo_enabled
+    """Enable or disable YOLO inference and bounding-box overlays.
+    Propagates to capturer.yolo_enabled so _yolo_worker pauses inference
+    rather than just hiding the overlay.
+    """
+    global yolo_enabled, capturer
     from flask import request, jsonify
     data = request.get_json(silent=True) or {}
     if 'enabled' in data:
         yolo_enabled = bool(data['enabled'])
     else:
         yolo_enabled = not yolo_enabled
-    print(f"[YOLO] Detection overlay {'enabled' if yolo_enabled else 'disabled'}.")
+    # Propagate to the capturer so inference actually stops
+    if capturer is not None:
+        capturer.yolo_enabled = yolo_enabled
+    print(f"[YOLO] Detection {'enabled' if yolo_enabled else 'disabled'}.")
     return jsonify({'yolo_enabled': yolo_enabled})
 
 @socketio.on('ping_latency')
@@ -234,6 +243,7 @@ def start_capturer_async(ip, aes_key, no_video, no_audio, no_lowstate, no_lidar)
     # Register listener callbacks
     if not no_video:
         capturer.add_listener('video', video_callback)
+        capturer.add_listener('detection', detections_callback)
     if not no_lowstate:
         capturer.add_listener('lowstate', on_lowstate_received)
     if not no_lidar:
