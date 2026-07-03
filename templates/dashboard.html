@@ -395,6 +395,10 @@
                 <div class="panel-title">LiDAR 3D Cloud</div>
                 <div class="panel-controls">
                     <div class="ui-checkbox">
+                        <input type="checkbox" id="alignToDog" checked>
+                        <label for="alignToDog">ALIGN DOG</label>
+                    </div>
+                    <div class="ui-checkbox">
                         <input type="checkbox" id="voxelColumns">
                         <label for="voxelColumns">COLUMNS</label>
                     </div>
@@ -517,6 +521,10 @@
         renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
 
+        let currentDogPitch = 0;
+        let currentDogRoll = 0;
+        let currentDogYaw = 0;
+
         // Orbit Controls for mouse navigation
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
@@ -556,6 +564,18 @@
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
+            
+            // Align pointsObject rotation to the dog's IMU orientation
+            const alignToDog = document.getElementById('alignToDog').checked;
+            if (alignToDog) {
+                pointsObject.rotation.order = 'YXZ';
+                pointsObject.rotation.x = -currentDogPitch;
+                pointsObject.rotation.y = -currentDogYaw;
+                pointsObject.rotation.z = -currentDogRoll;
+            } else {
+                pointsObject.rotation.set(0, 0, 0);
+            }
+            
             controls.update();
             renderer.render(scene, camera);
         }
@@ -615,13 +635,17 @@
             // IMU details
             if (lowstate.imu_state) {
                 const rpy = lowstate.imu_state.rpy || [0, 0, 0];
-                const pitch = rpy[0] * (180 / Math.PI);
-                const roll = rpy[1] * (180 / Math.PI);
-                const yaw = rpy[2] * (180 / Math.PI);
+                currentDogRoll = rpy[1];
+                currentDogPitch = rpy[0];
+                currentDogYaw = rpy[2];
 
-                document.getElementById('imuPitch').innerHTML = `${pitch.toFixed(1)} <span class="unit">°</span>`;
-                document.getElementById('imuRoll').innerHTML = `${roll.toFixed(1)} <span class="unit">°</span>`;
-                document.getElementById('imuYaw').innerHTML = `${yaw.toFixed(1)} <span class="unit">°</span>`;
+                const pitchDeg = currentDogPitch * (180 / Math.PI);
+                const rollDeg = currentDogRoll * (180 / Math.PI);
+                const yawDeg = currentDogYaw * (180 / Math.PI);
+
+                document.getElementById('imuPitch').innerHTML = `${pitchDeg.toFixed(1)} <span class="unit">°</span>`;
+                document.getElementById('imuRoll').innerHTML = `${rollDeg.toFixed(1)} <span class="unit">°</span>`;
+                document.getElementById('imuYaw').innerHTML = `${yawDeg.toFixed(1)} <span class="unit">°</span>`;
             }
 
             // Foot Contacts
