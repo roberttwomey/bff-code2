@@ -184,7 +184,7 @@ def tail_logs_worker():
             print(f"[Log Watcher] Exception encountered: {err}")
             time.sleep(1.0)
 
-def start_capturer_async(ip, aes_key, no_video, no_lowstate, no_lidar):
+def start_capturer_async(ip, aes_key, no_video, no_audio, no_lowstate, no_lidar):
     """Sets up the WebRTC capturer loop in a separate daemon thread."""
     workspace_dir = Path(__file__).resolve().parent
     captures_dir = workspace_dir / "captures"
@@ -196,7 +196,7 @@ def start_capturer_async(ip, aes_key, no_video, no_lowstate, no_lidar):
         output_dir=str(captures_dir),
         video_fps=30,
         capture_video=not no_video,
-        capture_audio=False,  # Audio playback is not needed for the live display
+        capture_audio=not no_audio,
         capture_lowstate=not no_lowstate,
         capture_lidar=not no_lidar
     )
@@ -220,7 +220,7 @@ def start_capturer_async(ip, aes_key, no_video, no_lowstate, no_lidar):
     capturer_thread = threading.Thread(target=run_connection_loop, daemon=True)
     capturer_thread.start()
     print("[Capturer] WebRTC connection thread spawned successfully.")
-    return capturer
+    return capturer, capturer_thread
 
 def main():
     parser = argparse.ArgumentParser(description="BFF Go2 Dashboard Server")
@@ -228,16 +228,18 @@ def main():
     parser.add_argument("--aes-key", type=str, default=None, help="Go2 WebRTC AES Key")
     parser.add_argument("--port", type=int, default=8080, help="Dashboard port")
     parser.add_argument("--no-video", action="store_true", help="Disable camera stream")
+    parser.add_argument("--no-audio", action="store_true", help="Disable audio capture and recording")
     parser.add_argument("--no-lowstate", action="store_true", help="Disable telemetry data")
     parser.add_argument("--no-lidar", action="store_true", help="Disable LiDAR mapping")
     args = parser.parse_args()
 
     # Start Go2 connection
     print(f"Connecting to Go2 client at {args.ip}...")
-    start_capturer_async(
+    capturer, capturer_thread = start_capturer_async(
         ip=args.ip,
         aes_key=args.aes_key,
         no_video=args.no_video,
+        no_audio=args.no_audio,
         no_lowstate=args.no_lowstate,
         no_lidar=args.no_lidar
     )
@@ -254,6 +256,13 @@ def main():
         socketio.run(app, host='0.0.0.0', port=args.port, debug=False, use_reloader=False)
     except KeyboardInterrupt:
         print("\nShutdown signals received. Stopping server.")
+    finally:
+        if capturer:
+            print("Stopping robot capture streams and finalizing files...")
+            capturer.stop_event.set()
+            if capturer_thread:
+                capturer_thread.join(timeout=5.0)
+            print("Dashboard shutdown completed cleanly.")
 
 if __name__ == "__main__":
     main()

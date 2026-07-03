@@ -293,7 +293,7 @@ class Go2DataCapturer:
         # Keep running and printing stats
         print("\n=== Capturing Data (Press Ctrl+C to Stop) ===")
         try:
-            while True:
+            while not self.stop_event.is_set():
                 audio_sec = self.audio_frames / 48000.0
                 sys.stdout.write(
                     f"\rRecorded: Video={self.video_count} frames | "
