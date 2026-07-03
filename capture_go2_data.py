@@ -58,7 +58,10 @@ class Go2DataCapturer:
         self.lidar_count = 0
 
         # Queues and control
-        self.video_queue = queue.Queue()
+        # video_queue is bounded: if the writer thread falls behind (e.g. YOLO
+        # inference or disk I/O), put_nowait drops incoming frames rather than
+        # letting stale frames accumulate and arrive seconds late.
+        self.video_queue = queue.Queue(maxsize=4)
         self.audio_queue = queue.Queue()
         self.lowstate_queue = queue.Queue()
         self.lidar_queue = queue.Queue()
@@ -261,7 +264,12 @@ class Go2DataCapturer:
                     try:
                         frame = await track.recv()
                         img = frame.to_ndarray(format="bgr24")
-                        self.video_queue.put(img)
+                        # Non-blocking put: drop the frame if the writer is behind
+                        # rather than queueing stale data.
+                        try:
+                            self.video_queue.put_nowait(img)
+                        except queue.Full:
+                            pass  # writer is behind; drop this frame to stay current
                         for cb in self.video_listeners:
                             try:
                                 cb(img)
