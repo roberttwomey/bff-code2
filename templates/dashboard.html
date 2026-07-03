@@ -461,7 +461,7 @@
                     <!-- Joints metrics columns -->
                     <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
                         <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--panel-border); padding-bottom: 2px;">
-                            JOINT STATES (ROTATION rad / TORQUE Nm)
+                            JOINT STATES (ROTATION rad / TEMP °C)
                         </div>
                         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
                             <!-- FL Leg -->
@@ -781,23 +781,23 @@
                 const speed = Math.sqrt(v[0]*v[0] + v[1]*v[1]);
                 document.getElementById('bodyVel').textContent = `${speed.toFixed(2)} m/s`;
             }
-
+            
             // Joint temperatures & Leg Joints detailed metrics extraction
             if (lowstate.motor_state) {
                 const motors = lowstate.motor_state;
                 
-                const avgTemp = motors.length > 0 ? motors.reduce((sum, m) => sum + (m.temp || 0), 0) / motors.length : 0;
+                const avgTemp = motors.length > 0 ? motors.reduce((sum, m) => sum + (m.temperature || 0), 0) / motors.length : 0;
                 document.getElementById('jointTemp').textContent = `${avgTemp.toFixed(1)}°C`;
 
                 // Update Joint States on Leg cards (FL, FR, RL, RR)
                 const updateLegJoints = (legPrefix, offset) => {
-                    const hip = motors[offset] || { q: 0, tau_est: 0 };
-                    const thigh = motors[offset + 1] || { q: 0, tau_est: 0 };
-                    const calf = motors[offset + 2] || { q: 0, tau_est: 0 };
+                    const hip = motors[offset] || { q: 0, temperature: 0 };
+                    const thigh = motors[offset + 1] || { q: 0, temperature: 0 };
+                    const calf = motors[offset + 2] || { q: 0, temperature: 0 };
                     
-                    document.getElementById(`${legPrefix}_hip`).textContent = `${hip.q.toFixed(2)}/${hip.tau_est.toFixed(0)}`;
-                    document.getElementById(`${legPrefix}_thigh`).textContent = `${thigh.q.toFixed(2)}/${thigh.tau_est.toFixed(0)}`;
-                    document.getElementById(`${legPrefix}_calf`).textContent = `${calf.q.toFixed(2)}/${calf.tau_est.toFixed(0)}`;
+                    document.getElementById(`${legPrefix}_hip`).textContent = `${hip.q.toFixed(2)}/${hip.temperature || 0}°C`;
+                    document.getElementById(`${legPrefix}_thigh`).textContent = `${thigh.q.toFixed(2)}/${thigh.temperature || 0}°C`;
+                    document.getElementById(`${legPrefix}_calf`).textContent = `${calf.q.toFixed(2)}/${calf.temperature || 0}°C`;
                 };
 
                 if (motors.length >= 12) {
