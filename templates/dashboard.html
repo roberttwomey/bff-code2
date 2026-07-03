@@ -600,7 +600,7 @@
         // Default position: slightly elevated looking down at the origin
         camera.position.set(0, 5, 8); 
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
         renderer.setSize(1280, 720);
         renderer.setPixelRatio(1); // Lock internal backing store resolution to exactly 1280x720
         container.appendChild(renderer.domElement);
@@ -684,6 +684,23 @@
         // WebGL Canvas Recording (MediaRecorder API)
         let mediaRecorder = null;
         let isRecording = false;
+        const chunkQueue = [];
+        let processingQueue = false;
+
+        async function processChunkQueue() {
+            if (processingQueue) return;
+            processingQueue = true;
+            while (chunkQueue.length > 0) {
+                const blob = chunkQueue.shift();
+                try {
+                    const buffer = await blob.arrayBuffer();
+                    socket.emit('lidar_recording_chunk', buffer);
+                } catch (err) {
+                    console.error("[Lidar Recorder] Error processing chunk:", err);
+                }
+            }
+            processingQueue = false;
+        }
 
         function startCanvasRecording() {
             if (isRecording) return;
@@ -705,10 +722,10 @@
                 }
                 
                 mediaRecorder = new MediaRecorder(stream, options);
-                mediaRecorder.ondataavailable = async (e) => {
+                mediaRecorder.ondataavailable = (e) => {
                     if (e.data && e.data.size > 0) {
-                        const buffer = await e.data.arrayBuffer();
-                        socket.emit('lidar_recording_chunk', buffer);
+                        chunkQueue.push(e.data);
+                        processChunkQueue();
                     }
                 };
                 
