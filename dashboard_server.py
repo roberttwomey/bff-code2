@@ -28,6 +28,7 @@ except ImportError as e:
 # Global video frame state
 latest_frame = None
 frame_lock = threading.Lock()
+capturer = None
 
 def video_callback(img):
     """Callback triggered whenever a new camera frame is decoded."""
@@ -102,6 +103,17 @@ def video_feed():
 def handle_ping():
     """Latency calculation handshake."""
     socketio.emit('pong_latency')
+
+@socketio.on('lidar_recording_chunk')
+def handle_lidar_recording_chunk(data):
+    global capturer
+    if capturer and hasattr(capturer, 'output_dir') and capturer.output_dir:
+        filepath = os.path.join(capturer.output_dir, "lidar_render.webm")
+        try:
+            with open(filepath, "ab") as f:
+                f.write(data)
+        except Exception as e:
+            print(f"[Dashboard Server] Failed to write LiDAR WebGL video chunk: {e}")
 
 # Telemetry callbacks with rate-limiting
 last_lowstate_time = 0
@@ -223,6 +235,7 @@ def start_capturer_async(ip, aes_key, no_video, no_audio, no_lowstate, no_lidar)
     return capturer, capturer_thread
 
 def main():
+    global capturer
     parser = argparse.ArgumentParser(description="BFF Go2 Dashboard Server")
     parser.add_argument("--ip", type=str, default="192.168.4.30", help="Go2 IP Address")
     parser.add_argument("--aes-key", type=str, default=None, help="Go2 WebRTC AES Key")

@@ -669,10 +669,58 @@
             return color;
         }
 
+        // WebGL Canvas Recording (MediaRecorder API)
+        let mediaRecorder = null;
+        let isRecording = false;
+
+        function startCanvasRecording() {
+            if (isRecording) return;
+            try {
+                const canvasWebGL = renderer.domElement;
+                const stream = canvasWebGL.captureStream(30); // 30 FPS stream
+                
+                let options = { mimeType: 'video/webm; codecs=vp9', videoBitsPerSecond: 2500000 };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options = { mimeType: 'video/webm; codecs=vp8', videoBitsPerSecond: 2500000 };
+                }
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options = { mimeType: 'video/webm', videoBitsPerSecond: 2500000 };
+                }
+                
+                mediaRecorder = new MediaRecorder(stream, options);
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data && e.data.size > 0) {
+                        socket.emit('lidar_recording_chunk', e.data);
+                    }
+                };
+                
+                mediaRecorder.start(1000); // chunk every 1 second
+                isRecording = true;
+                console.log("[Lidar Recorder] Started recording WebGL view.");
+            } catch (err) {
+                console.error("[Lidar Recorder] Failed to start recording WebGL view:", err);
+            }
+        }
+
+        function stopCanvasRecording() {
+            if (!isRecording) return;
+            try {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+                isRecording = false;
+                console.log("[Lidar Recorder] Stopped recording WebGL view.");
+            } catch (err) {
+                console.error("[Lidar Recorder] Failed to stop recording WebGL view:", err);
+            }
+        }
+
         // Socket IO connectivity calculations
         socket.on('connect', () => {
             document.getElementById('connStatus').textContent = 'ONLINE';
             document.getElementById('connStatus').style.borderColor = 'rgba(255, 255, 255, 0.4)';
+            
+            startCanvasRecording();
             
             setInterval(() => {
                 pingStart = Date.now();
@@ -688,6 +736,7 @@
         socket.on('disconnect', () => {
             document.getElementById('connStatus').textContent = 'OFFLINE';
             document.getElementById('connStatus').style.borderColor = 'rgba(255, 0, 0, 0.4)';
+            stopCanvasRecording();
         });
 
         // Telemetry Data Relayer
