@@ -146,34 +146,75 @@ class Go2DataCapturer:
         print("\nAll background writers stopped and files closed successfully.")
 
     def _video_writer_worker(self):
-        """Write incoming video frames to disk as fast as possible.
-        YOLO inference is handled separately in _yolo_worker so this
-        thread is never blocked by model inference.
+        """Write video frames to disk at a steady real-time rate.
+
+        Driven by a monotonic wall-clock timer rather than the incoming queue
+        so the output duration matches real elapsed time regardless of stream
+        frame rate.  When no new frame arrives (stream gap, dropped packet,
+        etc.) the last received frame is repeated so the video stays
+        synchronized with the audio file.  YOLO is only queued for genuinely
+        new frames, not repeated padding frames.
         """
         writer = None
+        last_frame = None   # most recently received frame; repeated when queue is dry
         frame_idx = 0
-        while not self.stop_event.is_set() or not self.video_queue.empty():
-            try:
-                frame = self.video_queue.get(timeout=0.1)
-            except queue.Empty:
+        interval = 1.0 / self.video_fps
+        next_write_time = None  # initialised on first frame
+
+        while not self.stop_event.is_set():
+            now = time.monotonic()
+
+            # Drain all pending frames; keep only the most recent one
+            new_frame = None
+            while True:
+                try:
+                    f = self.video_queue.get_nowait()
+                    self.video_queue.task_done()
+                    new_frame = f
+                except queue.Empty:
+                    break
+
+            if new_frame is not None:
+                last_frame = new_frame
+
+            if last_frame is None:
+                # No frame received yet — wait briefly before retrying
+                time.sleep(0.005)
                 continue
 
+            # Initialise writer and clock on the very first frame
             if writer is None:
-                height, width = frame.shape[:2]
+                height, width = last_frame.shape[:2]
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 video_path = os.path.join(self.output_dir, "video.mp4")
                 writer = cv2.VideoWriter(video_path, fourcc, self.video_fps, (width, height))
                 print(f"\nInitialized VideoWriter: {video_path} ({width}x{height} @ {self.video_fps} FPS)")
+                next_write_time = now
 
-            writer.write(frame)
+            if now >= next_write_time:
+                writer.write(last_frame)
 
-            # Hand frame off to YOLO worker (non-blocking) only when enabled
-            if YOLO_AVAILABLE and yolo_model and self.yolo_enabled:
-                self.yolo_queue.put((frame_idx, frame))
+                # Only queue YOLO for genuinely new frames, not padding repetitions
+                if new_frame is not None and YOLO_AVAILABLE and yolo_model and self.yolo_enabled:
+                    self.yolo_queue.put((frame_idx, last_frame))
 
-            self.video_count += 1
-            frame_idx += 1
-            self.video_queue.task_done()
+                self.video_count += 1
+                frame_idx += 1
+                next_write_time += interval
+                # Guard against startup latency or clock stalls causing a burst
+                if next_write_time < now:
+                    next_write_time = now + interval
+            else:
+                # Sleep at most 5 ms so we remain responsive to the stop event
+                time.sleep(min(next_write_time - now, 0.005))
+
+        # Drain queue on shutdown (frames discarded; file is already at real time)
+        while True:
+            try:
+                self.video_queue.get_nowait()
+                self.video_queue.task_done()
+            except queue.Empty:
+                break
 
         if writer is not None:
             writer.release()
