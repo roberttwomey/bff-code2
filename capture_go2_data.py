@@ -58,6 +58,22 @@ class Go2DataCapturer:
 
         self.conn = None
 
+        # Real-time listener callbacks
+        self.video_listeners = []
+        self.lowstate_listeners = []
+        self.lidar_listeners = []
+
+    def add_listener(self, listener_type, callback):
+        """Add a callback listener for real-time streaming.
+        listener_type: 'video', 'lowstate', or 'lidar'
+        """
+        if listener_type == 'video':
+            self.video_listeners.append(callback)
+        elif listener_type == 'lowstate':
+            self.lowstate_listeners.append(callback)
+        elif listener_type == 'lidar':
+            self.lidar_listeners.append(callback)
+
     def start_writers(self):
         if self.capture_video:
             t = threading.Thread(target=self._video_writer_worker, daemon=True, name="VideoWriter")
@@ -186,6 +202,11 @@ class Go2DataCapturer:
                         frame = await track.recv()
                         img = frame.to_ndarray(format="bgr24")
                         self.video_queue.put(img)
+                        for cb in self.video_listeners:
+                            try:
+                                cb(img)
+                            except Exception as cb_err:
+                                logging.error(f"Error in video listener callback: {cb_err}")
                     except Exception as e:
                         if not self.stop_event.is_set():
                             logging.error(f"Error in video track receive: {e}")
@@ -219,6 +240,11 @@ class Go2DataCapturer:
                             "data": current_message
                         }
                         self.lowstate_queue.put(payload)
+                        for cb in self.lowstate_listeners:
+                            try:
+                                cb(payload)
+                            except Exception as cb_err:
+                                logging.error(f"Error in lowstate listener callback: {cb_err}")
                 except Exception as e:
                     logging.error(f"Error in lowstate callback: {e}")
 
@@ -253,6 +279,11 @@ class Go2DataCapturer:
                             "points": points_list
                         }
                         self.lidar_queue.put(payload)
+                        for cb in self.lidar_listeners:
+                            try:
+                                cb(payload)
+                            except Exception as cb_err:
+                                logging.error(f"Error in lidar listener callback: {cb_err}")
                 except Exception as e:
                     logging.error(f"Error in lidar callback: {e}")
 
