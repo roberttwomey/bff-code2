@@ -97,16 +97,23 @@
             color: #ffffff;
         }
 
-        /* Workspace Grid */
+        /* Workspace Flex Layout */
         .workspace {
             flex: 1;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: 1fr 1fr;
+            display: flex;
+            flex-direction: row;
             gap: 0px;
             padding: 0px;
             height: calc(100vh - 70px);
-            background-color: var(--panel-border); /* Grid line simulation */
+            background-color: var(--panel-border);
+        }
+
+        .workspace-column {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            height: 100%;
+            overflow: hidden;
         }
 
         /* Panel block style */
@@ -116,6 +123,14 @@
             display: flex;
             flex-direction: column;
             position: relative;
+        }
+
+        .panel.minimized {
+            flex: 0 0 45px !important;
+        }
+
+        .panel.minimized .panel-content {
+            display: none !important;
         }
 
         .panel-header {
@@ -166,13 +181,42 @@
             object-fit: contain;
         }
 
+        /* Telemetry Joints Grid */
+        .leg-column {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 0.65rem;
+        }
+
+        .leg-header {
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 2px;
+            margin-bottom: 2px;
+        }
+
+        .joint-row {
+            display: flex;
+            justify-content: space-between;
+            color: #ffffff;
+            font-size: 0.6rem;
+            gap: 4px;
+        }
+
+        .joint-name {
+            color: var(--text-muted);
+        }
+
         /* Telemetry component */
         .telemetry-grid {
             width: 100%;
             height: 100%;
             padding: 24px;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 1px;
             background-color: var(--panel-border);
             overflow-y: auto;
@@ -341,11 +385,18 @@
 
         @media (max-width: 900px) {
             .workspace {
-                grid-template-columns: 1fr;
-                grid-template-rows: repeat(4, 300px);
-                overflow-y: auto;
+                flex-direction: column;
                 height: auto;
-                gap: 1px;
+                overflow-y: auto;
+            }
+            .workspace-column {
+                height: auto;
+                overflow: visible;
+                flex: none;
+            }
+            .panel {
+                height: 350px !important;
+                flex: none !important;
             }
             body {
                 overflow: auto;
@@ -377,102 +428,122 @@
     </header>
 
     <div class="workspace">
-        <!-- Panel 1: Video View -->
-        <div class="panel">
-            <div class="panel-header">
-                <div class="panel-title">Video Feed</div>
-            </div>
-            <div class="panel-content">
-                <div class="video-container">
-                    <img src="/video_feed" class="video-stream" alt="Camera Stream">
+        <div class="workspace-column">
+            <!-- Panel 1: Video View -->
+            <div class="panel" style="flex: 1; border-bottom: 1px solid var(--panel-border);">
+                <div class="panel-header">
+                    <div class="panel-title">Video Feed</div>
+                </div>
+                <div class="panel-content">
+                    <div class="video-container">
+                        <img src="/video_feed" class="video-stream" alt="Camera Stream">
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Panel 2: Lidar Map -->
-        <div class="panel">
-            <div class="panel-header">
-                <div class="panel-title">LiDAR 3D Cloud</div>
-                <div class="panel-controls">
-                    <div class="ui-checkbox">
-                        <input type="checkbox" id="alignToDog" checked>
-                        <label for="alignToDog">ALIGN DOG</label>
-                    </div>
-                    <div class="ui-checkbox">
-                        <input type="checkbox" id="voxelColumns">
-                        <label for="voxelColumns">COLUMNS</label>
-                    </div>
-                    <div class="ui-slider">
-                        <label for="lidarRange">CUTOFF:</label>
-                        <input type="range" id="lidarRange" min="2" max="25" value="12" step="1">
-                        <span id="rangeVal">12m</span>
-                    </div>
-                    <div class="ui-slider">
-                        <label for="lidarPointSize">SIZE:</label>
-                        <input type="range" id="lidarPointSize" min="1" max="10" value="4" step="1">
-                        <span id="sizeVal">4px</span>
-                    </div>
+            <!-- Panel 3: LowState Telemetry (Smaller Card with Joints) -->
+            <div class="panel" id="telemetryPanel" style="flex: 0 0 160px; height: 160px;">
+                <div class="panel-header">
+                    <div class="panel-title">System Metrics & Joints</div>
                 </div>
-            </div>
-            <div class="panel-content">
-                <div class="lidar-container">
-                    <div id="lidarWebGL"></div>
-                    <div class="canvas-instructions">Left Click + Drag to Rotate | Right Click + Drag to Pan | Scroll to Zoom</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Panel 3: LowState Telemetry -->
-        <div class="panel">
-            <div class="panel-header">
-                <div class="panel-title">System Metrics</div>
-            </div>
-            <div class="panel-content">
-                <div class="telemetry-grid">
-                    <div class="telemetry-card">
-                        <span class="card-label">Battery Voltage</span>
-                        <div class="card-value" id="batVolt">-- <span class="unit">V</span></div>
+                <div class="panel-content" style="padding: 12px 20px; display: flex; flex-direction: row; gap: 20px; height: 100%; overflow: auto;">
+                    <!-- General metrics column -->
+                    <div style="flex: 0 0 180px; display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem; justify-content: center; border-right: 1px solid var(--panel-border); padding-right: 20px;">
+                        <div><span style="color: var(--text-muted);">BATTERY:</span> <span id="batVolt" style="color: #ffffff; font-weight: 400;">-- V</span></div>
+                        <div><span style="color: var(--text-muted);">VELOCITY:</span> <span id="bodyVel" style="color: #ffffff; font-weight: 400;">-- m/s</span></div>
+                        <div><span style="color: var(--text-muted);">IMU PITCH:</span> <span id="imuPitch" style="color: #ffffff; font-weight: 400;">--°</span></div>
+                        <div><span style="color: var(--text-muted);">IMU ROLL:</span>  <span id="imuRoll"  style="color: #ffffff; font-weight: 400;">--°</span></div>
+                        <div><span style="color: var(--text-muted);">IMU YAW:</span>   <span id="imuYaw"   style="color: #ffffff; font-weight: 400;">--°</span></div>
+                        <div><span style="color: var(--text-muted);">CONTACT:</span>   <span id="footContact" style="color: #ffffff; font-weight: 400;">--</span></div>
+                        <div><span style="color: var(--text-muted);">TEMP AVG:</span>  <span id="jointTemp" style="color: #ffffff; font-weight: 400;">--°C</span></div>
+                        <div><span style="color: var(--text-muted);">POWER:</span>     <span id="powerState" style="color: #ffffff; font-weight: 400;">--</span></div>
                     </div>
-                    <div class="telemetry-card">
-                        <span class="card-label">IMU Pitch</span>
-                        <div class="card-value" id="imuPitch">-- <span class="unit">°</span></div>
-                    </div>
-                    <div class="telemetry-card">
-                        <span class="card-label">IMU Roll</span>
-                        <div class="card-value" id="imuRoll">-- <span class="unit">°</span></div>
-                    </div>
-                    <div class="telemetry-card">
-                        <span class="card-label">IMU Yaw</span>
-                        <div class="card-value" id="imuYaw">-- <span class="unit">°</span></div>
-                    </div>
-                    <div class="telemetry-card">
-                        <span class="card-label">Contact State</span>
-                        <div class="card-value" id="footContact">--</div>
-                    </div>
-                    <div class="telemetry-card">
-                        <span class="card-label">Velocity XY</span>
-                        <div class="card-value" id="bodyVel">-- <span class="unit">m/s</span></div>
-                    </div>
-                    <div class="telemetry-card">
-                        <span class="card-label">Joint Temp Avg</span>
-                        <div class="card-value" id="jointTemp">-- <span class="unit">°C</span></div>
-                    </div>
-                    <div class="telemetry-card">
-                        <span class="card-label">Power State</span>
-                        <div class="card-value" id="powerState">--</div>
+                    <!-- Joints metrics columns -->
+                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                        <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--panel-border); padding-bottom: 2px;">
+                            JOINT STATES (ROTATION rad / TORQUE Nm)
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <!-- FL Leg -->
+                            <div class="leg-column">
+                                <div class="leg-header">FL</div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fl_hip">--</span></div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="fl_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fl_calf">--</span></div>
+                            </div>
+                            <!-- FR Leg -->
+                            <div class="leg-column">
+                                <div class="leg-header">FR</div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fr_hip">--</span></div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="fr_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fr_calf">--</span></div>
+                            </div>
+                            <!-- RL Leg -->
+                            <div class="leg-column">
+                                <div class="leg-header">RL</div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rl_hip">--</span></div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="rl_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rl_calf">--</span></div>
+                            </div>
+                            <!-- RR Leg -->
+                            <div class="leg-column">
+                                <div class="leg-header">RR</div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rr_hip">--</span></div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="rr_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rr_calf">--</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Panel 4: LLM Reasoning Console -->
-        <div class="panel">
-            <div class="panel-header">
-                <div class="panel-title">Session Logs</div>
+        <div class="workspace-column" style="border-left: 1px solid var(--panel-border);">
+            <!-- Panel 2: Lidar Map -->
+            <div class="panel" style="flex: 1; height: 100%;">
+                <div class="panel-header">
+                    <div class="panel-title">LiDAR 3D Cloud</div>
+                    <div class="panel-controls">
+                        <div class="ui-checkbox">
+                            <input type="checkbox" id="alignToDog" checked>
+                            <label for="alignToDog">ALIGN DOG</label>
+                        </div>
+                        <div class="ui-checkbox">
+                            <input type="checkbox" id="voxelColumns">
+                            <label for="voxelColumns">COLUMNS</label>
+                        </div>
+                        <div class="ui-slider">
+                            <label for="lidarRange">CUTOFF:</label>
+                            <input type="range" id="lidarRange" min="2" max="25" value="12" step="1">
+                            <span id="rangeVal">12m</span>
+                        </div>
+                        <div class="ui-slider">
+                            <label for="lidarPointSize">SIZE:</label>
+                            <input type="range" id="lidarPointSize" min="1" max="10" value="4" step="1">
+                            <span id="sizeVal">4px</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <div class="lidar-container">
+                        <div id="lidarWebGL"></div>
+                        <div class="canvas-instructions">Left Click + Drag to Rotate | Right Click + Drag to Pan | Scroll to Zoom</div>
+                    </div>
+                </div>
             </div>
-            <div class="panel-content">
-                <div class="console-container" id="consoleLogs">
-                    <div class="console-welcome">> listening for active session logs...</div>
+
+            <!-- Panel 4: LLM Reasoning Console (with Minimize Toggle) -->
+            <div class="panel" id="logPanel" style="flex: 1; border-top: 1px solid var(--panel-border); transition: flex 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);">
+                <div class="panel-header">
+                    <div class="panel-title">Session Logs</div>
+                    <div class="panel-controls">
+                        <button id="toggleChatBtn" style="background: none; border: 1px solid var(--panel-border); color: var(--text-muted); font-size: 0.65rem; padding: 2px 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font-mono); outline: none;">MINIMIZE</button>
+                    </div>
+                </div>
+                <div class="panel-content">
+                    <div class="console-container" id="consoleLogs">
+                        <div class="console-welcome">> listening for active session logs...</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -626,7 +697,7 @@
 
             // Extract Battery
             const power_v = lowstate.power_v || 0;
-            document.getElementById('batVolt').innerHTML = `${power_v.toFixed(1)} <span class="unit">V</span>`;
+            document.getElementById('batVolt').textContent = `${power_v.toFixed(1)} V`;
             
             let batPercent = ((power_v - 22.0) / (29.6 - 22.0)) * 100;
             batPercent = Math.max(0, Math.min(100, batPercent));
@@ -643,9 +714,9 @@
                 const rollDeg = currentDogRoll * (180 / Math.PI);
                 const yawDeg = currentDogYaw * (180 / Math.PI);
 
-                document.getElementById('imuPitch').innerHTML = `${pitchDeg.toFixed(1)} <span class="unit">°</span>`;
-                document.getElementById('imuRoll').innerHTML = `${rollDeg.toFixed(1)} <span class="unit">°</span>`;
-                document.getElementById('imuYaw').innerHTML = `${yawDeg.toFixed(1)} <span class="unit">°</span>`;
+                document.getElementById('imuPitch').textContent = `${pitchDeg.toFixed(1)}°`;
+                document.getElementById('imuRoll').textContent = `${rollDeg.toFixed(1)}°`;
+                document.getElementById('imuYaw').textContent = `${yawDeg.toFixed(1)}°`;
             }
 
             // Foot Contacts
@@ -659,14 +730,33 @@
             if (lowstate.velocity) {
                 const v = lowstate.velocity || [0, 0, 0];
                 const speed = Math.sqrt(v[0]*v[0] + v[1]*v[1]);
-                document.getElementById('bodyVel').innerHTML = `${speed.toFixed(2)} <span class="unit">m/s</span>`;
+                document.getElementById('bodyVel').textContent = `${speed.toFixed(2)} m/s`;
             }
 
-            // Joint temperatures
+            // Joint temperatures & Leg Joints detailed metrics extraction
             if (lowstate.motor_state) {
-                const temps = lowstate.motor_state.map(m => m.temp || 0);
-                const avgTemp = temps.length > 0 ? temps.reduce((a, b) => a + b, 0) / temps.length : 0;
-                document.getElementById('jointTemp').innerHTML = `${avgTemp.toFixed(1)} <span class="unit">°C</span>`;
+                const motors = lowstate.motor_state;
+                
+                const avgTemp = motors.length > 0 ? motors.reduce((sum, m) => sum + (m.temp || 0), 0) / motors.length : 0;
+                document.getElementById('jointTemp').textContent = `${avgTemp.toFixed(1)}°C`;
+
+                // Update Joint States on Leg cards (FL, FR, RL, RR)
+                const updateLegJoints = (legPrefix, offset) => {
+                    const hip = motors[offset] || { q: 0, tau_est: 0 };
+                    const thigh = motors[offset + 1] || { q: 0, tau_est: 0 };
+                    const calf = motors[offset + 2] || { q: 0, tau_est: 0 };
+                    
+                    document.getElementById(`${legPrefix}_hip`).textContent = `${hip.q.toFixed(2)}/${hip.tau_est.toFixed(0)}`;
+                    document.getElementById(`${legPrefix}_thigh`).textContent = `${thigh.q.toFixed(2)}/${thigh.tau_est.toFixed(0)}`;
+                    document.getElementById(`${legPrefix}_calf`).textContent = `${calf.q.toFixed(2)}/${calf.tau_est.toFixed(0)}`;
+                };
+
+                if (motors.length >= 12) {
+                    updateLegJoints('fl', 0);
+                    updateLegJoints('fr', 3);
+                    updateLegJoints('rl', 6);
+                    updateLegJoints('rr', 9);
+                }
             }
 
             const motionMode = lowstate.motion_mode !== undefined ? lowstate.motion_mode : '--';
@@ -788,6 +878,21 @@
             if (consoleLogs.childElementCount > 200) {
                 consoleLogs.removeChild(consoleLogs.firstChild);
             }
+        });
+
+        // Toggle Log/Chat Minimize/Expand
+        const toggleChatBtn = document.getElementById('toggleChatBtn');
+        const logPanel = document.getElementById('logPanel');
+        
+        toggleChatBtn.addEventListener('click', () => {
+            const isMinimized = logPanel.classList.toggle('minimized');
+            if (isMinimized) {
+                toggleChatBtn.textContent = 'EXPAND';
+            } else {
+                toggleChatBtn.textContent = 'MINIMIZE';
+            }
+            // Trigger WebGL scene update recalculation
+            setTimeout(onWindowResize, 350);
         });
     </script>
 </body>
