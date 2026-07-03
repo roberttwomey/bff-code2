@@ -22,6 +22,17 @@ except ImportError as e:
     print(f"Error: Failed to import unitree_webrtc_connect packages. Make sure you are in the directory containing the package or it is installed: {e}")
     sys.exit(1)
 
+# Optional YOLO Object Detection integration
+YOLO_AVAILABLE = False
+yolo_model = None
+try:
+    from ultralytics import YOLO
+    if os.path.exists("yolov8n.pt"):
+        yolo_model = YOLO("yolov8n.pt")
+        YOLO_AVAILABLE = True
+except Exception:
+    pass
+
 # Configure logging
 logging.basicConfig(level=logging.FATAL)
 
@@ -116,6 +127,17 @@ class Go2DataCapturer:
 
     def _video_writer_worker(self):
         writer = None
+        detections_file = None
+        
+        if YOLO_AVAILABLE and yolo_model:
+            detections_path = os.path.join(self.output_dir, "detections.jsonl")
+            try:
+                detections_file = open(detections_path, "w", encoding="utf-8")
+                print(f"Initialized Detections JSONL Logger: {detections_path}")
+            except Exception as e:
+                logging.error(f"Failed to open detections.jsonl: {e}")
+
+        frame_idx = 0
         while not self.stop_event.is_set() or not self.video_queue.empty():
             try:
                 frame = self.video_queue.get(timeout=0.1)
@@ -130,12 +152,46 @@ class Go2DataCapturer:
                 print(f"\nInitialized VideoWriter: {video_path} ({width}x{height} @ {self.video_fps} FPS)")
 
             writer.write(frame)
+            
+            # If YOLO is active, run inference and write to detections.jsonl
+            if detections_file and yolo_model:
+                try:
+                    results = yolo_model(frame, verbose=False)
+                    frame_detections = []
+                    for r in results:
+                        for box in r.boxes:
+                            xyxy = box.xyxy[0].tolist()
+                            conf = float(box.conf[0])
+                            cls_id = int(box.cls[0])
+                            cls_name = yolo_model.names[cls_id] if hasattr(yolo_model, 'names') else str(cls_id)
+                            
+                            frame_detections.append({
+                                "class": cls_name,
+                                "confidence": conf,
+                                "bbox": [round(val, 1) for val in xyxy]
+                            })
+                    if frame_detections:
+                        entry = {
+                            "frame_index": frame_idx,
+                            "timestamp": time.time(),
+                            "detections": frame_detections
+                        }
+                        detections_file.write(json.dumps(entry) + "\n")
+                        detections_file.flush()
+                except Exception as yolo_err:
+                    logging.error(f"YOLO inference error on frame {frame_idx}: {yolo_err}")
+
             self.video_count += 1
+            frame_idx += 1
             self.video_queue.task_done()
 
         if writer is not None:
             writer.release()
             print("VideoWriter released.")
+            
+        if detections_file is not None:
+            detections_file.close()
+            print("Detections JSONL file closed.")
 
     def _audio_writer_worker(self):
         wf = None
