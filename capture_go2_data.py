@@ -81,10 +81,11 @@ class Go2DataCapturer:
         self.odom_listeners = []
         self.uslam_path_listeners = []
         self.uslam_map_listeners = []
+        self.uslam_log_listeners = []
 
     def add_listener(self, listener_type, callback):
         """Add a callback listener for real-time streaming.
-        listener_type: 'video', 'lowstate', 'lidar', 'odom', 'uslam_path', or 'uslam_map'
+        listener_type: 'video', 'lowstate', 'lidar', 'odom', 'uslam_path', 'uslam_map', or 'uslam_log'
         """
         if listener_type == 'video':
             self.video_listeners.append(callback)
@@ -98,6 +99,18 @@ class Go2DataCapturer:
             self.uslam_path_listeners.append(callback)
         elif listener_type == 'uslam_map':
             self.uslam_map_listeners.append(callback)
+        elif listener_type == 'uslam_log':
+            self.uslam_log_listeners.append(callback)
+
+    def send_uslam_command(self, cmd):
+        if self.conn and self.conn.datachannel:
+            try:
+                self.conn.datachannel.pub_sub.publish_without_callback("rt/uslam/client_command", cmd)
+                print(f"[Capturer] Published USLAM command: '{cmd}'")
+                return True
+            except Exception as e:
+                logging.error(f"[Capturer] Failed to publish USLAM command '{cmd}': {e}")
+        return False
 
     def start_writers(self):
         if self.capture_video:
@@ -480,11 +493,32 @@ class Go2DataCapturer:
                 except Exception as e:
                     logging.error(f"Error in global_path callback: {e}")
 
+            def server_log_callback(message):
+                try:
+                    data = message.get("data", "")
+                    if isinstance(data, dict):
+                        msg_str = data.get("data", json.dumps(data))
+                    else:
+                        msg_str = str(data)
+                    
+                    payload = {
+                        "timestamp": time.time(),
+                        "text": msg_str
+                    }
+                    for cb in self.uslam_log_listeners:
+                        try:
+                            cb(payload)
+                        except Exception as cb_err:
+                            logging.error(f"Error in uslam_log listener callback: {cb_err}")
+                except Exception as e:
+                    logging.error(f"Error in server_log callback: {e}")
+
             # Subscribe to the topics on the WebRTC data channel
             self.conn.datachannel.pub_sub.subscribe("rt/uslam/frontend/odom", odom_callback)
             self.conn.datachannel.pub_sub.subscribe("rt/uslam/localization/odom", odom_callback)
             self.conn.datachannel.pub_sub.subscribe("rt/uslam/frontend/cloud_world_ds", cloud_world_ds_callback)
             self.conn.datachannel.pub_sub.subscribe("rt/uslam/navigation/global_path", global_path_callback)
+            self.conn.datachannel.pub_sub.subscribe("rt/uslam/server_log", server_log_callback)
             print("USLAM topics subscriptions enabled successfully.")
 
         # Keep running and printing stats

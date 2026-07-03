@@ -18,6 +18,7 @@ import cv2
 from flask import Flask, render_template, Response
 from flask_socketio import SocketIO
 import dotenv
+from datetime import datetime
 
 # Load .env file
 dotenv.load_dotenv()
@@ -118,6 +119,20 @@ def handle_lidar_recording_chunk(data):
                 f.write(data)
         except Exception as e:
             print(f"[Dashboard Server] Failed to write LiDAR WebGL video chunk: {e}")
+
+@socketio.on('uslam_control_command')
+def handle_uslam_control_command(data):
+    global capturer
+    cmd = data.get('command')
+    if capturer and cmd:
+        capturer.send_uslam_command(cmd)
+
+def on_uslam_log_received(payload):
+    socketio.emit('log_data', {
+        'timestamp': datetime.now().isoformat(),
+        'type': 'special_command',
+        'raw': f"[SLAM] {payload.get('text', '')}"
+    })
 
 # Telemetry callbacks with rate-limiting
 last_lowstate_time = 0
@@ -261,6 +276,7 @@ def start_capturer_async(ip, aes_key, no_video, no_audio, no_lowstate, no_lidar)
         capturer.add_listener('odom', on_odom_received)
         capturer.add_listener('uslam_map', on_uslam_map_received)
         capturer.add_listener('uslam_path', on_uslam_path_received)
+        capturer.add_listener('uslam_log', on_uslam_log_received)
 
     def run_connection_loop():
         loop = asyncio.new_event_loop()
