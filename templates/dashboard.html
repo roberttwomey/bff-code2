@@ -522,6 +522,14 @@
                             <label for="alignToDog">ALIGN DOG</label>
                         </div>
                         <div class="ui-checkbox">
+                            <input type="checkbox" id="slamMode">
+                            <label for="slamMode">SLAM MODE</label>
+                        </div>
+                        <div class="ui-checkbox">
+                            <input type="checkbox" id="followDog">
+                            <label for="followDog">FOLLOW DOG</label>
+                        </div>
+                        <div class="ui-checkbox">
                             <input type="checkbox" id="voxelColumns">
                             <label for="voxelColumns">COLUMNS</label>
                         </div>
@@ -616,17 +624,32 @@
         controls.maxPolarAngle = Math.PI / 2 + 0.15; // Don't let users rotate below the ground line too much
         controls.target.set(0, 0, 0);
 
-        // Grid helper representing ground plane
-        const gridHelper = new THREE.GridHelper(30, 30, 0x222222, 0x111111);
-        gridHelper.position.y = -0.5; // Sit slightly below origin (simulating dog ground height)
+        // Grid helper representing ground plane (static in world frame)
+        const gridHelper = new THREE.GridHelper(50, 50, 0x222222, 0x111111);
+        gridHelper.position.y = -0.5; // Sit slightly below origin
         scene.add(gridHelper);
 
-        // Minimal coordinate helper at local origin
-        const axesHelper = new THREE.AxesHelper(1);
-        axesHelper.position.y = -0.49; // Slightly above grid helper to avoid Z-fighting
-        scene.add(axesHelper);
+        // USLAM odometry tracker variables
+        let odomX = 0, odomY = 0, odomZ = 0, odomYaw = 0;
 
-        // Preallocate Point Cloud geometry
+        // Robot local group (moves around the world in SLAM mode)
+        const robotGroup = new THREE.Group();
+        scene.add(robotGroup);
+
+        // Represent the dog's body inside the local group
+        const dogGeo = new THREE.BoxGeometry(0.6, 0.3, 0.9); // dog body box
+        const dogMat = new THREE.MeshBasicMaterial({ color: 0xff1744, wireframe: true });
+        const dogMesh = new THREE.Mesh(dogGeo, dogMat);
+        dogMesh.position.y = -0.15; // adjust relative height
+        dogMesh.visible = false; // Hidden in local mode
+        robotGroup.add(dogMesh);
+
+        // Coordinate axes helper attached to the dog
+        const axesHelper = new THREE.AxesHelper(1);
+        axesHelper.position.y = -0.14; // slightly above dog body to avoid z-fighting
+        robotGroup.add(axesHelper);
+
+        // Preallocate Live LiDAR Point Cloud geometry (attached to dog local group)
         const pointsGeometry = new THREE.BufferGeometry();
         const pointsMaterial = new THREE.PointsMaterial({
             size: pointSizeVal,
@@ -634,7 +657,28 @@
             sizeAttenuation: false // points keep consistent screen size regardless of distance
         });
         const pointsObject = new THREE.Points(pointsGeometry, pointsMaterial);
-        scene.add(pointsObject);
+        robotGroup.add(pointsObject);
+
+        // Preallocate USLAM global Map Cloud geometry (static in world frame)
+        const mapGeometry = new THREE.BufferGeometry();
+        const mapMaterial = new THREE.PointsMaterial({
+            size: 2, // slightly smaller points
+            color: 0x00e5ff, // bright cyan/blue
+            opacity: 0.6,
+            transparent: true,
+            sizeAttenuation: false
+        });
+        const mapObject = new THREE.Points(mapGeometry, mapMaterial);
+        scene.add(mapObject);
+
+        // Preallocate USLAM global Path geometry (static in world frame)
+        const pathGeometry = new THREE.BufferGeometry();
+        const pathMaterial = new THREE.LineBasicMaterial({
+            color: 0x00e676, // neon green
+            linewidth: 2
+        });
+        const pathObject = new THREE.Line(pathGeometry, pathMaterial);
+        scene.add(pathObject);
 
         // Handle Resizing
         function onWindowResize() {
@@ -644,19 +688,62 @@
         window.addEventListener('resize', onWindowResize);
         setTimeout(onWindowResize, 100);
 
+        // Clear global path and map cloud when SLAM mode is disabled
+        let accumulatedMapPoints = [];
+        document.getElementById('slamMode').addEventListener('change', (e) => {
+            if (!e.target.checked) {
+                robotGroup.position.set(0, 0, 0);
+                robotGroup.rotation.set(0, 0, 0);
+                pathGeometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+                mapGeometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+                accumulatedMapPoints = [];
+            }
+        });
+
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
             
-            // Align pointsObject rotation to the dog's IMU orientation
             const alignToDog = document.getElementById('alignToDog').checked;
-            if (alignToDog) {
-                pointsObject.rotation.order = 'YXZ';
-                pointsObject.rotation.x = -currentDogPitch;
-                pointsObject.rotation.y = -currentDogYaw;
-                pointsObject.rotation.z = -currentDogRoll;
+            const slamMode = document.getElementById('slamMode').checked;
+            
+            if (slamMode) {
+                // Translate & rotate robotGroup by odometry coordinates
+                robotGroup.position.set(-odomY, odomZ, -odomX);
+                robotGroup.rotation.y = -odomYaw;
+                
+                // Show dog mesh wireframe
+                dogMesh.visible = true;
+                
+                // Camera target follow mode
+                if (document.getElementById('followDog').checked) {
+                    controls.target.copy(robotGroup.position);
+                }
+                
+                // Rotate points relative to the dog's IMU roll/pitch (yaw is odomYaw)
+                if (alignToDog) {
+                    pointsObject.rotation.order = 'YXZ';
+                    pointsObject.rotation.x = -currentDogPitch;
+                    pointsObject.rotation.y = 0;
+                    pointsObject.rotation.z = -currentDogRoll;
+                } else {
+                    pointsObject.rotation.set(0, 0, 0);
+                }
             } else {
-                pointsObject.rotation.set(0, 0, 0);
+                // In local mode, robot remains centered at origin
+                robotGroup.position.set(0, 0, 0);
+                robotGroup.rotation.set(0, 0, 0);
+                
+                dogMesh.visible = false;
+                
+                if (alignToDog) {
+                    pointsObject.rotation.order = 'YXZ';
+                    pointsObject.rotation.x = -currentDogPitch;
+                    pointsObject.rotation.y = -currentDogYaw;
+                    pointsObject.rotation.z = -currentDogRoll;
+                } else {
+                    pointsObject.rotation.set(0, 0, 0);
+                }
             }
             
             controls.update();
@@ -890,6 +977,48 @@
             pointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
             pointsGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
             pointsGeometry.computeBoundingSphere();
+        });
+
+        // USLAM odometry receiver
+        socket.on('uslam_odom', (data) => {
+            odomX = data.x;
+            odomY = data.y;
+            odomZ = data.z;
+            odomYaw = data.yaw;
+        });
+
+        // USLAM path line receiver
+        socket.on('uslam_path', (data) => {
+            const points = data.points || [];
+            const positions = [];
+            
+            points.forEach(([x, y]) => {
+                // Map ROS coordinate structure to ThreeJS standard coordinates (x=-y, y=-0.48, z=-x)
+                positions.push(-y, -0.48, -x);
+            });
+            
+            pathGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            pathGeometry.computeBoundingSphere();
+        });
+
+        // USLAM map cloud receiver (accumulated stationary landmarks)
+        socket.on('uslam_map', (data) => {
+            if (!document.getElementById('slamMode').checked) return;
+            const newPoints = data.points || [];
+            
+            accumulatedMapPoints = accumulatedMapPoints.concat(newPoints);
+            // Cap to avoid memory leaks or graphics context lag
+            if (accumulatedMapPoints.length > 60000) {
+                accumulatedMapPoints = accumulatedMapPoints.slice(accumulatedMapPoints.length - 60000);
+            }
+            
+            const positions = [];
+            accumulatedMapPoints.forEach(([x, y, z]) => {
+                positions.push(-y, z, -x);
+            });
+            
+            mapGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            mapGeometry.computeBoundingSphere();
         });
 
         // Console logger

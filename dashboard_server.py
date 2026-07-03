@@ -150,6 +150,40 @@ def on_lidar_received(payload):
         'point_count': len(points)
     })
 
+last_odom_time = 0
+def on_odom_received(payload):
+    global last_odom_time
+    now = time.time()
+    if now - last_odom_time < 0.1:  # Limit odom emissions to 10Hz
+        return
+    last_odom_time = now
+    socketio.emit('uslam_odom', payload)
+
+last_map_time = 0
+def on_uslam_map_received(payload):
+    global last_map_time
+    now = time.time()
+    if now - last_map_time < 0.5:  # Limit global map updates to 2Hz
+        return
+    last_map_time = now
+    
+    points = payload.get('points', [])
+    max_points = 2000
+    if len(points) > max_points:
+        step = len(points) // max_points
+        points = points[::step]
+    payload['points'] = points
+    socketio.emit('uslam_map', payload)
+
+last_path_time = 0
+def on_uslam_path_received(payload):
+    global last_path_time
+    now = time.time()
+    if now - last_path_time < 0.5:  # Limit path updates to 2Hz
+        return
+    last_path_time = now
+    socketio.emit('uslam_path', payload)
+
 # Logs Watcher: Watches and tails JSONL logs written by chat-manager.py
 def get_latest_log_file():
     """Scans and retrieves the latest chat-manager log file."""
@@ -224,6 +258,9 @@ def start_capturer_async(ip, aes_key, no_video, no_audio, no_lowstate, no_lidar)
         capturer.add_listener('lowstate', on_lowstate_received)
     if not no_lidar:
         capturer.add_listener('lidar', on_lidar_received)
+        capturer.add_listener('odom', on_odom_received)
+        capturer.add_listener('uslam_map', on_uslam_map_received)
+        capturer.add_listener('uslam_path', on_uslam_path_received)
 
     def run_connection_loop():
         loop = asyncio.new_event_loop()

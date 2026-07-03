@@ -4,6 +4,7 @@ import logging
 import os
 import sys
 import time
+import math
 import wave
 import queue
 import threading
@@ -77,10 +78,13 @@ class Go2DataCapturer:
         self.video_listeners = []
         self.lowstate_listeners = []
         self.lidar_listeners = []
+        self.odom_listeners = []
+        self.uslam_path_listeners = []
+        self.uslam_map_listeners = []
 
     def add_listener(self, listener_type, callback):
         """Add a callback listener for real-time streaming.
-        listener_type: 'video', 'lowstate', or 'lidar'
+        listener_type: 'video', 'lowstate', 'lidar', 'odom', 'uslam_path', or 'uslam_map'
         """
         if listener_type == 'video':
             self.video_listeners.append(callback)
@@ -88,6 +92,12 @@ class Go2DataCapturer:
             self.lowstate_listeners.append(callback)
         elif listener_type == 'lidar':
             self.lidar_listeners.append(callback)
+        elif listener_type == 'odom':
+            self.odom_listeners.append(callback)
+        elif listener_type == 'uslam_path':
+            self.uslam_path_listeners.append(callback)
+        elif listener_type == 'uslam_map':
+            self.uslam_map_listeners.append(callback)
 
     def start_writers(self):
         if self.capture_video:
@@ -349,6 +359,133 @@ class Go2DataCapturer:
 
             self.conn.datachannel.pub_sub.subscribe("rt/utlidar/voxel_map_compressed", lidar_callback)
             print("LiDAR snapshots subscription enabled.")
+
+        # 6. Setup USLAM subscriptions (odom, map, path)
+        if self.conn and self.conn.datachannel:
+            print("Registering USLAM subscriptions...")
+
+            def odom_callback(message):
+                try:
+                    data = message.get("data", {})
+                    pose_data = data.get("pose", {}).get("pose", {})
+                    position = pose_data.get("position", {})
+                    orientation = pose_data.get("orientation", {})
+                    
+                    x = position.get("x", 0.0)
+                    y = position.get("y", 0.0)
+                    z = position.get("z", 0.0)
+                    
+                    qx = orientation.get("x", 0.0)
+                    qy = orientation.get("y", 0.0)
+                    qz = orientation.get("z", 0.0)
+                    qw = orientation.get("w", 1.0)
+                    
+                    siny_cosp = 2.0 * (qw * qz + qx * qy)
+                    cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz)
+                    yaw = math.atan2(siny_cosp, cosy_cosp)
+                    
+                    payload = {
+                        "timestamp": time.time(),
+                        "x": x, "y": y, "z": z, "yaw": yaw
+                    }
+                    for cb in self.odom_listeners:
+                        try:
+                            cb(payload)
+                        except Exception as cb_err:
+                            logging.error(f"Error in odom listener callback: {cb_err}")
+                except Exception as e:
+                    logging.error(f"Error in odom callback: {e}")
+
+            def cloud_world_ds_callback(message):
+                try:
+                    data_field = message.get("data", {})
+                    binary_data = data_field.get("data")
+                    if not binary_data or len(binary_data) < 6:
+                        return
+                        
+                    xmin = data_field.get("xmin", 0.0)
+                    xmax = data_field.get("xmax", 1.0)
+                    ymin = data_field.get("ymin", 0.0)
+                    ymax = data_field.get("ymax", 1.0)
+                    zmin = data_field.get("zmin", 0.0)
+                    zmax = data_field.get("zmax", 1.0)
+                    
+                    raw_bytes = np.frombuffer(binary_data, dtype=np.uint16)
+                    num_points = len(raw_bytes) // 3
+                    if num_points == 0:
+                        return
+                        
+                    pts_raw = raw_bytes[:num_points * 3].reshape(-1, 3)
+                    
+                    xs = xmin + (pts_raw[:, 0] / 65535.0) * (xmax - xmin)
+                    ys = ymin + (pts_raw[:, 1] / 65535.0) * (ymax - ymin)
+                    zs = zmin + (pts_raw[:, 2] / 65535.0) * (zmax - zmin)
+                    
+                    points_list = np.column_stack((xs, ys, zs)).tolist()
+                    payload = {
+                        "timestamp": time.time(),
+                        "points": points_list
+                    }
+                    for cb in self.uslam_map_listeners:
+                        try:
+                            cb(payload)
+                        except Exception as cb_err:
+                            logging.error(f"Error in uslam_map listener callback: {cb_err}")
+                except Exception as e:
+                    logging.error(f"Error in cloud_world_ds callback: {e}")
+
+            def global_path_callback(message):
+                try:
+                    data_field = message.get("data", {})
+                    buf = data_field.get("data")
+                    if not buf:
+                        return
+                        
+                    point_step = data_field.get("point_step", 12)
+                    fields = data_field.get("fields", [])
+                    
+                    if len(fields) >= 3:
+                        x_offset = fields[0].get("offset", 0)
+                        y_offset = fields[1].get("offset", 4)
+                        z_offset = fields[2].get("offset", 8)
+                        
+                        buf_arr = np.frombuffer(buf, dtype=np.uint8)
+                        num_points = len(buf_arr) // point_step
+                        if num_points == 0:
+                            return
+                            
+                        if point_step % 4 == 0 and x_offset % 4 == 0 and y_offset % 4 == 0 and z_offset % 4 == 0:
+                            aligned_len = num_points * point_step
+                            floats = np.frombuffer(buf_arr[:aligned_len], dtype='<f4').reshape(num_points, point_step // 4)
+                            xs = floats[:, x_offset // 4]
+                            ys = floats[:, y_offset // 4]
+                        else:
+                            xs = np.zeros(num_points, dtype=np.float32)
+                            ys = np.zeros(num_points, dtype=np.float32)
+                            for i in range(num_points):
+                                offset = i * point_step
+                                xs[i] = np.frombuffer(buf_arr[offset + x_offset : offset + x_offset + 4], dtype='<f4')[0]
+                                ys[i] = np.frombuffer(buf_arr[offset + y_offset : offset + y_offset + 4], dtype='<f4')[0]
+                        
+                        points_list = np.column_stack((xs, ys)).tolist()
+                        payload = {
+                            "timestamp": time.time(),
+                            "points": points_list
+                        }
+                        for cb in self.uslam_path_listeners:
+                            try:
+                                cb(payload)
+                            except Exception as cb_err:
+                                logging.error(f"Error in uslam_path listener callback: {cb_err}")
+                except Exception as e:
+                    logging.error(f"Error in global_path callback: {e}")
+
+            # Subscribe to the topics on the WebRTC data channel
+            self.conn.datachannel.pub_sub.subscribe("rt/uslam/frontend/odom", odom_callback)
+            self.conn.datachannel.pub_sub.subscribe("rt/uslam/localization/odom", odom_callback)
+            self.conn.datachannel.pub_sub.subscribe("rt/uslam/frontend/cloud_world_ds", cloud_world_ds_callback)
+            self.conn.datachannel.pub_sub.subscribe("rt/uslam/navigation/global_path", global_path_callback)
+            print("USLAM topics subscriptions enabled successfully.")
 
         # Keep running and printing stats
         print("\n=== Capturing Data (Press Ctrl+C to Stop) ===")
