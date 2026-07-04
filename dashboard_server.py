@@ -144,56 +144,18 @@ def handle_ping():
     """Latency calculation handshake."""
     socketio.emit('pong_latency')
 
-# Reordering buffer for LiDAR chunks to prevent out-of-order write corruption
-lidar_chunk_buffer = {}
-lidar_next_expected_index = 0
-lidar_buffer_lock = threading.Lock()
-
-@socketio.on('lidar_recording_start')
-def handle_lidar_recording_start():
-    global capturer, lidar_chunk_buffer, lidar_next_expected_index
+@socketio.on('camera_move')
+def handle_camera_move(payload):
+    """Logs Three.js orbit controls camera moves to camera_path.jsonl."""
+    global capturer
     if capturer and hasattr(capturer, 'output_dir') and capturer.output_dir:
-        filepath = os.path.join(capturer.output_dir, "lidar_render.webm")
+        filepath = os.path.join(capturer.output_dir, "camera_path.jsonl")
         try:
-            with open(filepath, "wb") as f:
-                pass
-            with lidar_buffer_lock:
-                lidar_chunk_buffer.clear()
-                lidar_next_expected_index = 0
-            print(f"[Dashboard Server] Started fresh LiDAR render recording: {filepath}")
+            with open(filepath, "a", encoding="utf-8") as f:
+                payload["timestamp"] = time.time()
+                f.write(json.dumps(payload) + "\n")
         except Exception as e:
-            print(f"[Dashboard Server] Failed to initialize LiDAR render file: {e}")
-
-@socketio.on('lidar_recording_chunk')
-def handle_lidar_recording_chunk(payload):
-    global capturer, lidar_chunk_buffer, lidar_next_expected_index
-    if not (capturer and hasattr(capturer, 'output_dir') and capturer.output_dir):
-        return
-
-    # Handle both new index-sequenced dictionary payload and legacy byte payload fallback
-    if isinstance(payload, dict):
-        chunk_idx = payload.get('index', 0)
-        chunk_data = payload.get('data')
-    else:
-        chunk_idx = lidar_next_expected_index
-        chunk_data = payload
-
-    if chunk_data is None:
-        return
-
-    filepath = os.path.join(capturer.output_dir, "lidar_render.webm")
-    try:
-        with lidar_buffer_lock:
-            lidar_chunk_buffer[chunk_idx] = chunk_data
-            
-            # Write all contiguous chunks in order to prevent file corruption
-            with open(filepath, "ab") as f:
-                while lidar_next_expected_index in lidar_chunk_buffer:
-                    data_to_write = lidar_chunk_buffer.pop(lidar_next_expected_index)
-                    f.write(data_to_write)
-                    lidar_next_expected_index += 1
-    except Exception as e:
-        print(f"[Dashboard Server] Failed to write LiDAR WebGL video chunk: {e}")
+            print(f"[Dashboard Server] Failed to log camera move: {e}")
 
 # Telemetry callbacks with rate-limiting
 last_lowstate_time = 0

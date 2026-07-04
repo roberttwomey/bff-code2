@@ -610,7 +610,7 @@
         // Default position: slightly elevated looking down at the origin
         camera.position.set(0, 5, 8); 
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(1280, 720);
         renderer.setPixelRatio(1); // Lock internal backing store resolution to exactly 1280x720
         container.appendChild(renderer.domElement);
@@ -696,88 +696,23 @@
             return color;
         }
 
-        // WebGL Canvas Recording (MediaRecorder API)
-        let mediaRecorder = null;
-        let isRecording = false;
-        const chunkQueue = [];
-        let processingQueue = false;
-        let chunkIndex = 0;
-
-        async function processChunkQueue() {
-            if (processingQueue) return;
-            processingQueue = true;
-            while (chunkQueue.length > 0) {
-                const blob = chunkQueue.shift();
-                const currentIndex = chunkIndex++;
-                try {
-                    const buffer = await blob.arrayBuffer();
-                    socket.emit('lidar_recording_chunk', {
-                        index: currentIndex,
-                        data: buffer
-                    });
-                } catch (err) {
-                    console.error("[Lidar Recorder] Error processing chunk:", err);
-                }
+        // Track and emit camera movements (max 10 FPS)
+        let lastCameraEmitTime = 0;
+        controls.addEventListener('change', () => {
+            const now = Date.now();
+            if (now - lastCameraEmitTime > 100) { // 10 FPS throttle
+                socket.emit('camera_move', {
+                    position: [camera.position.x, camera.position.y, camera.position.z],
+                    target: [controls.target.x, controls.target.y, controls.target.z]
+                });
+                lastCameraEmitTime = now;
             }
-            processingQueue = false;
-        }
-
-        function startCanvasRecording() {
-            if (isRecording) return;
-            
-            // Force a WebGL frame draw call before stream capture starts
-            renderer.render(scene, camera);
-            
-            try {
-                const canvasWebGL = renderer.domElement;
-                console.log(`[Lidar Recorder] Starting capture stream with canvas size: ${canvasWebGL.width}x${canvasWebGL.height}`);
-                const stream = canvasWebGL.captureStream(30); // 30 FPS stream
-                
-                let options = { mimeType: 'video/webm; codecs=vp9', videoBitsPerSecond: 2500000 };
-                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    options = { mimeType: 'video/webm; codecs=vp8', videoBitsPerSecond: 2500000 };
-                }
-                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    options = { mimeType: 'video/webm', videoBitsPerSecond: 2500000 };
-                }
-                
-                chunkIndex = 0; // Reset chunk index for the new recording
-                mediaRecorder = new MediaRecorder(stream, options);
-                mediaRecorder.ondataavailable = (e) => {
-                    if (e.data && e.data.size > 0) {
-                        chunkQueue.push(e.data);
-                        processChunkQueue();
-                    }
-                };
-                
-                socket.emit('lidar_recording_start');
-                mediaRecorder.start(200); // chunk every 200ms to minimize frame loss on shutdown
-                isRecording = true;
-                console.log("[Lidar Recorder] Started recording WebGL view.");
-            } catch (err) {
-                console.error("[Lidar Recorder] Failed to start recording WebGL view:", err);
-            }
-        }
-
-        function stopCanvasRecording() {
-            if (!isRecording) return;
-            try {
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop();
-                }
-                isRecording = false;
-                console.log("[Lidar Recorder] Stopped recording WebGL view.");
-            } catch (err) {
-                console.error("[Lidar Recorder] Failed to stop recording WebGL view:", err);
-            }
-        }
+        });
 
         // Socket IO connectivity calculations
         socket.on('connect', () => {
             document.getElementById('connStatus').textContent = 'ONLINE';
             document.getElementById('connStatus').style.borderColor = 'rgba(255, 255, 255, 0.4)';
-            
-            startCanvasRecording();
             
             setInterval(() => {
                 pingStart = Date.now();
@@ -793,7 +728,6 @@
         socket.on('disconnect', () => {
             document.getElementById('connStatus').textContent = 'OFFLINE';
             document.getElementById('connStatus').style.borderColor = 'rgba(255, 0, 0, 0.4)';
-            stopCanvasRecording();
         });
 
         // Telemetry Data Relayer

@@ -4,6 +4,12 @@ import sys
 import json
 import argparse
 import webbrowser
+import time
+import socket
+import threading
+import http.server
+import socketserver
+import subprocess
 from datetime import datetime
 
 # HTML Template with Embedded Three.js and OrbitControls
@@ -183,11 +189,37 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             border: 1px solid var(--panel-border);
             pointer-events: none;
         }
+
+        /* Recording overlay indicator */
+        #recording-overlay {
+            display: none;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(255, 0, 0, 0.85);
+            border: 1px solid #ff3333;
+            color: #ffffff;
+            font-family: var(--font-mono);
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            box-shadow: 0 4px 16px rgba(255, 0, 0, 0.4);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1.0; }
+            100% { opacity: 0.8; }
+        }
     </style>
 </head>
 <body>
 
     <div id="canvas-container"></div>
+    <div id="recording-overlay">REC: ACCUMULATING VIDEO...</div>
 
     <div class="control-panel">
         <div class="panel-header">
@@ -239,7 +271,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     <script>
         // Data injected by python compiler
-        // Format: Array of { time: float, points: Array of [x, y, z] }
+        // Format: Array of { time: float, points: Array of [x, y, z], camera_pos: [x,y,z]/null, camera_target: [x,y,z]/null }
         const snapshots = _DATA_PLACEHOLDER_;
 
         let scene, camera, renderer, controls;
@@ -249,6 +281,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         let currentFrameIndex = 0;
         let isPlaying = false;
         let playInterval = null;
+
+        // URL arguments
+        const urlParams = new URLSearchParams(window.location.search);
+        const shouldRecord = urlParams.get('record') === 'true';
 
         // UI references
         const dateDisplay = document.getElementById('captureDate');
@@ -261,6 +297,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         const slider = document.getElementById('timelineSlider');
         const accumulateCheck = document.getElementById('accumulateCheck');
         const resetViewBtn = document.getElementById('resetViewBtn');
+        const recOverlay = document.getElementById('recording-overlay');
 
         function getHeightColorRGB(z) {
             const zMin = -0.8;
@@ -286,9 +323,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
             camera.position.set(0, 5, 8);
 
-            // Renderer
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            // Renderer - force preserveDrawingBuffer for canvas capture if recording
+            renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: shouldRecord });
+            renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setClearColor(scene.fog.color);
             container.appendChild(renderer.domElement);
@@ -434,6 +471,94 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             }
         }
 
+        // Offline recording pipeline
+        async function runOfflineRecording() {
+            console.log("[Lidar Recorder] Initializing offline canvas recording server...");
+            recOverlay.style.display = 'block';
+            accumulateCheck.checked = true; // Record the accumulated map builder
+            
+            // Set up stream capture from WebGL canvas at 30 FPS
+            const stream = renderer.domElement.captureStream(30);
+            
+            let options = { mimeType: 'video/webm; codecs=vp9', videoBitsPerSecond: 4000000 };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/webm; codecs=vp8', videoBitsPerSecond: 4000000 };
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: 'video/webm', videoBitsPerSecond: 4000000 };
+            }
+
+            const recorder = new MediaRecorder(stream, options);
+            const chunks = [];
+            
+            recorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) chunks.push(e.data);
+            };
+
+            recorder.onstop = async () => {
+                console.log("[Lidar Recorder] Compiling recorded video blob...");
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                
+                recOverlay.textContent = "REC: UPLOADING VIDEO DATA...";
+                try {
+                    const res = await fetch('/upload', {
+                        method: 'POST',
+                        body: blob
+                    });
+                    if (res.ok) {
+                        recOverlay.textContent = "REC: SUCCESS. CLOSING...";
+                        console.log("[Lidar Recorder] Upload successful!");
+                    } else {
+                        recOverlay.textContent = "REC: UPLOAD FAILED.";
+                        console.error("[Lidar Recorder] Upload failed.");
+                    }
+                } catch (err) {
+                    recOverlay.textContent = "REC: ERROR UPLOADING.";
+                    console.error("[Lidar Recorder] Connection error during upload:", err);
+                }
+            };
+
+            recorder.start();
+
+            // Run step-by-step frame rendering to guarantee zero frame drop
+            currentFrameIndex = 0;
+            
+            async function step() {
+                if (currentFrameIndex >= snapshots.length) {
+                    // Let final frames bake in for a second, then stop
+                    setTimeout(() => recorder.stop(), 1000);
+                    return;
+                }
+
+                // Update Camera Pos from recorded path
+                const snap = snapshots[currentFrameIndex];
+                if (snap.camera_pos) {
+                    camera.position.set(snap.camera_pos[0], snap.camera_pos[1], snap.camera_pos[2]);
+                    controls.target.set(snap.camera_target[0], snap.camera_target[1], snap.camera_target[2]);
+                } else {
+                    // Slow fallback orbital rotation
+                    const angle = currentFrameIndex * 0.03;
+                    camera.position.x = Math.sin(angle) * 12;
+                    camera.position.z = Math.cos(angle) * 12;
+                    camera.position.y = 6;
+                    controls.target.set(0, 0, 0);
+                }
+
+                updatePointCloud();
+                renderer.render(scene, camera);
+                controls.update();
+
+                currentFrameIndex++;
+                recOverlay.textContent = `REC: CAPTURING FRAME ${currentFrameIndex} / ${snapshots.length}`;
+                
+                // Allow WebGL context to paint
+                requestAnimationFrame(step);
+            }
+
+            // Start step-by-step playback
+            setTimeout(step, 500); // 500ms delay to allow ThreeJS initialization
+        }
+
         // Setup Actions & Listeners
         function setupControls() {
             slider.max = snapshots.length - 1;
@@ -485,8 +610,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         if (snapshots && snapshots.length > 0) {
             init3D();
             setupControls();
-            updatePointCloud();
-            animate();
+            
+            if (shouldRecord) {
+                runOfflineRecording();
+            } else {
+                updatePointCloud();
+                animate();
+            }
         } else {
             document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:var(--accent-color);font-family:var(--font-mono);">No LiDAR data snapshots found in JSONL.</div>';
         }
@@ -494,6 +624,44 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </body>
 </html>
 """
+
+class LidarHTTPServerHandler(http.server.SimpleHTTPRequestHandler):
+    """Custom HTTP server to handle WebM uploads from the browser context."""
+    def log_message(self, format, *args):
+        pass  # Suppress server terminal request noise
+        
+    def do_POST(self):
+        if self.path == "/upload":
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            # Save raw recorded WebM bytes to disk
+            webm_path = os.path.join(self.server.capture_dir, "lidar_render.webm")
+            try:
+                with open(webm_path, "wb") as f:
+                    f.write(post_data)
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "success"}).encode())
+                
+                # Trigger server shutdown flag
+                self.server.upload_received = True
+            except Exception as e:
+                self.send_response(500)
+                self.end_headers()
+                print(f"[HTTP Server] Error writing WebM: {e}")
+            return
+        super().do_POST()
+
+class ThreadedHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    pass
+
+def find_free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(('', 0))
+        return s.getsockname()[1]
 
 def main():
     parser = argparse.ArgumentParser(description="Create interactive 3D WebGL playback viewer from Unitree Go2 lidar.jsonl log")
@@ -529,8 +697,20 @@ def main():
     print(f"Reading LiDAR data from: {jsonl_path}")
     print(f"Downsampling points step: {args.step} (keeping 1 out of every {args.step} points)")
     
+    # Load camera path if it exists
+    camera_path = []
+    camera_path_file = os.path.join(capture_dir, "camera_path.jsonl")
+    if os.path.exists(camera_path_file):
+        try:
+            with open(camera_path_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        camera_path.append(json.loads(line))
+            print(f"Loaded {len(camera_path)} recorded camera movement states.")
+        except Exception as e:
+            print(f"Failed to read camera path: {e}")
+
     snapshots_data = []
-    
     try:
         with open(jsonl_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -544,9 +724,20 @@ def main():
                     # Decimate points to keep HTML lightweight
                     decimated_points = raw_points[::args.step]
                     
+                    # Find closest camera move if available
+                    camera_pos = None
+                    camera_target = None
+                    if camera_path:
+                        closest = min(camera_path, key=lambda c: abs(c.get("timestamp", 0.0) - timestamp))
+                        if abs(closest.get("timestamp", 0.0) - timestamp) < 1.5:  # within 1.5s tolerance
+                            camera_pos = closest["position"]
+                            camera_target = closest["target"]
+
                     snapshots_data.append({
                         "time": timestamp,
-                        "points": decimated_points
+                        "points": decimated_points,
+                        "camera_pos": camera_pos,
+                        "camera_target": camera_target
                     })
                 except json.JSONDecodeError:
                     continue
@@ -566,7 +757,6 @@ def main():
     # Write output html file to the capture directory
     output_filename = "lidar_view.html"
     output_path = os.path.join(capture_dir, output_filename)
-    
     try:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(html_content)
@@ -575,10 +765,56 @@ def main():
         sys.exit(1)
 
     print(f"Success! 3D LiDAR Viewer saved to: {output_path}")
-    
-    # Open the generated HTML in default web browser
-    print("Opening 3D WebGL viewer in browser...")
-    webbrowser.open(f"file://{output_path}")
+
+    # Launch local web server and trigger recording
+    port = find_free_port()
+    server = ThreadedHTTPServer(('localhost', port), LidarHTTPServerHandler)
+    server.capture_dir = capture_dir
+    server.upload_received = False
+
+    server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+
+    # Open HTML page with recording enabled in default web browser
+    url = f"http://localhost:{port}/{output_filename}?record=true"
+    print(f"Starting background recording server at: {url}")
+    print("Opening 3D WebGL renderer in browser to compile video...")
+    webbrowser.open(url)
+
+    # Wait for browser upload completion
+    print("Waiting for browser rendering and upload to complete (max 90s)...")
+    start_time = time.time()
+    try:
+        while not server.upload_received:
+            time.sleep(0.5)
+            if time.time() - start_time > 90:
+                print("Timeout waiting for browser upload.")
+                server.shutdown()
+                sys.exit(1)
+    except KeyboardInterrupt:
+        print("\nRecording aborted by user.")
+        server.shutdown()
+        sys.exit(0)
+
+    server.shutdown()
+    print("LiDAR WebM rendering received successfully.")
+
+    # Convert WebM to high-quality MP4 using FFmpeg
+    webm_path = os.path.join(capture_dir, "lidar_render.webm")
+    mp4_path = os.path.join(capture_dir, "lidar_render.mp4")
+    if os.path.exists(webm_path):
+        print("Converting WebM to MP4 using FFmpeg...")
+        try:
+            # -y overwrites existing, -c:v libx264 encodes H.264, -pix_fmt yuv420p ensures compatibility
+            subprocess.run([
+                "ffmpeg", "-y", "-i", webm_path, 
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", 
+                mp4_path
+            ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"Success! Final LiDAR render video saved to: {mp4_path}")
+            os.remove(webm_path)  # Delete intermediate WebM file
+        except Exception as e:
+            print(f"FFmpeg conversion failed: {e}. Keeping raw WebM file: {webm_path}")
 
 if __name__ == "__main__":
     main()
