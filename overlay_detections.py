@@ -48,28 +48,37 @@ def overlay_detections(capture_dir):
     writer = cv2.VideoWriter(output_path, fourcc, fps, (w, h))
 
     frame_idx = 0
+    current_detections = []
+    frames_since_last_detection = 0
     try:
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
-            # Draw detections
+            # Draw detections (with a persistence buffer to prevent blinking on skipped frames)
             if frame_idx in detections_map:
-                for det in detections_map[frame_idx]:
-                    bbox = det.get("bbox", [0, 0, 0, 0])
-                    x1, y1, x2, y2 = [int(val) for val in bbox]
-                    label = f"{det.get('class', 'object')} ({det.get('confidence', 0.0):.2f})"
-                    
-                    # Draw a nice green rectangle
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    
-                    # Draw label background box
-                    label_size, base_line = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
-                    cv2.rectangle(frame, (x1, y1 - label_size[1] - 6), (x1 + label_size[0] + 6, y1), (0, 255, 0), -1)
-                    
-                    # Write label text
-                    cv2.putText(frame, label, (x1 + 3, y1 - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1, cv2.LINE_AA)
+                current_detections = detections_map[frame_idx]
+                frames_since_last_detection = 0
+            else:
+                frames_since_last_detection += 1
+                if frames_since_last_detection > 8:  # persist for up to 8 frames (~266ms)
+                    current_detections = []
+
+            for det in current_detections:
+                bbox = det.get("bbox", [0, 0, 0, 0])
+                x1, y1, x2, y2 = [int(val) for val in bbox]
+                label = f"{det.get('class', 'object')} ({det.get('confidence', 0.0):.2f})"
+                
+                # Draw a nice green rectangle
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                
+                # Draw label background box
+                label_size, base_line = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
+                cv2.rectangle(frame, (x1, y1 - label_size[1] - 6), (x1 + label_size[0] + 6, y1), (0, 255, 0), -1)
+                
+                # Write label text
+                cv2.putText(frame, label, (x1 + 3, y1 - 3), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1, cv2.LINE_AA)
 
             writer.write(frame)
             frame_idx += 1
