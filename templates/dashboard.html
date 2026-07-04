@@ -618,7 +618,6 @@
         let currentDogPitch = 0;
         let currentDogRoll = 0;
         let currentDogYaw = 0;
-        let currentDogPosition = [0, 0, 0];
 
         // Accumulation buffer state
         let accumulatedPositions = [];
@@ -664,34 +663,15 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            // Align pointsObject rotation and translation to the dog's body frame
+            // Align pointsObject rotation to the dog's body orientation
             const alignToDog = document.getElementById('alignToDog').checked;
             if (alignToDog) {
-                const x_d = currentDogPosition[0];
-                const y_d = currentDogPosition[1];
-                const z_d = currentDogPosition[2];
-
-                // Transform dog pose from ROS coordinates to Three.js coordinates
-                const posThree = new THREE.Vector3(-y_d, z_d, -x_d);
-                const quatThree = new THREE.Quaternion().setFromEuler(
-                    new THREE.Euler(currentDogPitch, currentDogYaw, currentDogRoll, 'YXZ')
-                );
-
-                // Build the global world matrix for the dog
-                const dogMatrix = new THREE.Matrix4().compose(
-                    posThree,
-                    quatThree,
-                    new THREE.Vector3(1, 1, 1)
-                );
-
-                // Invert it to map points from global (odom) space to dog-local space
-                const invMatrix = new THREE.Matrix4().copy(dogMatrix).invert();
-                
-                pointsObject.matrix.copy(invMatrix);
-                pointsObject.matrixAutoUpdate = false;
+                pointsObject.rotation.order = 'YXZ';
+                pointsObject.rotation.x = -currentDogPitch;
+                pointsObject.rotation.y = -currentDogYaw;
+                pointsObject.rotation.z = -currentDogRoll;
             } else {
-                pointsObject.matrix.identity();
-                pointsObject.matrixAutoUpdate = false;
+                pointsObject.rotation.set(0, 0, 0);
             }
             
             controls.update();
@@ -762,11 +742,6 @@
             let batPercent = ((power_v - 22.0) / (29.6 - 22.0)) * 100;
             batPercent = Math.max(0, Math.min(100, batPercent));
             document.getElementById('headerBattery').textContent = `${batPercent.toFixed(0)}%`;
-
-            // SLAM Position Details
-            if (lowstate.position) {
-                currentDogPosition = lowstate.position;
-            }
 
             // IMU details
             if (lowstate.imu_state) {

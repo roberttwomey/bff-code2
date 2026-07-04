@@ -454,39 +454,25 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             frameTimeDisplay.textContent = `${elapsed.toFixed(2)}s`;
             slider.value = currentFrameIndex;
 
-            // Apply pose alignment matrix to project points from world to local dog frame
+            // Align pointsObject and accumulatedPointsObject to the dog's body orientation
             const alignCheck = document.getElementById('alignCheck').checked;
-            if (alignCheck && snapshot.dog_pos && snapshot.dog_rpy) {
-                const x_d = snapshot.dog_pos[0];
-                const y_d = snapshot.dog_pos[1];
-                const z_d = snapshot.dog_pos[2];
-                const roll = snapshot.dog_rpy[1];
+            if (alignCheck && snapshot.dog_rpy) {
                 const pitch = snapshot.dog_rpy[0];
+                const roll = snapshot.dog_rpy[1];
                 const yaw = snapshot.dog_rpy[2];
 
-                // Transform dog pose from ROS coordinates to Three.js coordinates
-                const posThree = new THREE.Vector3(-y_d, z_d, -x_d);
-                const quatThree = new THREE.Quaternion().setFromEuler(
-                    new THREE.Euler(pitch, yaw, roll, 'YXZ')
-                );
+                pointsObject.rotation.order = 'YXZ';
+                pointsObject.rotation.x = -pitch;
+                pointsObject.rotation.y = -yaw;
+                pointsObject.rotation.z = -roll;
 
-                const dogMatrix = new THREE.Matrix4().compose(
-                    posThree,
-                    quatThree,
-                    new THREE.Vector3(1, 1, 1)
-                );
-
-                const invMatrix = new THREE.Matrix4().copy(dogMatrix).invert();
-
-                pointsObject.matrix.copy(invMatrix);
-                pointsObject.matrixAutoUpdate = false;
-                accumulatedPointsObject.matrix.copy(invMatrix);
-                accumulatedPointsObject.matrixAutoUpdate = false;
+                accumulatedPointsObject.rotation.order = 'YXZ';
+                accumulatedPointsObject.rotation.x = -pitch;
+                accumulatedPointsObject.rotation.y = -yaw;
+                accumulatedPointsObject.rotation.z = -roll;
             } else {
-                pointsObject.matrix.identity();
-                pointsObject.matrixAutoUpdate = false;
-                accumulatedPointsObject.matrix.identity();
-                accumulatedPointsObject.matrixAutoUpdate = false;
+                pointsObject.rotation.set(0, 0, 0);
+                accumulatedPointsObject.rotation.set(0, 0, 0);
             }
         }
 
@@ -806,14 +792,12 @@ def main():
                             camera_pos = closest["position"]
                             camera_target = closest["target"]
 
-                    # Find closest lowstate dog pose if available
-                    dog_pos = [0.0, 0.0, 0.0]
+                    # Find closest lowstate dog orientation if available
                     dog_rpy = [0.0, 0.0, 0.0]
                     if lowstate_path:
                         closest_low = min(lowstate_path, key=lambda l: abs(l.get("timestamp", 0.0) - timestamp))
                         if abs(closest_low.get("timestamp", 0.0) - timestamp) < 1.5:  # within 1.5s tolerance
                             low_data = closest_low.get("data", {})
-                            dog_pos = low_data.get("position", [0.0, 0.0, 0.0])
                             imu = low_data.get("imu_state", {})
                             dog_rpy = imu.get("rpy", [0.0, 0.0, 0.0])
 
@@ -822,7 +806,6 @@ def main():
                         "points": decimated_points,
                         "camera_pos": camera_pos,
                         "camera_target": camera_target,
-                        "dog_pos": dog_pos,
                         "dog_rpy": dog_rpy
                     })
                 except json.JSONDecodeError:
