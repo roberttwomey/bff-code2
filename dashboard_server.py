@@ -63,8 +63,9 @@ def draw_detections(frame):
     """Draw bounding boxes from the latest _yolo_worker results onto frame (in-place copy)."""
     global latest_detections, latest_detection_time
     with detections_lock:
-        # Clear/ignore detections if they are older than 0.5 seconds (stale)
-        if time.time() - latest_detection_time > 0.5:
+        # Clear/ignore detections if they are older than 1.0 seconds (stale)
+        # used to be 0.5 seconds but I edited by hand
+        if time.time() - latest_detection_time > 1.0:
             latest_detections = []
         dets = list(latest_detections)
     if not dets or not yolo_enabled:
@@ -379,6 +380,15 @@ def main():
             if capturer_thread:
                 capturer_thread.join(timeout=5.0)
             print("Dashboard shutdown completed cleanly.")
+
+            # Automatically run overlay_detections immediately on exit
+            if hasattr(capturer, 'output_dir') and capturer.output_dir:
+                try:
+                    from overlay_detections import overlay_detections
+                    print(f"\n[Dashboard Server] Post-processing: Overlaying YOLO detections on recorded video...")
+                    overlay_detections(capturer.output_dir)
+                except Exception as e:
+                    print(f"[Dashboard Server] Failed to run overlay_detections: {e}")
 
 if __name__ == "__main__":
     main()
