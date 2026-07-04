@@ -704,28 +704,60 @@
             
             // Auto-frame: zoom camera to occupy approximately 80% of FOV
             const autoFrame = document.getElementById('autoFrame').checked;
-            if (autoFrame && pointsGeometry.boundingSphere && pointsGeometry.boundingSphere.radius > 0) {
-                const radius = pointsGeometry.boundingSphere.radius;
-                const center = pointsGeometry.boundingSphere.center.clone();
-                center.applyMatrix4(pointsObject.matrix); // Map center to current point cloud world space
+            if (autoFrame) {
+                const positionsAttr = pointsGeometry.getAttribute('position');
+                if (positionsAttr && positionsAttr.count > 0) {
+                    const count = positionsAttr.count;
+                    const sampleStep = Math.max(1, Math.floor(count / 1000));
+                    let sumX = 0, sumY = 0, sumZ = 0;
+                    let sampledCount = 0;
+                    const distances = [];
 
-                // Compute vertical and horizontal FOVs
-                const fovRad = THREE.MathUtils.degToRad(camera.fov);
-                const hFovRad = 2 * Math.atan(Math.tan(fovRad / 2) * camera.aspect);
+                    // 1. Compute center of the point cloud using sampled points
+                    for (let i = 0; i < count; i += sampleStep) {
+                        sumX += positionsAttr.getX(i);
+                        sumY += positionsAttr.getY(i);
+                        sumZ += positionsAttr.getZ(i);
+                        sampledCount++;
+                    }
+                    
+                    if (sampledCount > 0) {
+                        const localCenter = new THREE.Vector3(sumX / sampledCount, sumY / sampledCount, sumZ / sampledCount);
+                        
+                        // 2. Compute 85th percentile distance to ignore outliers
+                        for (let i = 0; i < count; i += sampleStep) {
+                            const dx = positionsAttr.getX(i) - localCenter.x;
+                            const dy = positionsAttr.getY(i) - localCenter.y;
+                            const dz = positionsAttr.getZ(i) - localCenter.z;
+                            distances.push(Math.sqrt(dx*dx + dy*dy + dz*dz));
+                        }
+                        distances.sort((a, b) => a - b);
+                        
+                        const pctIdx = Math.floor(distances.length * 0.85);
+                        const radius = pctIdx < distances.length ? Math.max(1.0, distances[pctIdx]) : 3.0;
 
-                // Calculate required distance to fit the bounding sphere
-                const distVertical = radius / Math.sin(fovRad / 2);
-                const distHorizontal = radius / Math.sin(hFovRad / 2);
-                const targetDistance = Math.max(distVertical, distHorizontal) / 0.8;
+                        // Map center to world coordinates
+                        const center = localCenter.clone().applyMatrix4(pointsObject.matrix);
 
-                // Smoothly slide controls target and camera distance
-                controls.target.lerp(center, 0.1);
-                
-                const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
-                const currentDist = camera.position.distanceTo(controls.target);
-                const newDist = THREE.MathUtils.lerp(currentDist, targetDistance, 0.1);
-                
-                camera.position.copy(controls.target).addScaledVector(dir, newDist);
+                        // Compute vertical and horizontal FOVs
+                        const fovRad = THREE.MathUtils.degToRad(camera.fov);
+                        const hFovRad = 2 * Math.atan(Math.tan(fovRad / 2) * camera.aspect);
+
+                        // Calculate required distance to fit the robust bounding sphere
+                        const distVertical = radius / Math.sin(fovRad / 2);
+                        const distHorizontal = radius / Math.sin(hFovRad / 2);
+                        const targetDistance = Math.max(distVertical, distHorizontal) / 0.8;
+
+                        // Smoothly slide controls target and camera distance
+                        controls.target.lerp(center, 0.1);
+                        
+                        const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+                        const currentDist = camera.position.distanceTo(controls.target);
+                        const newDist = THREE.MathUtils.lerp(currentDist, targetDistance, 0.1);
+                        
+                        camera.position.copy(controls.target).addScaledVector(dir, newDist);
+                    }
+                }
             }
             
             controls.update();
