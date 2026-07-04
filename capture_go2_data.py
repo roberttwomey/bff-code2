@@ -37,11 +37,21 @@ try:
         # Automatically move model to best GPU if available (MPS on macOS, CUDA on Linux)
         if torch.backends.mps.is_available():
             yolo_model.to("mps")
+            # Warm up model to compile Metal shaders now instead of blocking later
+            print("[YOLO] Warming up model on MPS...")
+            dummy = np.zeros((720, 1280, 3), dtype=np.uint8)
+            yolo_model(dummy, verbose=False)
+            print("[YOLO] Warmup complete.")
         elif torch.cuda.is_available():
             yolo_model.to("cuda")
+            # Warm up model to initialize CUDA context now instead of blocking later
+            print("[YOLO] Warming up model on CUDA...")
+            dummy = np.zeros((720, 1280, 3), dtype=np.uint8)
+            yolo_model(dummy, verbose=False)
+            print("[YOLO] Warmup complete.")
         YOLO_AVAILABLE = True
-except Exception:
-    pass
+except Exception as e:
+    print(f"[YOLO] Warning: failed to load or warm up YOLO model: {e}")
 
 # Configure logging
 logging.basicConfig(level=logging.FATAL)
@@ -464,10 +474,16 @@ class Go2DataCapturer:
             self.conn.datachannel.pub_sub.subscribe("rt/utlidar/voxel_map_compressed", lidar_callback)
             print("LiDAR snapshots subscription enabled.")
 
-        # Keep running and printing stats
         print("\n=== Capturing Data (Press Ctrl+C to Stop) ===")
         try:
             while not self.stop_event.is_set():
+                # Check if WebRTC connection is lost
+                if self.conn and hasattr(self.conn, 'pc') and self.conn.pc:
+                    if self.conn.pc.connectionState in ('closed', 'failed'):
+                        print("\n[Capturer] WebRTC connection lost (state: closed/failed). Stopping capture...")
+                        self.stop_event.set()
+                        break
+
                 audio_sec = self.audio_frames / 48000.0
                 sys.stdout.write(
                     f"\rRecorded: Video={self.video_count} frames | "
