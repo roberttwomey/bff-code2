@@ -412,7 +412,7 @@ class Go2DataCapturer:
                 except Exception as e:
                     logging.error(f"Error in sport callback: {e}")
 
-            self.conn.datachannel.pub_sub.subscribe("rt/sport/state", sport_callback)
+            self.conn.datachannel.pub_sub.subscribe("rt/sportmodestate", sport_callback)
             print("Sport motion state (SLAM position) subscription enabled.")
 
             def lowstate_callback(message):
