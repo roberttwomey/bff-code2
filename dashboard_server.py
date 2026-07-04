@@ -42,18 +42,24 @@ def video_callback(img):
 
 # Live detection overlay state — updated by the capturer's _yolo_worker via listener
 latest_detections = []
+latest_detection_time = 0.0
 detections_lock = threading.Lock()
 yolo_enabled = True   # toggled via /toggle_yolo; also propagated to capturer.yolo_enabled
 
 def detections_callback(payload):
     """Receives detection results from _yolo_worker and stores them for the MJPEG overlay."""
-    global latest_detections
+    global latest_detections, latest_detection_time
     with detections_lock:
         latest_detections = payload.get('detections', [])
+        latest_detection_time = payload.get('timestamp', time.time())
 
 def draw_detections(frame):
     """Draw bounding boxes from the latest _yolo_worker results onto frame (in-place copy)."""
+    global latest_detections, latest_detection_time
     with detections_lock:
+        # Clear/ignore detections if they are older than 0.5 seconds (stale)
+        if time.time() - latest_detection_time > 0.5:
+            latest_detections = []
         dets = list(latest_detections)
     if not dets or not yolo_enabled:
         return frame
