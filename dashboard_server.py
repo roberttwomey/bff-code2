@@ -50,8 +50,14 @@ def detections_callback(payload):
     """Receives detection results from _yolo_worker and stores them for the MJPEG overlay."""
     global latest_detections, latest_detection_time
     with detections_lock:
-        latest_detections = payload.get('detections', [])
-        latest_detection_time = payload.get('timestamp', time.time())
+        dets = payload.get('detections', [])
+        if dets:
+            latest_detections = dets
+            latest_detection_time = payload.get('timestamp', time.time())
+        else:
+            # Keep previous detections active; draw_detections will automatically
+            # clear them after 0.5 seconds of silence (missed frames).
+            pass
 
 def draw_detections(frame):
     """Draw bounding boxes from the latest _yolo_worker results onto frame (in-place copy)."""
