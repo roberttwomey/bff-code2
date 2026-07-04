@@ -200,6 +200,12 @@ class Go2DataCapturer:
 
             if new_frame is not None:
                 last_frame = new_frame
+                # Queue YOLO immediately for the newly arrived frame
+                if YOLO_AVAILABLE and yolo_model and self.yolo_enabled:
+                    try:
+                        self.yolo_queue.put_nowait((frame_idx, last_frame))
+                    except queue.Full:
+                        pass
 
             if last_frame is None:
                 # No frame received yet — wait briefly before retrying
@@ -222,14 +228,6 @@ class Go2DataCapturer:
             written_in_loop = 0
             while self.video_count < expected_frames and written_in_loop < 10:
                 writer.write(last_frame)
-
-                # Only queue YOLO for genuinely new frames, and only on the first write of this frame
-                if new_frame is not None and written_in_loop == 0:
-                    if YOLO_AVAILABLE and yolo_model and self.yolo_enabled:
-                        try:
-                            self.yolo_queue.put_nowait((frame_idx, last_frame))
-                        except queue.Full:
-                            pass
 
                 self.video_count += 1
                 frame_idx += 1
