@@ -255,12 +255,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <div class="slider-container">
                 <input type="range" id="timelineSlider" min="0" max="0" value="0">
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 6px;">
+                <label class="checkbox-container">
+                    <input type="checkbox" id="alignCheck" checked>
+                    <span>ALIGN DOG</span>
+                </label>
                 <label class="checkbox-container">
                     <input type="checkbox" id="accumulateCheck">
                     <span>ACCUMULATE MAP</span>
                 </label>
-                <button id="resetViewBtn" style="font-size: 0.6rem; padding: 2px 6px;">RESET CAMERA</button>
+                <button id="resetViewBtn" style="font-size: 0.55rem; padding: 2px 6px;">RESET</button>
             </div>
         </div>
     </div>
@@ -449,6 +453,41 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const elapsed = snapshot.time - snapshots[0].time;
             frameTimeDisplay.textContent = `${elapsed.toFixed(2)}s`;
             slider.value = currentFrameIndex;
+
+            // Apply pose alignment matrix to project points from world to local dog frame
+            const alignCheck = document.getElementById('alignCheck').checked;
+            if (alignCheck && snapshot.dog_pos && snapshot.dog_rpy) {
+                const x_d = snapshot.dog_pos[0];
+                const y_d = snapshot.dog_pos[1];
+                const z_d = snapshot.dog_pos[2];
+                const roll = snapshot.dog_rpy[1];
+                const pitch = snapshot.dog_rpy[0];
+                const yaw = snapshot.dog_rpy[2];
+
+                // Transform dog pose from ROS coordinates to Three.js coordinates
+                const posThree = new THREE.Vector3(-y_d, z_d, -x_d);
+                const quatThree = new THREE.Quaternion().setFromEuler(
+                    new THREE.Euler(pitch, yaw, roll, 'YXZ')
+                );
+
+                const dogMatrix = new THREE.Matrix4().compose(
+                    posThree,
+                    quatThree,
+                    new THREE.Vector3(1, 1, 1)
+                );
+
+                const invMatrix = new THREE.Matrix4().copy(dogMatrix).invert();
+
+                pointsObject.matrix.copy(invMatrix);
+                pointsObject.matrixAutoUpdate = false;
+                accumulatedPointsObject.matrix.copy(invMatrix);
+                accumulatedPointsObject.matrixAutoUpdate = false;
+            } else {
+                pointsObject.matrix.identity();
+                pointsObject.matrixAutoUpdate = false;
+                accumulatedPointsObject.matrix.identity();
+                accumulatedPointsObject.matrixAutoUpdate = false;
+            }
         }
 
         // Playback operations
@@ -731,6 +770,19 @@ def main():
         except Exception as e:
             print(f"Failed to read camera path: {e}")
 
+    # Load lowstate log if it exists to retrieve dog SLAM positions and orientations
+    lowstate_path = []
+    lowstate_file = os.path.join(capture_dir, "lowstate.jsonl")
+    if os.path.exists(lowstate_file):
+        try:
+            with open(lowstate_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        lowstate_path.append(json.loads(line))
+            print(f"Loaded {len(lowstate_path)} telemetry logs for dog pose alignment.")
+        except Exception as e:
+            print(f"Failed to read lowstate log: {e}")
+
     snapshots_data = []
     try:
         with open(jsonl_path, "r", encoding="utf-8") as f:
@@ -754,11 +806,24 @@ def main():
                             camera_pos = closest["position"]
                             camera_target = closest["target"]
 
+                    # Find closest lowstate dog pose if available
+                    dog_pos = [0.0, 0.0, 0.0]
+                    dog_rpy = [0.0, 0.0, 0.0]
+                    if lowstate_path:
+                        closest_low = min(lowstate_path, key=lambda l: abs(l.get("timestamp", 0.0) - timestamp))
+                        if abs(closest_low.get("timestamp", 0.0) - timestamp) < 1.5:  # within 1.5s tolerance
+                            low_data = closest_low.get("data", {})
+                            dog_pos = low_data.get("position", [0.0, 0.0, 0.0])
+                            imu = low_data.get("imu_state", {})
+                            dog_rpy = imu.get("rpy", [0.0, 0.0, 0.0])
+
                     snapshots_data.append({
                         "time": timestamp,
                         "points": decimated_points,
                         "camera_pos": camera_pos,
-                        "camera_target": camera_target
+                        "camera_target": camera_target,
+                        "dog_pos": dog_pos,
+                        "dog_rpy": dog_rpy
                     })
                 except json.JSONDecodeError:
                     continue

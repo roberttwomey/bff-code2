@@ -80,9 +80,9 @@ class Go2DataCapturer:
         self.lowstate_count = 0
         self.lidar_count = 0
 
-        # Throttle timestamps – limit lowstate/lidar to video_fps rate
         self._last_lowstate_time = 0.0
         self._last_lidar_time = 0.0
+        self.dog_position = [0.0, 0.0, 0.0]
 
         # Queues and control
         self.video_queue = queue.Queue()
@@ -401,6 +401,20 @@ class Go2DataCapturer:
         if self.capture_lowstate:
             lowstate_interval = 1.0 / self.video_fps
 
+            # Setup sport state callback to get SLAM-estimated position
+            def sport_callback(message):
+                try:
+                    data_field = message.get("data", {})
+                    inner_data = data_field.get("data", {})
+                    pos = inner_data.get("position")
+                    if pos is not None:
+                        self.dog_position = [float(pos[0]), float(pos[1]), float(pos[2])]
+                except Exception as e:
+                    logging.error(f"Error in sport callback: {e}")
+
+            self.conn.datachannel.pub_sub.subscribe("rt/sport/state", sport_callback)
+            print("Sport motion state (SLAM position) subscription enabled.")
+
             def lowstate_callback(message):
                 try:
                     now = time.time()
@@ -410,6 +424,8 @@ class Go2DataCapturer:
 
                     current_message = message.get('data')
                     if current_message:
+                        # Inject SLAM position coordinate tracking
+                        current_message['position'] = self.dog_position
                         payload = {
                             "timestamp": now,
                             "data": current_message
