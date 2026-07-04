@@ -724,7 +724,7 @@
                     if (sampledCount > 0) {
                         const localCenter = new THREE.Vector3(sumX / sampledCount, sumY / sampledCount, sumZ / sampledCount);
                         
-                        // 2. Compute 85th percentile distance to ignore outliers
+                        // 2. Compute 90th percentile distance to ignore outliers
                         for (let i = 0; i < count; i += sampleStep) {
                             const dx = positionsAttr.getX(i) - localCenter.x;
                             const dy = positionsAttr.getY(i) - localCenter.y;
@@ -733,7 +733,7 @@
                         }
                         distances.sort((a, b) => a - b);
                         
-                        const pctIdx = Math.floor(distances.length * 0.85);
+                        const pctIdx = Math.floor(distances.length * 0.90);
                         const radius = pctIdx < distances.length ? Math.max(1.0, distances[pctIdx]) : 3.0;
 
                         // Map center to world coordinates
@@ -743,10 +743,9 @@
                         const fovRad = THREE.MathUtils.degToRad(camera.fov);
                         const hFovRad = 2 * Math.atan(Math.tan(fovRad / 2) * camera.aspect);
 
-                        // Calculate required distance to fit the robust bounding sphere
-                        const distVertical = radius / Math.sin(fovRad / 2);
+                        // Calculate required distance to fit the horizontal FOV to 90% width
                         const distHorizontal = radius / Math.sin(hFovRad / 2);
-                        const targetDistance = Math.max(distVertical, distHorizontal) / 0.8;
+                        const targetDistance = distHorizontal / 0.9;
 
                         // Smoothly slide controls target and camera distance
                         controls.target.lerp(center, 0.1);
