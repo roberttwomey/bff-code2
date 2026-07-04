@@ -528,8 +528,8 @@
                             <label for="alignToDog">ALIGN DOG</label>
                         </div>
                         <div class="ui-checkbox">
-                            <input type="checkbox" id="voxelColumns">
-                            <label for="voxelColumns">COLUMNS</label>
+                            <input type="checkbox" id="autoFrame">
+                            <label for="autoFrame">AUTO FRAME</label>
                         </div>
                         <div class="ui-checkbox">
                             <input type="checkbox" id="accumulateLidar">
@@ -702,6 +702,32 @@
                 pointsObject.matrixAutoUpdate = false;
             }
             
+            // Auto-frame: zoom camera to occupy approximately 80% of FOV
+            const autoFrame = document.getElementById('autoFrame').checked;
+            if (autoFrame && pointsGeometry.boundingSphere && pointsGeometry.boundingSphere.radius > 0) {
+                const radius = pointsGeometry.boundingSphere.radius;
+                const center = pointsGeometry.boundingSphere.center.clone();
+                center.applyMatrix4(pointsObject.matrix); // Map center to current point cloud world space
+
+                // Compute vertical and horizontal FOVs
+                const fovRad = THREE.MathUtils.degToRad(camera.fov);
+                const hFovRad = 2 * Math.atan(Math.tan(fovRad / 2) * camera.aspect);
+
+                // Calculate required distance to fit the bounding sphere
+                const distVertical = radius / Math.sin(fovRad / 2);
+                const distHorizontal = radius / Math.sin(hFovRad / 2);
+                const targetDistance = Math.max(distVertical, distHorizontal) / 0.8;
+
+                // Smoothly slide controls target and camera distance
+                controls.target.lerp(center, 0.1);
+                
+                const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+                const currentDist = camera.position.distanceTo(controls.target);
+                const newDist = THREE.MathUtils.lerp(currentDist, targetDistance, 0.1);
+                
+                camera.position.copy(controls.target).addScaledVector(dir, newDist);
+            }
+            
             controls.update();
             renderer.render(scene, camera);
         }
@@ -840,11 +866,7 @@
         // LiDAR stream packet receiver: maps ROS coordinates to ThreeJS WebGL
         socket.on('lidar_data', (payload) => {
             const points = payload.points || [];
-            
-            const showColumns = document.getElementById('voxelColumns').checked;
             const accumulate = document.getElementById('accumulateLidar').checked;
-            const step = 0.08; // 8cm vertical spacing
-
             const newPositions = [];
             const newColors = [];
 
@@ -857,26 +879,9 @@
                 if (distance > lidarRangeCutoff) continue;
 
                 // Coordinate Mapping from ROS standard frame to ThreeJS local frame
-                // ROS coordinate frame: x=forward, y=left, z=up
-                // Three.js standard frame: x=left/right (-y), y=up/down (z), z=forward/backward (-x)
-                if (showColumns) {
-                    const groundZ = -0.5; // aligned with gridHelper height
-                    const start = Math.min(groundZ, z);
-                    const end = Math.max(groundZ, z);
-                    for (let h = start; h <= end; h += step) {
-                        newPositions.push(-y, h, -x);
-                        const c = getHeightColorRGB(h);
-                        newColors.push(c.r, c.g, c.b);
-                    }
-                    // Exact top point
-                    newPositions.push(-y, z, -x);
-                    const cTop = getHeightColorRGB(z);
-                    newColors.push(cTop.r, cTop.g, cTop.b);
-                } else {
-                    newPositions.push(-y, z, -x);
-                    const c = getHeightColorRGB(z);
-                    newColors.push(c.r, c.g, c.b);
-                }
+                newPositions.push(-y, z, -x);
+                const c = getHeightColorRGB(z);
+                newColors.push(c.r, c.g, c.b);
             }
 
             if (accumulate) {
