@@ -40,6 +40,13 @@ except Exception:
 # Configure logging
 logging.basicConfig(level=logging.FATAL)
 
+# Suppress PyAV/libav noise (e.g. 'No start code is found')
+try:
+    import av
+    av.logging.set_level(av.logging.ERROR)
+except Exception:
+    pass
+
 class Go2DataCapturer:
     def __init__(self, ip, aes_key, output_dir, video_fps, capture_video, capture_audio, capture_lowstate, capture_lidar):
         self.ip = ip
@@ -66,7 +73,7 @@ class Go2DataCapturer:
         self.audio_queue = queue.Queue()
         self.lowstate_queue = queue.Queue()
         self.lidar_queue = queue.Queue()
-        self.yolo_queue = queue.Queue()   # fed by video writer, drained by yolo worker
+        self.yolo_queue = queue.Queue(maxsize=1)   # capacity 1 to prevent backlog latency
         self.stop_event = threading.Event()
         self.threads = []
 
@@ -203,7 +210,10 @@ class Go2DataCapturer:
                 # Only queue YOLO for genuinely new frames, and only on the first write of this frame
                 if new_frame is not None and written_in_loop == 0:
                     if YOLO_AVAILABLE and yolo_model and self.yolo_enabled:
-                        self.yolo_queue.put((frame_idx, last_frame))
+                        try:
+                            self.yolo_queue.put_nowait((frame_idx, last_frame))
+                        except queue.Full:
+                            pass
 
                 self.video_count += 1
                 frame_idx += 1
