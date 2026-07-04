@@ -643,6 +643,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 class LidarHTTPServerHandler(http.server.SimpleHTTPRequestHandler):
     """Custom HTTP server to handle WebM uploads from the browser context."""
+    def __init__(self, *args, **kwargs):
+        server = args[2]
+        directory = getattr(server, "capture_dir", os.getcwd())
+        super().__init__(*args, directory=directory, **kwargs)
+
     def log_message(self, format, *args):
         pass  # Suppress server terminal request noise
         
