@@ -531,6 +531,10 @@
                             <input type="checkbox" id="voxelColumns">
                             <label for="voxelColumns">COLUMNS</label>
                         </div>
+                        <div class="ui-checkbox">
+                            <input type="checkbox" id="accumulateLidar">
+                            <label for="accumulateLidar">ACCUMULATE</label>
+                        </div>
                         <div class="ui-slider">
                             <label for="lidarRange">CUTOFF:</label>
                             <input type="range" id="lidarRange" min="2" max="25" value="12" step="1">
@@ -600,7 +604,7 @@
         
         // Scene, Camera, Renderer
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x000000);
+        scene.background = new THREE.Color(0x0a0a0c);
 
         const camera = new THREE.PerspectiveCamera(60, 1280 / 720, 0.1, 100);
         // Default position: slightly elevated looking down at the origin
@@ -615,6 +619,11 @@
         let currentDogRoll = 0;
         let currentDogYaw = 0;
 
+        // Accumulation buffer state
+        let accumulatedPositions = [];
+        let accumulatedColors = [];
+        const maxAccumulatedPoints = 400000; // Cap to prevent memory/render latency
+
         // Orbit Controls for mouse navigation
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
@@ -623,7 +632,7 @@
         controls.target.set(0, 0, 0);
 
         // Grid helper representing ground plane
-        const gridHelper = new THREE.GridHelper(30, 30, 0x222222, 0x111111);
+        const gridHelper = new THREE.GridHelper(30, 30, 0x00ff66, 0x222226);
         gridHelper.position.y = -0.5; // Sit slightly below origin (simulating dog ground height)
         scene.add(gridHelper);
 
@@ -865,16 +874,20 @@
         socket.on('lidar_data', (payload) => {
             const points = payload.points || [];
             
-            const positions = [];
-            const colors = [];
-
             const showColumns = document.getElementById('voxelColumns').checked;
+            const accumulate = document.getElementById('accumulateLidar').checked;
             const step = 0.08; // 8cm vertical spacing
 
-            points.forEach(([x, y, z]) => {
-                // Filter points exceeding range cutoff
+            const newPositions = [];
+            const newColors = [];
+
+            // If we are accumulating, downsample incoming frames by 5 to conserve GPU memory
+            const sampleStep = accumulate ? 5 : 1;
+
+            for (let i = 0; i < points.length; i += sampleStep) {
+                const [x, y, z] = points[i];
                 const distance = Math.sqrt(x*x + y*y + z*z);
-                if (distance > lidarRangeCutoff) return;
+                if (distance > lidarRangeCutoff) continue;
 
                 // Coordinate Mapping from ROS standard frame to ThreeJS local frame
                 // ROS coordinate frame: x=forward, y=left, z=up
@@ -884,25 +897,57 @@
                     const start = Math.min(groundZ, z);
                     const end = Math.max(groundZ, z);
                     for (let h = start; h <= end; h += step) {
-                        positions.push(-y, h, -x);
+                        newPositions.push(-y, h, -x);
                         const c = getHeightColorRGB(h);
-                        colors.push(c.r, c.g, c.b);
+                        newColors.push(c.r, c.g, c.b);
                     }
                     // Exact top point
-                    positions.push(-y, z, -x);
+                    newPositions.push(-y, z, -x);
                     const cTop = getHeightColorRGB(z);
-                    colors.push(cTop.r, cTop.g, cTop.b);
+                    newColors.push(cTop.r, cTop.g, cTop.b);
                 } else {
-                    positions.push(-y, z, -x);
+                    newPositions.push(-y, z, -x);
                     const c = getHeightColorRGB(z);
-                    colors.push(c.r, c.g, c.b);
+                    newColors.push(c.r, c.g, c.b);
                 }
-            });
+            }
 
-            // Update WebGL buffer bindings
-            pointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            pointsGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            if (accumulate) {
+                // Append new positions and colors
+                accumulatedPositions = accumulatedPositions.concat(newPositions);
+                accumulatedColors = accumulatedColors.concat(newColors);
+
+                // Evict oldest points if we exceed the cap to protect WebGL performance
+                if (accumulatedPositions.length > maxAccumulatedPoints * 3) {
+                    const removeCount = accumulatedPositions.length - (maxAccumulatedPoints * 3);
+                    accumulatedPositions.splice(0, removeCount);
+                    accumulatedColors.splice(0, removeCount);
+                }
+
+                // Update WebGL buffer bindings
+                pointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(accumulatedPositions, 3));
+                pointsGeometry.setAttribute('color', new THREE.Float32BufferAttribute(accumulatedColors, 3));
+            } else {
+                // Normal single-frame mode (reset buffer)
+                accumulatedPositions = [];
+                accumulatedColors = [];
+
+                pointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
+                pointsGeometry.setAttribute('color', new THREE.Float32BufferAttribute(newColors, 3));
+            }
+
             pointsGeometry.computeBoundingSphere();
+        });
+
+        // Immediately flush buffer when Accumulate is toggled off
+        document.getElementById('accumulateLidar').addEventListener('change', (e) => {
+            if (!e.target.checked) {
+                accumulatedPositions = [];
+                accumulatedColors = [];
+                pointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+                pointsGeometry.setAttribute('color', new THREE.Float32BufferAttribute([], 3));
+                pointsGeometry.computeBoundingSphere();
+            }
         });
 
         // Console logger
