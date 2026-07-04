@@ -618,6 +618,7 @@
         let currentDogPitch = 0;
         let currentDogRoll = 0;
         let currentDogYaw = 0;
+        let currentSlamPose = { position: [0, 0, 0], orientation: [0, 0, 0, 1] };
 
         // Accumulation buffer state
         let accumulatedPositions = [];
@@ -663,15 +664,42 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            // Align pointsObject rotation to the dog's body orientation
+            // Align pointsObject rotation and translation to the dog's body frame
             const alignToDog = document.getElementById('alignToDog').checked;
-            if (alignToDog) {
-                pointsObject.rotation.order = 'YXZ';
-                pointsObject.rotation.x = -currentDogPitch;
-                pointsObject.rotation.y = -currentDogYaw;
-                pointsObject.rotation.z = -currentDogRoll;
+            if (alignToDog && currentSlamPose) {
+                const pos = currentSlamPose.position;
+                const ori = currentSlamPose.orientation;
+
+                // Transform dog pose from ROS coordinates to Three.js coordinates
+                const posThree = new THREE.Vector3(-pos[1], pos[2], -pos[0]);
+
+                // Extract Euler angles from ROS quaternion (ZYX order)
+                const qRos = new THREE.Quaternion(ori[0], ori[1], ori[2], ori[3]);
+                const eulerRos = new THREE.Euler().setFromQuaternion(qRos, 'ZYX');
+                const yaw = eulerRos.z;
+                const pitch = eulerRos.y;
+                const roll = eulerRos.x;
+
+                // Map to Three.js rotation convention
+                const quatThree = new THREE.Quaternion().setFromEuler(
+                    new THREE.Euler(pitch, yaw, roll, 'YXZ')
+                );
+
+                // Build the global world matrix for the dog
+                const dogMatrix = new THREE.Matrix4().compose(
+                    posThree,
+                    quatThree,
+                    new THREE.Vector3(1, 1, 1)
+                );
+
+                // Invert it to map points from global (odom) space to dog-local space
+                const invMatrix = new THREE.Matrix4().copy(dogMatrix).invert();
+                
+                pointsObject.matrix.copy(invMatrix);
+                pointsObject.matrixAutoUpdate = false;
             } else {
-                pointsObject.rotation.set(0, 0, 0);
+                pointsObject.matrix.identity();
+                pointsObject.matrixAutoUpdate = false;
             }
             
             controls.update();
@@ -742,6 +770,11 @@
             let batPercent = ((power_v - 22.0) / (29.6 - 22.0)) * 100;
             batPercent = Math.max(0, Math.min(100, batPercent));
             document.getElementById('headerBattery').textContent = `${batPercent.toFixed(0)}%`;
+
+            // SLAM Pose Details
+            if (lowstate.slam_pose) {
+                currentSlamPose = lowstate.slam_pose;
+            }
 
             // IMU details
             if (lowstate.imu_state) {

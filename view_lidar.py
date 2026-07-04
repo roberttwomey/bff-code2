@@ -454,25 +454,46 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             frameTimeDisplay.textContent = `${elapsed.toFixed(2)}s`;
             slider.value = currentFrameIndex;
 
-            // Align pointsObject and accumulatedPointsObject to the dog's body orientation
+            // Align pointsObject and accumulatedPointsObject to the dog's body frame
             const alignCheck = document.getElementById('alignCheck').checked;
-            if (alignCheck && snapshot.dog_rpy) {
-                const pitch = snapshot.dog_rpy[0];
-                const roll = snapshot.dog_rpy[1];
-                const yaw = snapshot.dog_rpy[2];
+            if (alignCheck && snapshot.slam_pose) {
+                const pos = snapshot.slam_pose.position;
+                const ori = snapshot.slam_pose.orientation;
 
-                pointsObject.rotation.order = 'YXZ';
-                pointsObject.rotation.x = -pitch;
-                pointsObject.rotation.y = -yaw;
-                pointsObject.rotation.z = -roll;
+                // Transform dog pose from ROS coordinates to Three.js coordinates
+                const posThree = new THREE.Vector3(-pos[1], pos[2], -pos[0]);
 
-                accumulatedPointsObject.rotation.order = 'YXZ';
-                accumulatedPointsObject.rotation.x = -pitch;
-                accumulatedPointsObject.rotation.y = -yaw;
-                accumulatedPointsObject.rotation.z = -roll;
+                // Extract Euler angles from ROS quaternion (ZYX order)
+                const qRos = new THREE.Quaternion(ori[0], ori[1], ori[2], ori[3]);
+                const eulerRos = new THREE.Euler().setFromQuaternion(qRos, 'ZYX');
+                const yaw = eulerRos.z;
+                const pitch = eulerRos.y;
+                const roll = eulerRos.x;
+
+                // Map to Three.js rotation convention
+                const quatThree = new THREE.Quaternion().setFromEuler(
+                    new THREE.Euler(pitch, yaw, roll, 'YXZ')
+                );
+
+                // Build the global world matrix for the dog
+                const dogMatrix = new THREE.Matrix4().compose(
+                    posThree,
+                    quatThree,
+                    new THREE.Vector3(1, 1, 1)
+                );
+
+                // Invert it to map points from global (odom) space to dog-local space
+                const invMatrix = new THREE.Matrix4().copy(dogMatrix).invert();
+
+                pointsObject.matrix.copy(invMatrix);
+                pointsObject.matrixAutoUpdate = false;
+                accumulatedPointsObject.matrix.copy(invMatrix);
+                accumulatedPointsObject.matrixAutoUpdate = false;
             } else {
-                pointsObject.rotation.set(0, 0, 0);
-                accumulatedPointsObject.rotation.set(0, 0, 0);
+                pointsObject.matrix.identity();
+                pointsObject.matrixAutoUpdate = false;
+                accumulatedPointsObject.matrix.identity();
+                accumulatedPointsObject.matrixAutoUpdate = false;
             }
         }
 
@@ -792,21 +813,23 @@ def main():
                             camera_pos = closest["position"]
                             camera_target = closest["target"]
 
-                    # Find closest lowstate dog orientation if available
-                    dog_rpy = [0.0, 0.0, 0.0]
+                    # Find closest lowstate SLAM pose if available
+                    slam_pose = {
+                        "position": [0.0, 0.0, 0.0],
+                        "orientation": [0.0, 0.0, 0.0, 1.0]
+                    }
                     if lowstate_path:
                         closest_low = min(lowstate_path, key=lambda l: abs(l.get("timestamp", 0.0) - timestamp))
                         if abs(closest_low.get("timestamp", 0.0) - timestamp) < 1.5:  # within 1.5s tolerance
                             low_data = closest_low.get("data", {})
-                            imu = low_data.get("imu_state", {})
-                            dog_rpy = imu.get("rpy", [0.0, 0.0, 0.0])
+                            slam_pose = low_data.get("slam_pose", slam_pose)
 
                     snapshots_data.append({
                         "time": timestamp,
                         "points": decimated_points,
                         "camera_pos": camera_pos,
                         "camera_target": camera_target,
-                        "dog_rpy": dog_rpy
+                        "slam_pose": slam_pose
                     })
                 except json.JSONDecodeError:
                     continue

@@ -82,6 +82,10 @@ class Go2DataCapturer:
 
         self._last_lowstate_time = 0.0
         self._last_lidar_time = 0.0
+        self.slam_pose = {
+            "position": [0.0, 0.0, 0.0],
+            "orientation": [0.0, 0.0, 0.0, 1.0]
+        }
 
         # Queues and control
         self.video_queue = queue.Queue()
@@ -400,6 +404,24 @@ class Go2DataCapturer:
         if self.capture_lowstate:
             lowstate_interval = 1.0 / self.video_fps
 
+            # Setup robot odom callback to get SLAM-estimated pose
+            def pose_callback(message):
+                try:
+                    data_field = message.get("data", {})
+                    pose_field = data_field.get("pose", {})
+                    pos = pose_field.get("position", {})
+                    ori = pose_field.get("orientation", {})
+                    if pos and ori:
+                        self.slam_pose = {
+                            "position": [float(pos.get("x", 0.0)), float(pos.get("y", 0.0)), float(pos.get("z", 0.0))],
+                            "orientation": [float(ori.get("x", 0.0)), float(ori.get("y", 0.0)), float(ori.get("z", 0.0)), float(ori.get("w", 1.0))]
+                        }
+                except Exception as e:
+                    logging.error(f"Error in pose callback: {e}")
+
+            self.conn.datachannel.pub_sub.subscribe("rt/utlidar/robot_pose", pose_callback)
+            print("LiDAR SLAM robot pose subscription enabled.")
+
             def lowstate_callback(message):
                 try:
                     now = time.time()
@@ -409,6 +431,8 @@ class Go2DataCapturer:
 
                     current_message = message.get('data')
                     if current_message:
+                        # Inject SLAM position and orientation quaternion
+                        current_message['slam_pose'] = self.slam_pose
                         payload = {
                             "timestamp": now,
                             "data": current_message
