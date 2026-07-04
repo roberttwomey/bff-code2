@@ -523,6 +523,22 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             // Run step-by-step frame rendering to guarantee zero frame drop
             currentFrameIndex = 0;
             
+            // Use MessageChannel to bypass background tab timer/rAF throttling
+            const channel = new MessageChannel();
+            const frameDelay = 33; // ~30 FPS (33ms per frame)
+            let nextFrameTime = performance.now();
+
+            channel.port1.onmessage = () => {
+                const now = performance.now();
+                if (now >= nextFrameTime) {
+                    step();
+                    nextFrameTime = now + frameDelay;
+                } else {
+                    // Not time for next frame yet, yield control and check again immediately
+                    channel.port2.postMessage(null);
+                }
+            };
+
             async function step() {
                 if (currentFrameIndex >= snapshots.length) {
                     // Let final frames bake in for a second, then stop
@@ -551,12 +567,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 currentFrameIndex++;
                 recOverlay.textContent = `REC: CAPTURING FRAME ${currentFrameIndex} / ${snapshots.length}`;
                 
-                // Allow WebGL context to paint
-                requestAnimationFrame(step);
+                // Yield to event loop to allow encoder to consume canvas frame
+                channel.port2.postMessage(null);
             }
 
-            // Start step-by-step playback
-            setTimeout(step, 500); // 500ms delay to allow ThreeJS initialization
+            // Start step-by-step playback after a short initialization delay
+            setTimeout(() => channel.port2.postMessage(null), 500);
         }
 
         // Setup Actions & Listeners
