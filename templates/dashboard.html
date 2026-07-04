@@ -631,17 +631,24 @@
         controls.maxPolarAngle = Math.PI / 2 + 0.15; // Don't let users rotate below the ground line too much
         controls.target.set(0, 0, 0);
 
+        // Dog body frame container (holds grid and axes helper)
+        const dogContainer = new THREE.Group();
+        scene.add(dogContainer);
+
         // Grid helper representing ground plane
         const gridHelper = new THREE.GridHelper(30, 30, 0x00ff66, 0x222226);
-        gridHelper.position.y = -0.5; // Sit slightly below origin (simulating dog ground height)
-        scene.add(gridHelper);
+        gridHelper.position.y = -0.5; // Sit slightly below local dog origin
+        dogContainer.add(gridHelper);
 
         // Minimal coordinate helper at local origin
         const axesHelper = new THREE.AxesHelper(1);
         axesHelper.position.y = -0.49; // Slightly above grid helper to avoid Z-fighting
-        scene.add(axesHelper);
+        dogContainer.add(axesHelper);
 
-        // Preallocate Point Cloud geometry
+        // Preallocate Point Cloud geometry and Parent Group for correct egocentric transform
+        const pointsContainer = new THREE.Group();
+        scene.add(pointsContainer);
+
         const pointsGeometry = new THREE.BufferGeometry();
         const pointsMaterial = new THREE.PointsMaterial({
             size: pointSizeVal,
@@ -649,7 +656,10 @@
             sizeAttenuation: false // points keep consistent screen size regardless of distance
         });
         const pointsObject = new THREE.Points(pointsGeometry, pointsMaterial);
-        scene.add(pointsObject);
+        pointsContainer.add(pointsObject); // pointsObject is a child of the container
+
+        // Store latest LiDAR center origin coordinate in ROS [x, y, z]
+        let currentLidarOrigin = [0.0, 0.0, 0.0];
 
         // Handle Resizing
         function onWindowResize() {
@@ -663,15 +673,38 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            // Align pointsObject rotation to the dog's IMU orientation
+            // Align points to the dog's frame of reference (egocentric alignment)
             const alignToDog = document.getElementById('alignToDog').checked;
+            
+            // Map current local lidar origin from ROS coordinate frame to Three.js coordinate frame
+            const ox = -currentLidarOrigin[1];
+            const oy = currentLidarOrigin[2];
+            const oz = -currentLidarOrigin[0];
+
             if (alignToDog) {
-                pointsObject.rotation.order = 'YXZ';
-                pointsObject.rotation.x = -currentDogPitch;
-                pointsObject.rotation.y = -currentDogYaw;
-                pointsObject.rotation.z = -currentDogRoll;
+                // 1. Translate child (pointsObject) by negative local origin (translates robot position to viewport center)
+                pointsObject.position.set(-ox, -oy, -oz);
+
+                // 2. Rotate parent (pointsContainer) around robot center by negative IMU orientation
+                pointsContainer.rotation.order = 'YXZ';
+                pointsContainer.rotation.x = -currentDogPitch;
+                pointsContainer.rotation.y = -currentDogYaw;
+                pointsContainer.rotation.z = -currentDogRoll;
+
+                // 3. Keep dog body frame (grid/axes helper) stationary at the local viewport center
+                dogContainer.position.set(0, 0, 0);
+                dogContainer.rotation.set(0, 0, 0);
             } else {
-                pointsObject.rotation.set(0, 0, 0);
+                // 1. Keep point cloud stationary at the world origin
+                pointsObject.position.set(0, 0, 0);
+                pointsContainer.rotation.set(0, 0, 0);
+
+                // 2. Translate and rotate dog body frame (grid/axes helper) through the world map
+                dogContainer.position.set(ox, oy, oz);
+                dogContainer.rotation.order = 'YXZ';
+                dogContainer.rotation.x = currentDogPitch;
+                dogContainer.rotation.y = currentDogYaw;
+                dogContainer.rotation.z = currentDogRoll;
             }
             
             controls.update();
@@ -807,6 +840,9 @@
         // LiDAR stream packet receiver: maps ROS coordinates to ThreeJS WebGL
         socket.on('lidar_data', (payload) => {
             const points = payload.points || [];
+            if (payload.origin) {
+                currentLidarOrigin = payload.origin;
+            }
             
             const showColumns = document.getElementById('voxelColumns').checked;
             const accumulate = document.getElementById('accumulateLidar').checked;
