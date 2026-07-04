@@ -31,8 +31,14 @@ YOLO_AVAILABLE = False
 yolo_model = None
 try:
     from ultralytics import YOLO
+    import torch
     if os.path.exists("yolov8n.pt"):
         yolo_model = YOLO("yolov8n.pt")
+        # Automatically move model to best GPU if available (MPS on macOS, CUDA on Linux)
+        if torch.backends.mps.is_available():
+            yolo_model.to("mps")
+        elif torch.cuda.is_available():
+            yolo_model.to("cuda")
         YOLO_AVAILABLE = True
 except Exception:
     pass
