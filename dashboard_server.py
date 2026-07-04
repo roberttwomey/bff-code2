@@ -113,7 +113,7 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 @app.route('/')
 def index():
     """Render the dashboard front-page UI."""
-    return render_template('dashboard.html')
+    return render_template('new_dashboard.html')
 
 @app.route('/video_feed')
 def video_feed():
@@ -332,7 +332,7 @@ def main():
     print(f"=======================================================\n")
 
     try:
-        socketio.run(app, host='0.0.0.0', port=args.port, debug=False, use_reloader=False)
+        socketio.run(app, host='0.0.0.0', port=args.port, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)
     except KeyboardInterrupt:
         print("\nShutdown signals received. Stopping server.")
     finally:

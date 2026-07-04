@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SNAPPER Robot Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <!-- Three.js and OrbitControls for 3D point cloud rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --panel-bg: #000000;
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text-main: #ffffff;
+            --text-muted: #666666;
+            --text-dim: #444444;
+            --font-main: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .dashboard-container {
+            width: 100vw;
+            height: 66.66666667vw; /* 3:2 aspect ratio based on width */
+            max-height: 100vh;
+            max-width: 150vh; /* 3:2 aspect ratio based on height */
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-color);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
+
+        /* Header block */
+        header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--panel-border);
+            z-index: 100;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            height: 70px;
+            overflow: hidden;
+        }
+
+        header.minimized {
+            height: 24px;
+            padding: 0 20px;
+            background: rgba(0, 0, 0, 0.65);
+            border-bottom: 1px solid transparent;
+        }
+
+        header.minimized .header-metrics {
+            opacity: 0;
+            pointer-events: none;
+            display: none !important;
+        }
+
+        header.minimized .status-badge {
+            opacity: 0;
+            pointer-events: none;
+            display: none !important;
+        }
+
+        header.minimized .header-title h1 {
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+        }
+
+        header:hover {
+            background: rgba(0, 0, 0, 0.9);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .header-title h1 {
+            font-family: var(--font-main);
+            font-size: 1.1rem;
+            font-weight: 300;
+            letter-spacing: 0.25em;
+            text-transform: uppercase;
+            color: #ffffff;
+            transition: font-size 0.3s ease, letter-spacing 0.3s ease;
+        }
+
+        .status-badge {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            padding: 2px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #ffffff;
+            font-weight: 400;
+            text-transform: uppercase;
+        }
+
+        .header-metrics {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+        }
+
+        .metric-mini {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metric-mini .label {
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .metric-mini .value {
+            color: #ffffff;
+        }
+
+        /* Workspace Flex Layout */
+        .workspace {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: row;
+            gap: 0px;
+            padding: 0px;
+            background-color: var(--panel-border);
+        }
+
+        .workspace-column {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            height: 100%;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .visual-column {
+            flex: 0 0 70%;
+            width: 70%;
+            max-width: 70%;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .visual-column .panel-header {
+            display: none !important;
+        }
+
+        .side-column {
+            flex: 0 0 30%;
+            width: 30%;
+            max-width: 30%;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        /* Panel block style */
+        .panel {
+            background: var(--panel-bg);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .panel.minimized {
+            flex: 0 0 45px !important;
+        }
+
+        .panel.minimized .panel-content {
+            display: none !important;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--panel-border);
+        }
+
+        .panel-title {
+            font-family: var(--font-main);
+            font-size: 0.8rem;
+            font-weight: 300;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            color: var(--text-muted);
+        }
+
+        .panel-controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .panel-content {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Video component */
+        .video-container {
+            width: 100%;
+            height: 100%;
+            background: #000000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .video-stream {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        /* Telemetry Joints Grid */
+        .leg-column {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            font-size: 0.65rem;
+        }
+
+        .leg-header {
+            font-weight: 500;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 2px;
+            margin-bottom: 2px;
+        }
+
+        .joint-row {
+            display: flex;
+            justify-content: space-between;
+            color: #ffffff;
+            font-size: 0.6rem;
+            gap: 4px;
+        }
+
+        .joint-name {
+            color: var(--text-muted);
+        }
+
+        /* Telemetry component */
+        .telemetry-grid {
+            width: 100%;
+            height: 100%;
+            padding: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1px;
+            background-color: var(--panel-border);
+            overflow-y: auto;
+        }
+
+        .telemetry-card {
+            background: #000000;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .card-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.15em;
+            margin-bottom: 6px;
+        }
+
+        .card-value {
+            font-size: 1.1rem;
+            font-weight: 300;
+            color: #ffffff;
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .card-value .unit {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        /* LiDAR Map 3D Canvas Container */
+        .lidar-container {
+            width: 100%;
+            height: 100%;
+            background: #000000;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #lidarWebGL {
+            width: 100%;
+            height: 100%;
+            outline: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000000;
+        }
+
+        #lidarWebGL canvas {
+            max-width: 100% !important;
+            max-height: 100% !important;
+            width: auto !important;
+            height: auto !important;
+            display: block;
+            object-fit: contain;
+        }
+
+        .canvas-instructions {
+            position: absolute;
+            bottom: 12px;
+            left: 20px;
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            letter-spacing: 0.1em;
+            pointer-events: none;
+            text-transform: uppercase;
+            z-index: 5;
+        }
+
+        .ui-slider {
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+        }
+
+        .ui-slider input {
+            accent-color: #ffffff;
+            width: 70px;
+            background: rgba(255,255,255,0.1);
+            height: 2px;
+            border: none;
+        }
+
+        .ui-checkbox {
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .ui-checkbox input {
+            appearance: none;
+            width: 10px;
+            height: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            background: transparent;
+            cursor: pointer;
+            display: inline-block;
+            position: relative;
+        }
+
+        .ui-checkbox input:checked {
+            background: #ffffff;
+            border-color: #ffffff;
+        }
+
+        /* Console styling */
+        .console-container {
+            width: 100%;
+            height: 100%;
+            background: #000000;
+            padding: 20px;
+            overflow-y: auto;
+            font-size: 0.75rem;
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .console-line {
+            padding: 2px 0;
+            word-break: break-word;
+        }
+
+        .line-timestamp {
+            color: var(--text-dim);
+            margin-right: 12px;
+            font-size: 0.7rem;
+        }
+
+        .line-user {
+            color: #ffffff;
+        }
+
+        .line-assistant {
+            color: #999999;
+        }
+
+        .line-special {
+            color: #666666;
+            font-style: italic;
+        }
+
+        .line-raw {
+            color: var(--text-muted);
+        }
+
+        .console-welcome {
+            color: var(--text-dim);
+            font-style: italic;
+        }
+
+        /* Custom scrollbar adjustments */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <header class="minimized">
+            <div class="header-title">
+                <h1>SNAPPER</h1>
+                <div class="status-badge" id="connStatus">ONLINE</div>
+            </div>
+            <div class="header-metrics">
+                <div class="metric-mini">
+                    <span class="label">BATTERY:</span>
+                    <span class="value" id="headerBattery">--%</span>
+                </div>
+                <div class="metric-mini">
+                    <span class="label">MODE:</span>
+                    <span class="value" id="headerMode">--</span>
+                </div>
+                <div class="metric-mini">
+                    <span class="label">LATENCY:</span>
+                    <span class="value" id="headerPing">-- ms</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="workspace">
+            <!-- Left Column: Video Feed (Top) and LiDAR (Bottom) -->
+            <div class="workspace-column visual-column">
+                <!-- Panel 1: Video View -->
+                <div class="panel" style="flex: 0 0 40%; height: 40%; border-bottom: 1px solid var(--panel-border);">
+                    <div class="panel-header">
+                        <div class="panel-title">Video Feed</div>
+                        <div class="panel-controls">
+                            <div class="ui-checkbox">
+                                <input type="checkbox" id="yoloDetect" checked>
+                                <label for="yoloDetect">YOLO DETECT</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="video-container">
+                            <img src="/video_feed" class="video-stream" alt="Camera Stream">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 2: Lidar Map -->
+                <div class="panel" style="flex: 0 0 60%; height: 60%;">
+                    <div class="panel-header">
+                        <div class="panel-title">LiDAR 3D Cloud</div>
+                        <div class="panel-controls">
+                            <div class="ui-checkbox">
+                                <input type="checkbox" id="alignToDog" checked>
+                                <label for="alignToDog">ALIGN DOG</label>
+                            </div>
+                            <div class="ui-checkbox">
+                                <input type="checkbox" id="autoFrame">
+                                <label for="autoFrame">AUTO FRAME</label>
+                            </div>
+                            <div class="ui-checkbox">
+                                <input type="checkbox" id="accumulateLidar">
+                                <label for="accumulateLidar">ACCUMULATE</label>
+                            </div>
+                            <div class="ui-slider">
+                                <label for="lidarRange">CUTOFF:</label>
+                                <input type="range" id="lidarRange" min="2" max="25" value="12" step="1">
+                                <span id="rangeVal">12m</span>
+                            </div>
+                            <div class="ui-slider">
+                                <label for="lidarPointSize">SIZE:</label>
+                                <input type="range" id="lidarPointSize" min="1" max="10" value="4" step="1">
+                                <span id="sizeVal">4px</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="lidar-container">
+                            <div id="lidarWebGL"></div>
+                            <div class="canvas-instructions">Left Click + Drag to Rotate | Right Click + Drag to Pan | Scroll to Zoom</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Telemetry (Top) and Session Logs (Bottom) -->
+            <div class="workspace-column side-column" style="border-left: 1px solid var(--panel-border);">
+                <!-- Panel 3: LowState Telemetry -->
+                <div class="panel" id="telemetryPanel" style="flex: 1; min-height: 0; border-bottom: 1px solid var(--panel-border);">
+                    <div class="panel-header">
+                        <div class="panel-title">System Metrics & Joints</div>
+                    </div>
+                    <div class="panel-content" style="padding: 12px 20px; display: flex; flex-direction: row; gap: 20px; height: 100%; overflow: auto;">
+                        <!-- General metrics column -->
+                        <div style="flex: 0 0 180px; display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem; justify-content: center; border-right: 1px solid var(--panel-border); padding-right: 20px;">
+                            <div><span style="color: var(--text-muted);">BATTERY:</span> <span id="batVolt" style="color: #ffffff; font-weight: 400;">-- V</span></div>
+                            <div><span style="color: var(--text-muted);">VELOCITY:</span> <span id="bodyVel" style="color: #ffffff; font-weight: 400;">-- m/s</span></div>
+                            <div><span style="color: var(--text-muted);">IMU PITCH:</span> <span id="imuPitch" style="color: #ffffff; font-weight: 400;">--°</span></div>
+                            <div><span style="color: var(--text-muted);">IMU ROLL:</span>  <span id="imuRoll"  style="color: #ffffff; font-weight: 400;">--°</span></div>
+                            <div><span style="color: var(--text-muted);">IMU YAW:</span>   <span id="imuYaw"   style="color: #ffffff; font-weight: 400;">--°</span></div>
+                            <div><span style="color: var(--text-muted);">CONTACT:</span>   <span id="footContact" style="color: #ffffff; font-weight: 400;">--</span></div>
+                            <div><span style="color: var(--text-muted);">TEMP AVG:</span>  <span id="jointTemp" style="color: #ffffff; font-weight: 400;">--°C</span></div>
+                            <div><span style="color: var(--text-muted);">POWER:</span>     <span id="powerState" style="color: #ffffff; font-weight: 400;">--</span></div>
+                        </div>
+                        <!-- Joints metrics columns -->
+                        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                            <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--panel-border); padding-bottom: 2px;">
+                                JOINT STATES (ROTATION rad / TEMP °C)
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                                <!-- FL Leg -->
+                                <div class="leg-column">
+                                    <div class="leg-header">FL</div>
+                                    <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fl_hip">--</span></div>
+                                    <div class="joint-row"><span class="joint-name">THI:</span> <span id="fl_thigh">--</span></div>
+                                    <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fl_calf">--</span></div>
+                                </div>
+                                <!-- FR Leg -->
+                                <div class="leg-column">
+                                    <div class="leg-header">FR</div>
+                                    <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fr_hip">--</span></div>
+                                    <div class="joint-row"><span class="joint-name">THI:</span> <span id="fr_thigh">--</span></div>
+                                    <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fr_calf">--</span></div>
+                                </div>
+                                <!-- RL Leg -->
+                                <div class="leg-column">
+                                    <div class="leg-header">RL</div>
+                                    <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rl_hip">--</span></div>
+                                    <div class="joint-row"><span class="joint-name">THI:</span> <span id="rl_thigh">--</span></div>
+                                    <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rl_calf">--</span></div>
+                                </div>
+                                <!-- RR Leg -->
+                                <div class="leg-column">
+                                    <div class="leg-header">RR</div>
+                                    <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rr_hip">--</span></div>
+                                    <div class="joint-row"><span class="joint-name">THI:</span> <span id="rr_thigh">--</span></div>
+                                    <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rr_calf">--</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel 4: Session Logs -->
+                <div class="panel minimized" id="logPanel" style="flex: 1; min-height: 0; transition: flex 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);">
+                    <div class="panel-header">
+                        <div class="panel-title">Session Logs</div>
+                        <div class="panel-controls">
+                            <button id="toggleChatBtn" style="background: none; border: 1px solid var(--panel-border); color: var(--text-muted); font-size: 0.65rem; padding: 2px 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font-mono); outline: none;">EXPAND</button>
+                        </div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="console-container" id="consoleLogs">
+                            <div class="console-welcome">> listening for active session logs...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SocketIO connectivity
+        const socket = io();
+        let pingStart = Date.now();
+
+        // UI Sliders controls
+        const rangeSlider = document.getElementById('lidarRange');
+        const sizeSlider = document.getElementById('lidarPointSize');
+        const rangeVal = document.getElementById('rangeVal');
+        const sizeVal = document.getElementById('sizeVal');
+        
+        let lidarRangeCutoff = parseFloat(rangeSlider.value);
+        let pointSizeVal = parseFloat(sizeSlider.value);
+
+        rangeSlider.addEventListener('input', (e) => {
+            lidarRangeCutoff = parseFloat(e.target.value);
+            rangeVal.textContent = lidarRangeCutoff + 'm';
+        });
+
+        sizeSlider.addEventListener('input', (e) => {
+            pointSizeVal = parseFloat(e.target.value);
+            sizeVal.textContent = pointSizeVal + 'px';
+            if (pointsMaterial) {
+                pointsMaterial.size = pointSizeVal;
+            }
+        });
+
+        // 3D Three.js Pipeline Setup
+        const container = document.getElementById('lidarWebGL');
+        
+        // Scene, Camera, Renderer
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a0c);
+
+        const camera = new THREE.PerspectiveCamera(60, 1280 / 720, 0.1, 100);
+        // Default position: slightly elevated looking down at the origin
+        camera.position.set(0, 5, 8); 
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(1280, 720);
+        renderer.setPixelRatio(1); // Lock internal backing store resolution to exactly 1280x720
+        container.appendChild(renderer.domElement);
+
+        let currentDogPitch = 0;
+        let currentDogRoll = 0;
+        let currentDogYaw = 0;
+        let currentSlamPose = { position: [0, 0, 0], orientation: [0, 0, 0, 1] };
+
+        // Accumulation buffer state
+        let accumulatedPositions = [];
+        let accumulatedColors = [];
+        const maxAccumulatedPoints = 400000; // Cap to prevent memory/render latency
+
+        // Orbit Controls for mouse navigation
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 + 0.15; // Don't let users rotate below the ground line too much
+        controls.target.set(0, 0, 0);
+
+        // Grid helper representing ground plane
+        const gridHelper = new THREE.GridHelper(30, 30, 0x00ff66, 0x222226);
+        gridHelper.position.y = -0.5; // Sit slightly below origin (simulating dog ground height)
+        scene.add(gridHelper);
+
+        // Minimal coordinate helper at local origin
+        const axesHelper = new THREE.AxesHelper(1);
+        axesHelper.position.y = -0.49; // Slightly above grid helper to avoid Z-fighting
+        scene.add(axesHelper);
+
+        // Preallocate Point Cloud geometry
+        const pointsGeometry = new THREE.BufferGeometry();
+        const pointsMaterial = new THREE.PointsMaterial({
+            size: pointSizeVal,
+            vertexColors: true,
+            sizeAttenuation: false // points keep consistent screen size regardless of distance
+        });
+        const pointsObject = new THREE.Points(pointsGeometry, pointsMaterial);
+        scene.add(pointsObject);
+
+        // Handle Resizing
+        function onWindowResize() {
+            // Locked at 1280x720 internal rendering resolution.
+            // Responsive screen fitting is handled cleanly by CSS 'object-fit: cover'.
+        }
+        window.addEventListener('resize', onWindowResize);
+        setTimeout(onWindowResize, 100);
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Align pointsObject rotation and translation to the dog's body frame
+            const alignToDog = document.getElementById('alignToDog').checked;
+            if (alignToDog && currentSlamPose) {
+                const pos = currentSlamPose.position;
+                const ori = currentSlamPose.orientation;
+
+                // Transform dog pose from ROS coordinates to Three.js coordinates
+                const posThree = new THREE.Vector3(-pos[1], pos[2], -pos[0]);
+
+                // Extract Euler angles from ROS quaternion (ZYX order)
+                const qRos = new THREE.Quaternion(ori[0], ori[1], ori[2], ori[3]);
+                const eulerRos = new THREE.Euler().setFromQuaternion(qRos, 'ZYX');
+                const yaw = eulerRos.z;
+                const pitch = eulerRos.y;
+                const roll = eulerRos.x;
+
+                // Map to Three.js rotation convention
+                const quatThree = new THREE.Quaternion().setFromEuler(
+                    new THREE.Euler(pitch, yaw, roll, 'YXZ')
+                );
+
+                // Build the global world matrix for the dog
+                const dogMatrix = new THREE.Matrix4().compose(
+                    posThree,
+                    quatThree,
+                    new THREE.Vector3(1, 1, 1)
+                );
+
+                // Invert it to map points from global (odom) space to dog-local space
+                const invMatrix = new THREE.Matrix4().copy(dogMatrix).invert();
+                
+                pointsObject.matrix.copy(invMatrix);
+                pointsObject.matrixAutoUpdate = false;
+            } else {
+                pointsObject.matrix.identity();
+                pointsObject.matrixAutoUpdate = false;
+            }
+            
+            // Auto-frame: zoom camera to occupy approximately 80% of FOV
+            const autoFrame = document.getElementById('autoFrame').checked;
+            if (autoFrame) {
+                const positionsAttr = pointsGeometry.getAttribute('position');
+                if (positionsAttr && positionsAttr.count > 0) {
+                    const count = positionsAttr.count;
+                    const sampleStep = Math.max(1, Math.floor(count / 1000));
+                    let sumX = 0, sumY = 0, sumZ = 0;
+                    let sampledCount = 0;
+                    const distances = [];
+
+                    // 1. Compute center of the point cloud using sampled points
+                    for (let i = 0; i < count; i += sampleStep) {
+                        sumX += positionsAttr.getX(i);
+                        sumY += positionsAttr.getY(i);
+                        sumZ += positionsAttr.getZ(i);
+                        sampledCount++;
+                    }
+                    
+                    if (sampledCount > 0) {
+                        const localCenter = new THREE.Vector3(sumX / sampledCount, sumY / sampledCount, sumZ / sampledCount);
+                        
+                        // 2. Compute 90th percentile distance to ignore outliers
+                        for (let i = 0; i < count; i += sampleStep) {
+                            const dx = positionsAttr.getX(i) - localCenter.x;
+                            const dy = positionsAttr.getY(i) - localCenter.y;
+                            const dz = positionsAttr.getZ(i) - localCenter.z;
+                            distances.push(Math.sqrt(dx*dx + dy*dy + dz*dz));
+                        }
+                        distances.sort((a, b) => a - b);
+                        
+                        const pctIdx = Math.floor(distances.length * 0.90);
+                        const radius = pctIdx < distances.length ? Math.max(1.0, distances[pctIdx]) : 3.0;
+
+                        // Map center to world coordinates
+                        const center = localCenter.clone().applyMatrix4(pointsObject.matrix);
+
+                        // Compute vertical and horizontal FOVs
+                        const fovRad = THREE.MathUtils.degToRad(camera.fov);
+                        const hFovRad = 2 * Math.atan(Math.tan(fovRad / 2) * camera.aspect);
+
+                        // Calculate required distance to fit the horizontal FOV to 90% width
+                        const distHorizontal = radius / Math.sin(hFovRad / 2);
+                        const targetDistance = distHorizontal / 0.9;
+
+                        // Smoothly slide controls target and camera distance
+                        controls.target.lerp(center, 0.1);
+                        
+                        const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
+                        const currentDist = camera.position.distanceTo(controls.target);
+                        const newDist = THREE.MathUtils.lerp(currentDist, targetDistance, 0.1);
+                        
+                        camera.position.copy(controls.target).addScaledVector(dir, newDist);
+                    }
+                }
+            }
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Color Ramp logic mapping height z-value
+        // Palette maps z range [-0.5m, 0.8m] to a blue-green-red spectrum
+        function getHeightColorRGB(z) {
+            const zMin = -0.5;
+            const zMax = 0.8;
+            let ratio = (z - zMin) / (zMax - zMin);
+            ratio = Math.max(0, Math.min(1, ratio));
+            
+            // Hue shifts: 240 (blue) -> 120 (green) -> 0 (red)
+            const hue = (1.0 - ratio) * 240;
+            
+            // Convert HSL directly to THREE.Color format
+            const color = new THREE.Color();
+            color.setHSL(hue / 360, 0.9, 0.55);
+            return color;
+        }
+
+        // Track and emit camera movements (max 10 FPS)
+        let lastCameraEmitTime = 0;
+        controls.addEventListener('change', () => {
+            const now = Date.now();
+            if (now - lastCameraEmitTime > 100) { // 10 FPS throttle
+                socket.emit('camera_move', {
+                    position: [camera.position.x, camera.position.y, camera.position.z],
+                    target: [controls.target.x, controls.target.y, controls.target.z]
+                });
+                lastCameraEmitTime = now;
+            }
+        });
+
+        // Socket IO connectivity calculations
+        socket.on('connect', () => {
+            document.getElementById('connStatus').textContent = 'ONLINE';
+            document.getElementById('connStatus').style.borderColor = 'rgba(255, 255, 255, 0.4)';
+            
+            setInterval(() => {
+                pingStart = Date.now();
+                socket.emit('ping_latency');
+            }, 3000);
+        });
+
+        socket.on('pong_latency', () => {
+            const latency = Date.now() - pingStart;
+            document.getElementById('headerPing').textContent = latency + ' ms';
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('connStatus').textContent = 'OFFLINE';
+            document.getElementById('connStatus').style.borderColor = 'rgba(255, 0, 0, 0.4)';
+        });
+
+        // Telemetry Data Relayer
+        socket.on('telemetry_data', (payload) => {
+            const lowstate = payload.data;
+            if (!lowstate) return;
+
+            // Extract Battery
+            const power_v = lowstate.power_v || 0;
+            document.getElementById('batVolt').textContent = `${power_v.toFixed(1)} V`;
+            
+            let batPercent = ((power_v - 22.0) / (29.6 - 22.0)) * 100;
+            batPercent = Math.max(0, Math.min(100, batPercent));
+            document.getElementById('headerBattery').textContent = `${batPercent.toFixed(0)}%`;
+
+            // SLAM Pose Details
+            if (lowstate.slam_pose) {
+                currentSlamPose = lowstate.slam_pose;
+            }
+
+            // IMU details
+            if (lowstate.imu_state) {
+                const rpy = lowstate.imu_state.rpy || [0, 0, 0];
+                currentDogRoll = rpy[1];
+                currentDogPitch = rpy[0];
+                currentDogYaw = rpy[2];
+
+                const pitchDeg = currentDogPitch * (180 / Math.PI);
+                const rollDeg = currentDogRoll * (180 / Math.PI);
+                const yawDeg = currentDogYaw * (180 / Math.PI);
+
+                document.getElementById('imuPitch').textContent = `${pitchDeg.toFixed(1)}°`;
+                document.getElementById('imuRoll').textContent = `${rollDeg.toFixed(1)}°`;
+                document.getElementById('imuYaw').textContent = `${yawDeg.toFixed(1)}°`;
+            }
+
+            // Foot Contacts
+            if (lowstate.foot_force) {
+                const force = lowstate.foot_force;
+                const contacts = force.map(f => f > 40 ? 1 : 0);
+                document.getElementById('footContact').textContent = `[ ${contacts[0]} | ${contacts[1]} | ${contacts[2]} | ${contacts[3]} ]`;
+            }
+
+            // Velocity
+            if (lowstate.velocity) {
+                const v = lowstate.velocity || [0, 0, 0];
+                const speed = Math.sqrt(v[0]*v[0] + v[1]*v[1]);
+                document.getElementById('bodyVel').textContent = `${speed.toFixed(2)} m/s`;
+            }
+            
+            // Joint temperatures & Leg Joints detailed metrics extraction
+            if (lowstate.motor_state) {
+                const motors = lowstate.motor_state;
+                
+                const avgTemp = motors.length > 0 ? motors.reduce((sum, m) => sum + (m.temperature || 0), 0) / motors.length : 0;
+                document.getElementById('jointTemp').textContent = `${avgTemp.toFixed(1)}°C`;
+
+                // Update Joint States on Leg cards (FL, FR, RL, RR)
+                const updateLegJoints = (legPrefix, offset) => {
+                    const hip = motors[offset] || { q: 0, temperature: 0 };
+                    const thigh = motors[offset + 1] || { q: 0, temperature: 0 };
+                    const calf = motors[offset + 2] || { q: 0, temperature: 0 };
+                    
+                    document.getElementById(`${legPrefix}_hip`).textContent = `${hip.q.toFixed(2)}/${hip.temperature || 0}°C`;
+                    document.getElementById(`${legPrefix}_thigh`).textContent = `${thigh.q.toFixed(2)}/${thigh.temperature || 0}°C`;
+                    document.getElementById(`${legPrefix}_calf`).textContent = `${calf.q.toFixed(2)}/${calf.temperature || 0}°C`;
+                };
+
+                if (motors.length >= 12) {
+                    updateLegJoints('fl', 0);
+                    updateLegJoints('fr', 3);
+                    updateLegJoints('rl', 6);
+                    updateLegJoints('rr', 9);
+                }
+            }
+
+            const motionMode = lowstate.motion_mode !== undefined ? lowstate.motion_mode : '--';
+            document.getElementById('headerMode').textContent = motionMode;
+            document.getElementById('powerState').textContent = `${lowstate.power_state || 0}`;
+        });
+
+        // LiDAR stream packet receiver: maps ROS coordinates to ThreeJS WebGL
+        socket.on('lidar_data', (payload) => {
+            const points = payload.points || [];
+            const accumulate = document.getElementById('accumulateLidar').checked;
+            const newPositions = [];
+            const newColors = [];
+
+            // If we are accumulating, downsample incoming frames by 5 to conserve GPU memory
+            const sampleStep = accumulate ? 5 : 1;
+
+            for (let i = 0; i < points.length; i += sampleStep) {
+                const [x, y, z] = points[i];
+                const distance = Math.sqrt(x*x + y*y + z*z);
+                if (distance > lidarRangeCutoff) continue;
+
+                // Coordinate Mapping from ROS standard frame to ThreeJS local frame
+                newPositions.push(-y, z, -x);
+                const c = getHeightColorRGB(z);
+                newColors.push(c.r, c.g, c.b);
+            }
+
+            if (accumulate) {
+                // Append new positions and colors
+                accumulatedPositions = accumulatedPositions.concat(newPositions);
+                accumulatedColors = accumulatedColors.concat(newColors);
+
+                // Evict oldest points if we exceed the cap to protect WebGL performance
+                if (accumulatedPositions.length > maxAccumulatedPoints * 3) {
+                    const removeCount = accumulatedPositions.length - (maxAccumulatedPoints * 3);
+                    accumulatedPositions.splice(0, removeCount);
+                    accumulatedColors.splice(0, removeCount);
+                }
+
+                // Update WebGL buffer bindings
+                pointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(accumulatedPositions, 3));
+                pointsGeometry.setAttribute('color', new THREE.Float32BufferAttribute(accumulatedColors, 3));
+            } else {
+                // Normal single-frame mode (reset buffer)
+                accumulatedPositions = [];
+                accumulatedColors = [];
+
+                pointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(newPositions, 3));
+                pointsGeometry.setAttribute('color', new THREE.Float32BufferAttribute(newColors, 3));
+            }
+
+            pointsGeometry.computeBoundingSphere();
+        });
+
+        // Immediately flush buffer when Accumulate is toggled off
+        document.getElementById('accumulateLidar').addEventListener('change', (e) => {
+            if (!e.target.checked) {
+                accumulatedPositions = [];
+                accumulatedColors = [];
+                pointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+                pointsGeometry.setAttribute('color', new THREE.Float32BufferAttribute([], 3));
+                pointsGeometry.computeBoundingSphere();
+            }
+        });
+
+        // Console logger
+        const consoleLogs = document.getElementById('consoleLogs');
+        let welcomeRemoved = false;
+
+        socket.on('log_data', (payload) => {
+            if (!welcomeRemoved) {
+                consoleLogs.innerHTML = '';
+                welcomeRemoved = true;
+            }
+
+            const timestamp = payload.timestamp ? payload.timestamp.substring(11, 19) : new Date().toLocaleTimeString();
+            const logType = payload.type || 'raw';
+            
+            const lineDiv = document.createElement('div');
+            lineDiv.className = `console-line line-${logType}`;
+            
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'line-timestamp';
+            timeSpan.textContent = `[${timestamp}]`;
+            lineDiv.appendChild(timeSpan);
+
+            // Print styled log lines
+            if (logType === 'session_start') {
+                const msg = document.createElement('span');
+                msg.textContent = `[SESSION START]`;
+                lineDiv.appendChild(msg);
+            } else if (logType === 'session_end') {
+                const msg = document.createElement('span');
+                msg.textContent = `[SESSION END]`;
+                lineDiv.appendChild(msg);
+            } else if (logType === 'user') {
+                const prefix = document.createElement('span');
+                prefix.style.color = 'var(--text-muted)';
+                prefix.textContent = `[USER] `;
+                const text = document.createElement('span');
+                text.textContent = payload.text || '';
+                lineDiv.appendChild(prefix);
+                lineDiv.appendChild(text);
+            } else if (logType === 'assistant') {
+                const prefix = document.createElement('span');
+                prefix.style.color = 'var(--text-muted)';
+                prefix.textContent = `[GO2] `;
+                const text = document.createElement('span');
+                text.textContent = payload.text || '';
+                lineDiv.appendChild(prefix);
+                lineDiv.appendChild(text);
+            } else if (logType === 'special_command') {
+                const msg = document.createElement('span');
+                msg.textContent = `[COMMAND] ${payload.command} - "${payload.text}"`;
+                lineDiv.appendChild(msg);
+            } else if (logType === 'scene_switch') {
+                const msg = document.createElement('span');
+                msg.textContent = `[SCENE] ${payload.scene || payload.name || 'default'}`;
+                lineDiv.appendChild(msg);
+            } else if (payload.raw) {
+                const msg = document.createElement('span');
+                msg.textContent = payload.raw;
+                lineDiv.appendChild(msg);
+            } else {
+                const msg = document.createElement('span');
+                msg.textContent = JSON.stringify(payload);
+                lineDiv.appendChild(msg);
+            }
+
+            consoleLogs.appendChild(lineDiv);
+            consoleLogs.scrollTop = consoleLogs.scrollHeight;
+
+            if (consoleLogs.childElementCount > 200) {
+                consoleLogs.removeChild(consoleLogs.firstChild);
+            }
+        });
+
+        // Toggle Log/Chat Minimize/Expand
+        const toggleChatBtn = document.getElementById('toggleChatBtn');
+        const logPanel = document.getElementById('logPanel');
+        
+        toggleChatBtn.addEventListener('click', () => {
+            const isMinimized = logPanel.classList.toggle('minimized');
+            if (isMinimized) {
+                toggleChatBtn.textContent = 'EXPAND';
+            } else {
+                toggleChatBtn.textContent = 'MINIMIZE';
+            }
+            // Trigger WebGL scene update recalculation
+            setTimeout(onWindowResize, 350);
+        });
+
+        // Toggle YOLO object detection overlay
+        const yoloDetectCheckbox = document.getElementById('yoloDetect');
+        yoloDetectCheckbox.addEventListener('change', () => {
+            fetch('/toggle_yolo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: yoloDetectCheckbox.checked })
+            });
+        });
+
+        // Toggle Header Minimize/Expand
+        const headerEl = document.querySelector('header');
+        headerEl.addEventListener('click', () => {
+            headerEl.classList.toggle('minimized');
+            // Trigger WebGL scene update recalculation
+            setTimeout(onWindowResize, 350);
+        });
+    </script>
+</body>
+</html>
