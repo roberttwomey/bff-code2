@@ -131,6 +131,18 @@ def handle_ping():
     """Latency calculation handshake."""
     socketio.emit('pong_latency')
 
+@socketio.on('lidar_recording_start')
+def handle_lidar_recording_start():
+    global capturer
+    if capturer and hasattr(capturer, 'output_dir') and capturer.output_dir:
+        filepath = os.path.join(capturer.output_dir, "lidar_render.webm")
+        try:
+            with open(filepath, "wb") as f:
+                pass
+            print(f"[Dashboard Server] Started fresh LiDAR render recording: {filepath}")
+        except Exception as e:
+            print(f"[Dashboard Server] Failed to initialize LiDAR render file: {e}")
+
 @socketio.on('lidar_recording_chunk')
 def handle_lidar_recording_chunk(data):
     global capturer

@@ -86,6 +86,7 @@ class Go2DataCapturer:
 
         # YOLO enable flag — set to False to pause inference and overlay
         self.yolo_enabled = True
+        self.start_time = None
 
     def add_listener(self, listener_type, callback):
         """Add a callback listener for real-time streaming.
@@ -101,6 +102,7 @@ class Go2DataCapturer:
             self.detection_listeners.append(callback)
 
     def start_writers(self):
+        self.start_time = time.monotonic()
         if self.capture_video:
             t = threading.Thread(target=self._video_writer_worker, daemon=True, name="VideoWriter")
             t.start()
@@ -146,20 +148,19 @@ class Go2DataCapturer:
         print("\nAll background writers stopped and files closed successfully.")
 
     def _video_writer_worker(self):
-        """Write video frames to disk at a steady real-time rate.
+        """Write video frames to disk at a steady real-time rate matching the unified clock.
 
-        Driven by a monotonic wall-clock timer rather than the incoming queue
-        so the output duration matches real elapsed time regardless of stream
-        frame rate.  When no new frame arrives (stream gap, dropped packet,
-        etc.) the last received frame is repeated so the video stays
-        synchronized with the audio file.  YOLO is only queued for genuinely
-        new frames, not repeated padding frames.
+        Driven by the unified self.start_time clock so that the total number of
+        written frames strictly matches the elapsed session time. When no new
+        frame arrives, the last received frame is repeated. If there is startup
+        latency (e.g. WebRTC negotiation), the first received frame is repeated
+        to fill the initial gap, ensuring the video duration is identical to the
+        session duration (and approximately identical to the audio duration).
         """
         writer = None
         last_frame = None   # most recently received frame; repeated when queue is dry
         frame_idx = 0
-        interval = 1.0 / self.video_fps
-        next_write_time = None  # initialised on first frame
+        start_time = self.start_time if self.start_time is not None else time.monotonic()
 
         while not self.stop_event.is_set():
             now = time.monotonic()
@@ -182,31 +183,34 @@ class Go2DataCapturer:
                 time.sleep(0.005)
                 continue
 
-            # Initialise writer and clock on the very first frame
+            # Initialise writer on the very first frame
             if writer is None:
                 height, width = last_frame.shape[:2]
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                 video_path = os.path.join(self.output_dir, "video.mp4")
                 writer = cv2.VideoWriter(video_path, fourcc, self.video_fps, (width, height))
                 print(f"\nInitialized VideoWriter: {video_path} ({width}x{height} @ {self.video_fps} FPS)")
-                next_write_time = now
 
-            if now >= next_write_time:
+            # Calculate expected frames based on unified session start time
+            elapsed = now - start_time
+            expected_frames = int(elapsed * self.video_fps)
+
+            # Write missing frames to keep up with the elapsed time
+            written_in_loop = 0
+            while self.video_count < expected_frames and written_in_loop < 10:
                 writer.write(last_frame)
 
-                # Only queue YOLO for genuinely new frames, not padding repetitions
-                if new_frame is not None and YOLO_AVAILABLE and yolo_model and self.yolo_enabled:
-                    self.yolo_queue.put((frame_idx, last_frame))
+                # Only queue YOLO for genuinely new frames, and only on the first write of this frame
+                if new_frame is not None and written_in_loop == 0:
+                    if YOLO_AVAILABLE and yolo_model and self.yolo_enabled:
+                        self.yolo_queue.put((frame_idx, last_frame))
 
                 self.video_count += 1
                 frame_idx += 1
-                next_write_time += interval
-                # Guard against startup latency or clock stalls causing a burst
-                if next_write_time < now:
-                    next_write_time = now + interval
-            else:
-                # Sleep at most 5 ms so we remain responsive to the stop event
-                time.sleep(min(next_write_time - now, 0.005))
+                written_in_loop += 1
+
+            # Sleep a short duration to remain responsive and not peg CPU
+            time.sleep(0.005)
 
         # Drain queue on shutdown (frames discarded; file is already at real time)
         while True:

@@ -735,7 +735,8 @@
                     }
                 };
                 
-                mediaRecorder.start(1000); // chunk every 1 second
+                socket.emit('lidar_recording_start');
+                mediaRecorder.start(200); // chunk every 200ms to minimize frame loss on shutdown
                 isRecording = true;
                 console.log("[Lidar Recorder] Started recording WebGL view.");
             } catch (err) {
