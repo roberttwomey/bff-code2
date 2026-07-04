@@ -352,9 +352,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
             for (let i = 0; i < points.length; i++) {
                 const pt = points[i];
-                positions[i * 3] = pt[0];
-                positions[i * 3 + 1] = pt[1];
-                positions[i * 3 + 2] = pt[2];
+                positions[i * 3] = -pt[1];      // Three.js X = -y_robot
+                positions[i * 3 + 1] = pt[2];  // Three.js Y = z_robot (up)
+                positions[i * 3 + 2] = -pt[0]; // Three.js Z = -x_robot
 
                 const color = getHeightColorRGB(pt[2]);
                 colors[i * 3] = color.r;
@@ -385,9 +385,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     const snapPoints = snapshots[f].points;
                     for (let p = 0; p < snapPoints.length; p++) {
                         const pt = snapPoints[p];
-                        accPositions[idx * 3] = pt[0];
-                        accPositions[idx * 3 + 1] = pt[1];
-                        accPositions[idx * 3 + 2] = pt[2];
+                        accPositions[idx * 3] = -pt[1];      // Three.js X = -y_robot
+                        accPositions[idx * 3 + 1] = pt[2];  // Three.js Y = z_robot (up)
+                        accPositions[idx * 3 + 2] = -pt[0]; // Three.js Z = -x_robot
 
                         const color = getHeightColorRGB(pt[2]);
                         accColors[idx * 3] = color.r;
