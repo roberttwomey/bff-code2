@@ -259,9 +259,9 @@
         }
 
         .video-stream {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         /* Telemetry Joints Grid */
@@ -363,16 +363,68 @@
             object-fit: contain;
         }
 
-        .canvas-instructions {
+        .lidar-footer {
             position: absolute;
-            bottom: 12px;
-            left: 20px;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--panel-border);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            height: 54px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 20px;
+            overflow: hidden;
+        }
+
+        .lidar-footer-handle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 24px;
+            font-family: var(--font-mono);
             font-size: 0.65rem;
-            color: var(--text-dim);
-            letter-spacing: 0.1em;
-            pointer-events: none;
             text-transform: uppercase;
-            z-index: 5;
+            letter-spacing: 0.1em;
+        }
+
+        .lidar-footer .footer-title {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .lidar-footer .footer-hint {
+            color: var(--text-dim);
+        }
+
+        .lidar-footer-content {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            height: 26px;
+            opacity: 1;
+            transition: opacity 0.2s ease;
+        }
+
+        .lidar-footer.minimized {
+            height: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, 0.65);
+        }
+
+        .lidar-footer.minimized .lidar-footer-content {
+            opacity: 0;
+            pointer-events: none;
+            display: none !important;
+        }
+        
+        .lidar-footer:hover {
+            background: rgba(0, 0, 0, 0.9);
         }
 
         .ui-slider {
@@ -529,37 +581,39 @@
 
                 <!-- Panel 2: Lidar Map -->
                 <div class="panel" style="flex: 0 0 60%; height: 60%;">
-                    <div class="panel-header">
-                        <div class="panel-title">LiDAR 3D Cloud</div>
-                        <div class="panel-controls">
-                            <div class="ui-checkbox">
-                                <input type="checkbox" id="alignToDog" checked>
-                                <label for="alignToDog">ALIGN DOG</label>
-                            </div>
-                            <div class="ui-checkbox">
-                                <input type="checkbox" id="autoFrame">
-                                <label for="autoFrame">AUTO FRAME</label>
-                            </div>
-                            <div class="ui-checkbox">
-                                <input type="checkbox" id="accumulateLidar">
-                                <label for="accumulateLidar">ACCUMULATE</label>
-                            </div>
-                            <div class="ui-slider">
-                                <label for="lidarRange">CUTOFF:</label>
-                                <input type="range" id="lidarRange" min="2" max="25" value="12" step="1">
-                                <span id="rangeVal">12m</span>
-                            </div>
-                            <div class="ui-slider">
-                                <label for="lidarPointSize">SIZE:</label>
-                                <input type="range" id="lidarPointSize" min="1" max="10" value="4" step="1">
-                                <span id="sizeVal">4px</span>
-                            </div>
-                        </div>
-                    </div>
                     <div class="panel-content">
                         <div class="lidar-container">
                             <div id="lidarWebGL"></div>
-                            <div class="canvas-instructions">Left Click + Drag to Rotate | Right Click + Drag to Pan | Scroll to Zoom</div>
+                            <div class="lidar-footer minimized" id="lidarFooter">
+                                <div class="lidar-footer-handle">
+                                    <span class="footer-title">LiDAR Controls</span>
+                                    <span class="footer-hint">Click to toggle controls | Drag to rotate/pan | Scroll to zoom</span>
+                                </div>
+                                <div class="lidar-footer-content">
+                                    <div class="ui-checkbox">
+                                        <input type="checkbox" id="alignToDog" checked>
+                                        <label for="alignToDog">ALIGN DOG</label>
+                                    </div>
+                                    <div class="ui-checkbox">
+                                        <input type="checkbox" id="autoFrame">
+                                        <label for="autoFrame">AUTO FRAME</label>
+                                    </div>
+                                    <div class="ui-checkbox">
+                                        <input type="checkbox" id="accumulateLidar">
+                                        <label for="accumulateLidar">ACCUMULATE</label>
+                                    </div>
+                                    <div class="ui-slider">
+                                        <label for="lidarRange">CUTOFF:</label>
+                                        <input type="range" id="lidarRange" min="2" max="25" value="12" step="1">
+                                        <span id="rangeVal">12m</span>
+                                    </div>
+                                    <div class="ui-slider">
+                                        <label for="lidarPointSize">SIZE:</label>
+                                        <input type="range" id="lidarPointSize" min="1" max="10" value="4" step="1">
+                                        <span id="sizeVal">4px</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1123,6 +1177,17 @@
         const headerEl = document.querySelector('header');
         headerEl.addEventListener('click', () => {
             headerEl.classList.toggle('minimized');
+            // Trigger WebGL scene update recalculation
+            setTimeout(onWindowResize, 350);
+        });
+
+        // Toggle LiDAR Footer Minimize/Expand
+        const lidarFooterEl = document.getElementById('lidarFooter');
+        lidarFooterEl.addEventListener('click', (e) => {
+            if (e.target.closest('.ui-checkbox') || e.target.closest('.ui-slider') || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
+                return;
+            }
+            lidarFooterEl.classList.toggle('minimized');
             // Trigger WebGL scene update recalculation
             setTimeout(onWindowResize, 350);
         });
