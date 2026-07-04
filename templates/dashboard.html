@@ -692,15 +692,20 @@
         let isRecording = false;
         const chunkQueue = [];
         let processingQueue = false;
+        let chunkIndex = 0;
 
         async function processChunkQueue() {
             if (processingQueue) return;
             processingQueue = true;
             while (chunkQueue.length > 0) {
                 const blob = chunkQueue.shift();
+                const currentIndex = chunkIndex++;
                 try {
                     const buffer = await blob.arrayBuffer();
-                    socket.emit('lidar_recording_chunk', buffer);
+                    socket.emit('lidar_recording_chunk', {
+                        index: currentIndex,
+                        data: buffer
+                    });
                 } catch (err) {
                     console.error("[Lidar Recorder] Error processing chunk:", err);
                 }
@@ -727,6 +732,7 @@
                     options = { mimeType: 'video/webm', videoBitsPerSecond: 2500000 };
                 }
                 
+                chunkIndex = 0; // Reset chunk index for the new recording
                 mediaRecorder = new MediaRecorder(stream, options);
                 mediaRecorder.ondataavailable = (e) => {
                     if (e.data && e.data.size > 0) {
