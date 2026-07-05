@@ -76,8 +76,14 @@ def draw_detections(frame):
         label = f"{det['class']} {det['confidence']:.2f}"
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
         (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-        cv2.rectangle(frame, (x1, y1 - th - 6), (x1 + tw + 4, y1), (0, 255, 0), -1)
-        cv2.putText(frame, label, (x1 + 2, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+        # display tag above
+        # cv2.rectangle(frame, (x1, y1 - th - 6), (x1 + tw + 4, y1), (0, 255, 0), -1)
+        # cv2.putText(frame, label, (x1 + 2, y1 - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+        
+        # display tag inside
+        cv2.rectangle(frame, (x1, y1), (x1 + tw + 4, y1+th+6), (0, 255, 0), -1)
+        cv2.putText(frame, label, (x1 + 2, y1+th), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
+
     return frame
 
 def generate_mjpeg():
@@ -276,6 +282,142 @@ def start_capturer_async(ip, aes_key, no_video, no_audio, no_lowstate, no_lidar)
     capturer_thread.start()
     print("[Capturer] WebRTC connection thread spawned successfully.")
     return capturer, capturer_thread
+def find_latest_capture_session():
+    """Scans the captures/ directory and returns the absolute path of the newest session."""
+    workspace_dir = Path(__file__).resolve().parent
+    captures_dir = workspace_dir / "captures"
+    if not captures_dir.exists():
+        return None
+    session_dirs = [d for d in captures_dir.glob("go2_capture_*") if d.is_dir()]
+    if not session_dirs:
+        return None
+    session_dirs.sort(key=lambda p: p.name, reverse=True)
+    return str(session_dirs[0])
+
+def simulation_worker(session_dir, stop_event):
+    """Background worker that reads recorded capture session logs and plays them back in real time."""
+    print(f"\n[Simulation] Initializing real-time playback for session: {session_dir}")
+    video_path = os.path.join(session_dir, "video.mp4")
+    lowstate_path = os.path.join(session_dir, "lowstate.jsonl")
+    lidar_path = os.path.join(session_dir, "lidar.jsonl")
+    detections_path = os.path.join(session_dir, "detections.jsonl")
+
+    # Load telemetry logs
+    lowstate_data = []
+    if os.path.exists(lowstate_path):
+        with open(lowstate_path, "r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    lowstate_data.append(json.loads(line.strip()))
+                except Exception:
+                    pass
+    print(f"[Simulation] Loaded {len(lowstate_data)} telemetry logs.")
+
+    # Load lidar scans
+    lidar_data = []
+    if os.path.exists(lidar_path):
+        with open(lidar_path, "r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    lidar_data.append(json.loads(line.strip()))
+                except Exception:
+                    pass
+    print(f"[Simulation] Loaded {len(lidar_data)} LiDAR scans.")
+
+    # Load YOLO detections
+    detections_data = []
+    if os.path.exists(detections_path):
+        with open(detections_path, "r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    detections_data.append(json.loads(line.strip()))
+                except Exception:
+                    pass
+    print(f"[Simulation] Loaded {len(detections_data)} detection logs.")
+
+    # Determine base log start time to sync streams
+    timestamps = []
+    if lowstate_data:
+        timestamps.append(lowstate_data[0]["timestamp"])
+    if lidar_data:
+        timestamps.append(lidar_data[0]["timestamp"])
+    if detections_data:
+        timestamps.append(detections_data[0]["timestamp"])
+
+    if not timestamps:
+        print("[Simulation] Error: No logged timestamps found. Simulation aborted.")
+        return
+
+    start_log_time = min(timestamps)
+
+    while not stop_event.is_set():
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            print(f"[Simulation] Error: Unable to open video capture file: {video_path}")
+            time.sleep(2.0)
+            continue
+
+        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+        frame_delay = 1.0 / fps
+
+        # Copy data queues for this run iteration
+        lowstate_queue = list(lowstate_data)
+        lidar_queue = list(lidar_data)
+        detections_queue = list(detections_data)
+
+        # Ensure correct chronological order
+        lowstate_queue.sort(key=lambda x: x["timestamp"])
+        lidar_queue.sort(key=lambda x: x["timestamp"])
+        detections_queue.sort(key=lambda x: x["timestamp"])
+
+        start_wall_time = time.monotonic()
+        print("[Simulation] Playback loop active.")
+
+        frame_idx = 0
+        while cap.isOpened() and not stop_event.is_set():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # Update live frame buffer
+            global latest_frame
+            with frame_lock:
+                latest_frame = frame
+
+            # Align log timeline with current wall time elapsed
+            elapsed = time.monotonic() - start_wall_time
+            current_log_time = start_log_time + elapsed
+
+            # Dispatch telemetry packets
+            while lowstate_queue and lowstate_queue[0]["timestamp"] <= current_log_time:
+                item = lowstate_queue.pop(0)
+                on_lowstate_received(item)
+
+            # Dispatch LiDAR voxel scans
+            while lidar_queue and lidar_queue[0]["timestamp"] <= current_log_time:
+                item = lidar_queue.pop(0)
+                on_lidar_received(item)
+
+            # Dispatch YOLO detections (refresh timestamp to prevent caching eviction)
+            while detections_queue and detections_queue[0]["timestamp"] <= current_log_time:
+                item = detections_queue.pop(0)
+                item["timestamp"] = time.time()
+                detections_callback(item)
+
+            frame_idx += 1
+
+            # Precision frame sleep delay
+            expected_time = start_wall_time + (frame_idx * frame_delay)
+            sleep_time = expected_time - time.monotonic()
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            else:
+                time.sleep(0.001)
+
+        cap.release()
+        if not stop_event.is_set():
+            print("[Simulation] Replay complete. Looping simulation in 1.0s...")
+            time.sleep(1.0)
 
 def main():
     global capturer
@@ -287,6 +429,7 @@ def main():
     parser.add_argument("--no-audio", action="store_true", default=None, help="Disable audio capture and recording")
     parser.add_argument("--no-lowstate", action="store_true", default=None, help="Disable telemetry data")
     parser.add_argument("--no-lidar", action="store_true", default=None, help="Disable LiDAR mapping")
+    parser.add_argument("--simulate", action="store_true", help="Load the latest capture session and play it back in realtime")
     args = parser.parse_args()
 
     # Fallback to env vars or default values
@@ -312,16 +455,31 @@ def main():
     if args.no_lidar is None:
         args.no_lidar = not get_env_bool("BFF_CAPTURE_LIDAR", True)
 
-    # Start Go2 connection
-    print(f"Connecting to Go2 client at {args.ip}...")
-    capturer, capturer_thread = start_capturer_async(
-        ip=args.ip,
-        aes_key=args.aes_key,
-        no_video=args.no_video,
-        no_audio=args.no_audio,
-        no_lowstate=args.no_lowstate,
-        no_lidar=args.no_lidar
-    )
+    # Start Go2 connection or simulation
+    if args.simulate:
+        latest_session = find_latest_capture_session()
+        if not latest_session:
+            print("[Simulation] Error: No capture sessions found in captures/ folder.")
+            sys.exit(1)
+        print(f"[Simulation] Using latest capture session: {latest_session}")
+        simulation_stop_event = threading.Event()
+        sim_thread = threading.Thread(
+            target=simulation_worker,
+            args=(latest_session, simulation_stop_event),
+            daemon=True
+        )
+        sim_thread.start()
+        capturer_thread = None
+    else:
+        print(f"Connecting to Go2 client at {args.ip}...")
+        capturer, capturer_thread = start_capturer_async(
+            ip=args.ip,
+            aes_key=args.aes_key,
+            no_video=args.no_video,
+            no_audio=args.no_audio,
+            no_lowstate=args.no_lowstate,
+            no_lidar=args.no_lidar
+        )
 
     # Start logs tailing monitor
     tail_thread = threading.Thread(target=tail_logs_worker, daemon=True)
@@ -329,6 +487,8 @@ def main():
 
     print(f"\n=======================================================")
     print(f"BFF Go2 Dashboard serving at: http://localhost:{args.port}")
+    if args.simulate:
+        print(f"RUNNING IN SIMULATION MODE (PLAYBACK)")
     print(f"=======================================================\n")
 
     try:
@@ -336,21 +496,25 @@ def main():
     except KeyboardInterrupt:
         print("\nShutdown signals received. Stopping server.")
     finally:
-        if capturer:
-            print("Stopping robot capture streams and finalizing files...")
-            capturer.stop_event.set()
-            if capturer_thread:
-                capturer_thread.join(timeout=5.0)
-            print("Dashboard shutdown completed cleanly.")
+        if args.simulate:
+            print("Stopping simulation playback...")
+            simulation_stop_event.set()
+        else:
+            if capturer:
+                print("Stopping robot capture streams and finalizing files...")
+                capturer.stop_event.set()
+                if capturer_thread:
+                    capturer_thread.join(timeout=5.0)
+                print("Dashboard shutdown completed cleanly.")
 
-            # Automatically run overlay_detections immediately on exit
-            if hasattr(capturer, 'output_dir') and capturer.output_dir:
-                try:
-                    from overlay_detections import overlay_detections
-                    print(f"\n[Dashboard Server] Post-processing: Overlaying YOLO detections on recorded video...")
-                    overlay_detections(capturer.output_dir)
-                except Exception as e:
-                    print(f"[Dashboard Server] Failed to run overlay_detections: {e}")
+                # Automatically run overlay_detections immediately on exit
+                if hasattr(capturer, 'output_dir') and capturer.output_dir:
+                    try:
+                        from overlay_detections import overlay_detections
+                        print(f"\n[Dashboard Server] Post-processing: Overlaying YOLO detections on recorded video...")
+                        overlay_detections(capturer.output_dir)
+                    except Exception as e:
+                        print(f"[Dashboard Server] Failed to run overlay_detections: {e}")
 
 if __name__ == "__main__":
     main()
