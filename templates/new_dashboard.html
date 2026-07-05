@@ -626,9 +626,9 @@
                     <div class="panel-header">
                         <div class="panel-title">System Metrics & Joints</div>
                     </div>
-                    <div class="panel-content" style="padding: 12px 20px; display: flex; flex-direction: row; gap: 20px; height: 100%; overflow: auto;">
+                    <div class="panel-content" style="padding: 16px 20px; display: flex; flex-direction: column; gap: 16px; height: 100%; overflow-y: auto; overflow-x: hidden;">
                         <!-- General metrics column -->
-                        <div style="flex: 0 0 180px; display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem; justify-content: center; border-right: 1px solid var(--panel-border); padding-right: 20px;">
+                        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem;">
                             <div><span style="color: var(--text-muted);">BATTERY:</span> <span id="batVolt" style="color: #ffffff; font-weight: 400;">-- V</span></div>
                             <div><span style="color: var(--text-muted);">VELOCITY:</span> <span id="bodyVel" style="color: #ffffff; font-weight: 400;">-- m/s</span></div>
                             <div><span style="color: var(--text-muted);">IMU PITCH:</span> <span id="imuPitch" style="color: #ffffff; font-weight: 400;">--°</span></div>
@@ -639,11 +639,11 @@
                             <div><span style="color: var(--text-muted);">POWER:</span>     <span id="powerState" style="color: #ffffff; font-weight: 400;">--</span></div>
                         </div>
                         <!-- Joints metrics columns -->
-                        <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                            <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--panel-border); padding-bottom: 2px;">
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--panel-border); padding-bottom: 4px;">
                                 JOINT STATES (ROTATION rad / TEMP °C)
                             </div>
-                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
                                 <!-- FL Leg -->
                                 <div class="leg-column">
                                     <div class="leg-header">FL</div>
