@@ -656,10 +656,6 @@
                                 <label for="interactMap">INTERACT MAP</label>
                             </div>
                             <div class="ui-checkbox">
-                                <input type="checkbox" id="autoFrame">
-                                <label for="autoFrame">AUTO FRAME</label>
-                            </div>
-                            <div class="ui-checkbox">
                                 <input type="checkbox" id="accumulateLidar">
                                 <label for="accumulateLidar">ACCUMULATE</label>
                             </div>
@@ -742,6 +738,19 @@
                 }
                 if (initialSettings.camera && initialSettings.camera.zoom !== undefined) {
                     camera.zoom = initialSettings.camera.zoom;
+                }
+                if (initialSettings.accumulate !== undefined) {
+                    document.getElementById('accumulateLidar').checked = initialSettings.accumulate;
+                }
+                if (initialSettings.cutoff !== undefined) {
+                    lidarRangeCutoff = initialSettings.cutoff;
+                    rangeSlider.value = lidarRangeCutoff;
+                    rangeVal.textContent = lidarRangeCutoff + 'm';
+                }
+                if (initialSettings.size !== undefined) {
+                    pointSizeVal = initialSettings.size;
+                    sizeSlider.value = pointSizeVal;
+                    sizeVal.textContent = pointSizeVal + 'px';
                 }
             } catch (e) {
                 console.warn("Failed to apply initial settings:", e);
@@ -852,62 +861,7 @@
                 pointsObject.matrixAutoUpdate = false;
             }
 
-            // Auto-frame: zoom camera to occupy approximately 80% of FOV
-            const autoFrame = document.getElementById('autoFrame').checked;
-            if (autoFrame) {
-                const positionsAttr = pointsGeometry.getAttribute('position');
-                if (positionsAttr && positionsAttr.count > 0) {
-                    const count = positionsAttr.count;
-                    const sampleStep = Math.max(1, Math.floor(count / 1000));
-                    let sumX = 0, sumY = 0, sumZ = 0;
-                    let sampledCount = 0;
-                    const distances = [];
 
-                    // 1. Compute center of the point cloud using sampled points
-                    for (let i = 0; i < count; i += sampleStep) {
-                        sumX += positionsAttr.getX(i);
-                        sumY += positionsAttr.getY(i);
-                        sumZ += positionsAttr.getZ(i);
-                        sampledCount++;
-                    }
-
-                    if (sampledCount > 0) {
-                        const localCenter = new THREE.Vector3(sumX / sampledCount, sumY / sampledCount, sumZ / sampledCount);
-
-                        // 2. Compute 90th percentile distance to ignore outliers
-                        for (let i = 0; i < count; i += sampleStep) {
-                            const dx = positionsAttr.getX(i) - localCenter.x;
-                            const dy = positionsAttr.getY(i) - localCenter.y;
-                            const dz = positionsAttr.getZ(i) - localCenter.z;
-                            distances.push(Math.sqrt(dx * dx + dy * dy + dz * dz));
-                        }
-                        distances.sort((a, b) => a - b);
-
-                        const pctIdx = Math.floor(distances.length * 0.90);
-                        const radius = pctIdx < distances.length ? Math.max(1.0, distances[pctIdx]) : 3.0;
-
-                        // Map center to world coordinates
-                        const center = localCenter.clone().applyMatrix4(pointsObject.matrix);
-
-                        // Compute vertical and horizontal FOVs
-                        const fovRad = THREE.MathUtils.degToRad(camera.fov);
-                        const hFovRad = 2 * Math.atan(Math.tan(fovRad / 2) * camera.aspect);
-
-                        // Calculate required distance to fit the horizontal FOV to 90% width
-                        const distHorizontal = radius / Math.sin(hFovRad / 2);
-                        const targetDistance = distHorizontal / 0.9;
-
-                        // Smoothly slide controls target and camera distance
-                        controls.target.lerp(center, 0.1);
-
-                        const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
-                        const currentDist = camera.position.distanceTo(controls.target);
-                        const newDist = THREE.MathUtils.lerp(currentDist, targetDistance, 0.1);
-
-                        camera.position.copy(controls.target).addScaledVector(dir, newDist);
-                    }
-                }
-            }
 
             controls.update();
             renderer.render(scene, camera);
@@ -1236,7 +1190,10 @@
                 },
                 controls: {
                     target: { x: controls.target.x, y: controls.target.y, z: controls.target.z }
-                }
+                },
+                accumulate: document.getElementById('accumulateLidar').checked,
+                cutoff: lidarRangeCutoff,
+                size: pointSizeVal
             };
             
             // Save to localStorage as the default for future page loads
@@ -1279,6 +1236,23 @@
                         controls.target.set(settings.controls.target.x, settings.controls.target.y, settings.controls.target.z);
                     }
                     controls.update();
+                    
+                    if (settings.accumulate !== undefined) {
+                        document.getElementById('accumulateLidar').checked = settings.accumulate;
+                    }
+                    if (settings.cutoff !== undefined) {
+                        lidarRangeCutoff = settings.cutoff;
+                        rangeSlider.value = lidarRangeCutoff;
+                        rangeVal.textContent = lidarRangeCutoff + 'm';
+                    }
+                    if (settings.size !== undefined) {
+                        pointSizeVal = settings.size;
+                        sizeSlider.value = pointSizeVal;
+                        sizeVal.textContent = pointSizeVal + 'px';
+                        if (pointsMaterial) {
+                            pointsMaterial.size = pointSizeVal;
+                        }
+                    }
                     
                     // Also save to localStorage as the new default
                     localStorage.setItem('lidarSettings', JSON.stringify(settings));

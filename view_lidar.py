@@ -351,6 +351,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     if (initialSettings.camera && initialSettings.camera.zoom !== undefined) {
                         camera.zoom = initialSettings.camera.zoom;
                     }
+                    if (initialSettings.accumulate !== undefined) {
+                        document.getElementById('accumulateCheck').checked = initialSettings.accumulate;
+                    }
                 } catch (e) {
                     console.warn("Failed to apply initial settings:", e);
                     camera.position.set(0, 5, 8);
@@ -714,6 +717,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         } else {
                             controls.target.set(0, 0, 0);
                         }
+                        if (settings.accumulate !== undefined) {
+                            document.getElementById('accumulateCheck').checked = settings.accumulate;
+                            updatePointCloud();
+                        }
                     } catch (e) {
                         controls.reset();
                         camera.position.set(0, 5, 8);
@@ -738,7 +745,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     },
                     controls: {
                         target: { x: controls.target.x, y: controls.target.y, z: controls.target.z }
-                    }
+                    },
+                    accumulate: document.getElementById('accumulateCheck').checked
                 };
                 
                 // Save to localStorage as the default for future page loads
@@ -780,6 +788,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                             controls.target.set(settings.controls.target.x, settings.controls.target.y, settings.controls.target.z);
                         }
                         controls.update();
+                        
+                        if (settings.accumulate !== undefined) {
+                            document.getElementById('accumulateCheck').checked = settings.accumulate;
+                            updatePointCloud();
+                        }
                         
                         // Also save to localStorage as the new default
                         localStorage.setItem('lidarSettings', JSON.stringify(settings));
