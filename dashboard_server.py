@@ -119,7 +119,15 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 @app.route('/')
 def index():
     """Render the dashboard front-page UI."""
-    return render_template('new_dashboard.html')
+    lidar_settings = None
+    settings_file = Path(__file__).resolve().parent / 'lidar_settings.json'
+    if settings_file.exists():
+        try:
+            with open(settings_file, 'r', encoding='utf-8') as f:
+                lidar_settings = json.load(f)
+        except Exception as e:
+            print(f"[Dashboard Server] Error loading lidar_settings.json: {e}")
+    return render_template('new_dashboard.html', server_lidar_settings=lidar_settings)
 
 @app.route('/video_feed')
 def video_feed():

@@ -257,14 +257,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px; gap: 6px;">
                 <label class="checkbox-container">
-                    <input type="checkbox" id="alignCheck" checked>
-                    <span>ALIGN DOG</span>
-                </label>
-                <label class="checkbox-container">
                     <input type="checkbox" id="accumulateCheck">
                     <span>ACCUMULATE MAP</span>
                 </label>
                 <button id="resetViewBtn" style="font-size: 0.55rem; padding: 2px 6px;">RESET</button>
+            </div>
+            <div style="display: flex; gap: 6px; margin-top: 8px; justify-content: space-between; width: 100%;">
+                <button id="saveLidarSettings" style="font-size: 0.6rem; padding: 4px 6px; flex: 1;">SAVE SETTINGS</button>
+                <button id="importLidarSettingsBtn" style="font-size: 0.6rem; padding: 4px 6px; flex: 1;">IMPORT</button>
+                <input type="file" id="importLidarSettingsFile" accept=".json" style="display: none;">
             </div>
         </div>
     </div>
@@ -325,7 +326,38 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
             // Camera
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.set(0, 5, 8);
+            
+            // Load default settings from server or localStorage if available
+            const serverSettings = _SETTINGS_PLACEHOLDER_;
+            const savedSettingsStr = localStorage.getItem('lidarSettings');
+            let initialSettings = null;
+            if (serverSettings) {
+                initialSettings = serverSettings;
+            } else if (savedSettingsStr) {
+                try {
+                    initialSettings = JSON.parse(savedSettingsStr);
+                } catch (e) {
+                    console.warn("Failed to parse saved settings from localStorage:", e);
+                }
+            }
+
+            if (initialSettings) {
+                try {
+                    if (initialSettings.camera && initialSettings.camera.position) {
+                        camera.position.set(initialSettings.camera.position.x, initialSettings.camera.position.y, initialSettings.camera.position.z);
+                    } else {
+                        camera.position.set(0, 5, 8);
+                    }
+                    if (initialSettings.camera && initialSettings.camera.zoom !== undefined) {
+                        camera.zoom = initialSettings.camera.zoom;
+                    }
+                } catch (e) {
+                    console.warn("Failed to apply initial settings:", e);
+                    camera.position.set(0, 5, 8);
+                }
+            } else {
+                camera.position.set(0, 5, 8);
+            }
 
             // Renderer - force preserveDrawingBuffer for canvas capture if recording
             renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: shouldRecord });
@@ -341,6 +373,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             controls.maxPolarAngle = Math.PI / 2 + 0.1; // allow slightly below grid level
             controls.minDistance = 1;
             controls.maxDistance = 50;
+
+            if (initialSettings && initialSettings.controls && initialSettings.controls.target) {
+                controls.target.set(initialSettings.controls.target.x, initialSettings.controls.target.y, initialSettings.controls.target.z);
+            } else {
+                controls.target.set(0, 0, 0);
+            }
+            controls.update();
 
             // Grid Helper
             const gridHelper = new THREE.GridHelper(40, 40, 0x00ff66, 0x222226);
@@ -455,7 +494,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             slider.value = currentFrameIndex;
 
             // Align pointsObject and accumulatedPointsObject to the dog's body frame
-            const alignCheck = document.getElementById('alignCheck').checked;
+            const alignCheckEl = document.getElementById('alignCheck');
+            const alignCheck = alignCheckEl ? alignCheckEl.checked : true;
             if (alignCheck && snapshot.slam_pose) {
                 const pos = snapshot.slam_pose.position;
                 const ori = snapshot.slam_pose.orientation;
@@ -656,9 +696,100 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             });
 
             resetViewBtn.addEventListener('click', () => {
-                controls.reset();
-                camera.position.set(0, 5, 8);
-                controls.target.set(0, 0, 0);
+                const savedSettingsStr = localStorage.getItem('lidarSettings');
+                if (savedSettingsStr) {
+                    try {
+                        const settings = JSON.parse(savedSettingsStr);
+                        if (settings.camera && settings.camera.position) {
+                            camera.position.set(settings.camera.position.x, settings.camera.position.y, settings.camera.position.z);
+                        } else {
+                            camera.position.set(0, 5, 8);
+                        }
+                        if (settings.camera && settings.camera.zoom !== undefined) {
+                            camera.zoom = settings.camera.zoom;
+                            camera.updateProjectionMatrix();
+                        }
+                        if (settings.controls && settings.controls.target) {
+                            controls.target.set(settings.controls.target.x, settings.controls.target.y, settings.controls.target.z);
+                        } else {
+                            controls.target.set(0, 0, 0);
+                        }
+                    } catch (e) {
+                        controls.reset();
+                        camera.position.set(0, 5, 8);
+                        controls.target.set(0, 0, 0);
+                    }
+                } else {
+                    controls.reset();
+                    camera.position.set(0, 5, 8);
+                    controls.target.set(0, 0, 0);
+                }
+                controls.update();
+            });
+
+            // Save LiDAR Settings (Download & LocalStorage)
+            document.getElementById('saveLidarSettings').addEventListener('click', (e) => {
+                e.preventDefault();
+                const settings = {
+                    camera: {
+                        position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+                        rotation: { x: camera.rotation.x, y: camera.rotation.y, z: camera.rotation.z },
+                        zoom: camera.zoom
+                    },
+                    controls: {
+                        target: { x: controls.target.x, y: controls.target.y, z: controls.target.z }
+                    }
+                };
+                
+                // Save to localStorage as the default for future page loads
+                localStorage.setItem('lidarSettings', JSON.stringify(settings));
+                
+                // Trigger JSON download
+                const blob = new Blob([JSON.stringify(settings, null, 4)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'lidar_settings.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+            // Import LiDAR Settings
+            document.getElementById('importLidarSettingsBtn').addEventListener('click', (e) => {
+                e.preventDefault();
+                document.getElementById('importLidarSettingsFile').click();
+            });
+
+            document.getElementById('importLidarSettingsFile').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    try {
+                        const settings = JSON.parse(evt.target.result);
+                        if (settings.camera && settings.camera.position) {
+                            camera.position.set(settings.camera.position.x, settings.camera.position.y, settings.camera.position.z);
+                        }
+                        if (settings.camera && settings.camera.zoom !== undefined) {
+                            camera.zoom = settings.camera.zoom;
+                            camera.updateProjectionMatrix();
+                        }
+                        if (settings.controls && settings.controls.target) {
+                            controls.target.set(settings.controls.target.x, settings.controls.target.y, settings.controls.target.z);
+                        }
+                        controls.update();
+                        
+                        // Also save to localStorage as the new default
+                        localStorage.setItem('lidarSettings', JSON.stringify(settings));
+                        console.log("LiDAR settings imported and saved to localStorage.");
+                    } catch (err) {
+                        alert("Failed to parse settings JSON: " + err.message);
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = ''; // Clear value
             });
         }
 
@@ -842,9 +973,27 @@ def main():
         print("No valid LiDAR snapshots found.")
         sys.exit(1)
 
+    # Load settings from lidar_settings.json if it exists
+    settings_data = None
+    possible_paths = [
+        os.path.join(capture_dir, "lidar_settings.json"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "lidar_settings.json")
+    ]
+    for p in possible_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    settings_data = json.load(f)
+                    print(f"Loaded LiDAR settings from: {p}")
+                    break
+            except Exception as e:
+                print(f"Failed to read settings from {p}: {e}")
+
     # Ingest data into the HTML template
     data_json = json.dumps(snapshots_data)
+    settings_json = json.dumps(settings_data) if settings_data else "null"
     html_content = HTML_TEMPLATE.replace("_DATA_PLACEHOLDER_", data_json)
+    html_content = html_content.replace("_SETTINGS_PLACEHOLDER_", settings_json)
 
     # Write output html file to the capture directory
     output_filename = "lidar_view.html"

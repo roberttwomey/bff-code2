@@ -41,10 +41,16 @@ A robust data acquisition, real-time telemetry, and visualization system for the
 ## Usage Instructions
 
 ### 1. Launch the Dashboard Server
-Start the main dashboard. This connects to the robot over WebRTC, begins streaming telemetry/media, and starts recording:
+Start the main dashboard in live connection mode (which connects to the robot over WebRTC, streams telemetry/media, and starts recording):
 ```bash
 python dashboard_server.py
 ```
+
+Or launch it in **Simulation Mode** (which replays the most recent session from the `captures/` folder):
+```bash
+python dashboard_server.py --simulate
+```
+
 * **Access Dashboard:** Open your browser and navigate to `http://localhost:8080` (or the local network URL printed on boot).
 * **Control YOLO:** Toggle the **YOLO DETECT** checkbox in the Video Feed panel to pause or resume inference.
 * **Shutdown Capture:** Press `Ctrl+C` in your terminal. The server will cleanly release streams, write trailing metadata, and compile the final `video_annotated.mp4` video.

@@ -447,6 +447,27 @@
             border-color: #ffffff;
         }
 
+        .ui-button {
+            font-size: 0.7rem;
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 4px 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ui-button:hover {
+            background: #ffffff;
+            color: #000000;
+            border-color: #ffffff;
+        }
+
         /* Console styling */
         .console-container {
             width: 100%;
@@ -635,10 +656,6 @@
                                 <label for="interactMap">INTERACT MAP</label>
                             </div>
                             <div class="ui-checkbox">
-                                <input type="checkbox" id="alignToDog" checked>
-                                <label for="alignToDog">ALIGN DOG</label>
-                            </div>
-                            <div class="ui-checkbox">
                                 <input type="checkbox" id="autoFrame">
                                 <label for="autoFrame">AUTO FRAME</label>
                             </div>
@@ -656,6 +673,9 @@
                                 <input type="range" id="lidarPointSize" min="1" max="10" value="4" step="1">
                                 <span id="sizeVal">4px</span>
                             </div>
+                            <button id="saveLidarSettings" class="ui-button">Save Settings</button>
+                            <button id="importLidarSettingsBtn" class="ui-button">Import Settings</button>
+                            <input type="file" id="importLidarSettingsFile" accept=".json" style="display: none;">
                         </div>
                     </div>
                 </div>
@@ -698,8 +718,38 @@
         scene.background = null;
 
         const camera = new THREE.PerspectiveCamera(60, 1280 / 720, 0.1, 100);
-        // Default position: slightly elevated looking down at the origin
-        camera.position.set(0, 5, 8);
+
+        // Load default settings from server or localStorage if available
+        const serverSettings = {{ server_lidar_settings|tojson|safe if server_lidar_settings else 'null' }};
+        const savedSettingsStr = localStorage.getItem('lidarSettings');
+        let initialSettings = null;
+        if (serverSettings) {
+            initialSettings = serverSettings;
+        } else if (savedSettingsStr) {
+            try {
+                initialSettings = JSON.parse(savedSettingsStr);
+            } catch (e) {
+                console.warn("Failed to parse saved settings from localStorage:", e);
+            }
+        }
+
+        if (initialSettings) {
+            try {
+                if (initialSettings.camera && initialSettings.camera.position) {
+                    camera.position.set(initialSettings.camera.position.x, initialSettings.camera.position.y, initialSettings.camera.position.z);
+                } else {
+                    camera.position.set(0, 5, 8);
+                }
+                if (initialSettings.camera && initialSettings.camera.zoom !== undefined) {
+                    camera.zoom = initialSettings.camera.zoom;
+                }
+            } catch (e) {
+                console.warn("Failed to apply initial settings:", e);
+                camera.position.set(0, 5, 8);
+            }
+        } else {
+            camera.position.set(0, 5, 8);
+        }
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(1280, 720);
@@ -722,7 +772,13 @@
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.maxPolarAngle = Math.PI / 2 + 0.15; // Don't let users rotate below the ground line too much
-        controls.target.set(0, 0, 0);
+        
+        if (initialSettings && initialSettings.controls && initialSettings.controls.target) {
+            controls.target.set(initialSettings.controls.target.x, initialSettings.controls.target.y, initialSettings.controls.target.z);
+        } else {
+            controls.target.set(0, 0, 0);
+        }
+        controls.update();
 
         // Grid helper representing ground plane
         // const gridHelper = new THREE.GridHelper(30, 30, 0x00ff66, 0x222226);
@@ -758,7 +814,8 @@
             requestAnimationFrame(animate);
 
             // Align pointsObject rotation and translation to the dog's body frame
-            const alignToDog = document.getElementById('alignToDog').checked;
+            const alignToDogEl = document.getElementById('alignToDog');
+            const alignToDog = alignToDogEl ? alignToDogEl.checked : true;
             if (alignToDog && currentSlamPose) {
                 const pos = currentSlamPose.position;
                 const ori = currentSlamPose.orientation;
@@ -1148,7 +1205,7 @@
         // Toggle LiDAR Footer Minimize/Expand
         const lidarFooterEl = document.getElementById('lidarFooter');
         lidarFooterEl.addEventListener('click', (e) => {
-            if (e.target.closest('.ui-checkbox') || e.target.closest('.ui-slider') || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
+            if (e.target.closest('.ui-checkbox') || e.target.closest('.ui-slider') || e.target.closest('.ui-button') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
                 return;
             }
             lidarFooterEl.classList.toggle('minimized');
@@ -1165,6 +1222,73 @@
             } else {
                 canvasElement.style.pointerEvents = 'none';
             }
+        });
+
+        // Save LiDAR Settings (Download & LocalStorage)
+        document.getElementById('saveLidarSettings').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const settings = {
+                camera: {
+                    position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+                    rotation: { x: camera.rotation.x, y: camera.rotation.y, z: camera.rotation.z },
+                    zoom: camera.zoom
+                },
+                controls: {
+                    target: { x: controls.target.x, y: controls.target.y, z: controls.target.z }
+                }
+            };
+            
+            // Save to localStorage as the default for future page loads
+            localStorage.setItem('lidarSettings', JSON.stringify(settings));
+            
+            // Trigger JSON download
+            const blob = new Blob([JSON.stringify(settings, null, 4)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'lidar_settings.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Import LiDAR Settings
+        document.getElementById('importLidarSettingsBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('importLidarSettingsFile').click();
+        });
+
+        document.getElementById('importLidarSettingsFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const settings = JSON.parse(evt.target.result);
+                    if (settings.camera && settings.camera.position) {
+                        camera.position.set(settings.camera.position.x, settings.camera.position.y, settings.camera.position.z);
+                    }
+                    if (settings.camera && settings.camera.zoom !== undefined) {
+                        camera.zoom = settings.camera.zoom;
+                        camera.updateProjectionMatrix();
+                    }
+                    if (settings.controls && settings.controls.target) {
+                        controls.target.set(settings.controls.target.x, settings.controls.target.y, settings.controls.target.z);
+                    }
+                    controls.update();
+                    
+                    // Also save to localStorage as the new default
+                    localStorage.setItem('lidarSettings', JSON.stringify(settings));
+                    console.log("LiDAR settings imported and saved to localStorage.");
+                } catch (err) {
+                    alert("Failed to parse settings JSON: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = ''; // Clear value
         });
     </script>
 </body>
