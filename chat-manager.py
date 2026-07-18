@@ -24,7 +24,8 @@ To test just ollama:
 ollama run gemma3n:e2b
 
 Environment variables:
-    BFF_OLLAMA_MODEL   override Ollama model name (default: gemma3n:e2b)
+    BFF_OLLAMA_MODEL   override Ollama model name for text chat (default: gemma3n:e2b)
+    BFF_VLM_MODEL      override Ollama model name for VLM scene captioning (default: moondream)
     BFF_WHISPER_MODEL  override Whisper model size (default: base)
     BFF_PIPER_VOICE    override Piper voice path if --piper-voice not provided
     BFF_INTERRUPTABLE  override interruptable behavior (default: true)
@@ -159,6 +160,7 @@ DEFAULT_SYSTEM_PROMPT = (
 )
 
 DEFAULT_OLLAMA_MODEL = os.environ.get("BFF_OLLAMA_MODEL", "gemma3n:e2b")
+DEFAULT_VLM_MODEL = os.environ.get("BFF_VLM_MODEL", "moondream")
 DEFAULT_WHISPER_MODEL = os.environ.get("BFF_WHISPER_MODEL", "tiny")
 DEFAULT_SAMPLE_RATE = int(os.environ.get("BFF_SAMPLE_RATE", "16000"))
 DEFAULT_PLAYBACK_SPEED = float(os.environ.get("BFF_PLAYBACK_SPEED", "1.0"))
@@ -205,6 +207,7 @@ class ConversationConfig:
     """Runtime configuration for the voice chat assistant."""
 
     ollama_model: str = DEFAULT_OLLAMA_MODEL
+    vlm_model: str = DEFAULT_VLM_MODEL
     whisper_model: str = DEFAULT_WHISPER_MODEL
     whisper_compute_type: str = "int8"  # optimized for Jetson
     piper_voice: Path | None = None
@@ -257,6 +260,11 @@ def parse_args() -> ConversationConfig:
         "--ollama-model",
         default=DEFAULT_OLLAMA_MODEL,
         help="Ollama model name to use (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--vlm-model",
+        default=DEFAULT_VLM_MODEL,
+        help="Ollama model name to use for VLM scene captioning (default: %(default)s)",
     )
     parser.add_argument(
         "--ollama-think",
@@ -442,6 +450,7 @@ def parse_args() -> ConversationConfig:
 
     return ConversationConfig(
         ollama_model=args.ollama_model,
+        vlm_model=args.vlm_model,
         whisper_model=args.whisper_model,
         whisper_compute_type=args.whisper_compute_type,
         piper_voice=args.piper_voice,
@@ -1859,10 +1868,9 @@ class VLMBackgroundWorker:
         if not self.aes_key:
             self.aes_key = None
         
-        # Load interval, idle, and stale thresholds from environment or default
-        self.vlm_interval = float(os.getenv("BFF_VLM_INTERVAL", "30.0"))
-        self.vlm_idle_threshold = float(os.getenv("BFF_VLM_IDLE_THRESHOLD", "20.0"))
-        self.vlm_stale_threshold = float(os.getenv("BFF_VLM_STALE_THRESHOLD", "15.0"))
+        # Minimum gap between capture starts. Default 0 = back-to-back, continuous
+        # capture paced only by the VLM's own latency (~1-2s with moondream).
+        self.vlm_interval = float(os.getenv("BFF_VLM_INTERVAL", "0.0"))
         
     def start(self):
         self.thread = threading.Thread(target=self._run, daemon=True)
@@ -1874,30 +1882,22 @@ class VLMBackgroundWorker:
             self.thread.join(timeout=1.0)
             
     def _run(self):
-        global latest_scene_description, last_vlm_query_time, is_dialogue_active, last_interaction_time
-        print("[VLM Worker] Started background VLM worker thread.", file=sys.stderr)
-        
+        global last_vlm_query_time
+        print("[VLM Worker] Started background VLM worker thread (continuous capture).", file=sys.stderr)
+
         while not self.stop_event.is_set():
-            # Wait in small sleep chunks to be responsive to shutdown
-            for _ in range(5):
-                if self.stop_event.is_set():
-                    break
-                time.sleep(0.2)
-            if self.stop_event.is_set():
-                break
-                
-            now = time.time()
-            time_since_interaction = now - last_interaction_time
-            time_since_vlm = now - last_vlm_query_time
-            
-            # Trigger if dialogue is inactive AND (never queried before OR idle thresholds met)
-            is_idle = time_since_interaction >= self.vlm_idle_threshold and time_since_vlm >= self.vlm_interval
-            if not is_dialogue_active and (last_vlm_query_time == 0.0 or is_idle):
-                if last_vlm_query_time == 0.0:
-                    print("[VLM Worker] Dialogue is inactive for the first time. Triggering initial VLM capture...", file=sys.stderr)
-                else:
-                    print(f"[VLM Worker] Dialogue is inactive and idle for {time_since_interaction:.1f}s. Triggering capture...", file=sys.stderr)
-                self._capture_and_query()
+            # Don't start a new capture while the chat model is generating a
+            # response - both share one GPU, so overlapping inference slows
+            # down the interactive turn, which matters more than VLM freshness.
+            if is_dialogue_active:
+                time.sleep(0.1)
+                continue
+
+            self._capture_and_query()
+
+            wait_until = last_vlm_query_time + self.vlm_interval
+            while time.time() < wait_until and not self.stop_event.is_set():
+                time.sleep(0.1)
 
     def _capture_and_query(self):
         global latest_scene_description, last_vlm_query_time
@@ -1953,17 +1953,8 @@ class VLMBackgroundWorker:
         print(f"[VLM Worker] Snapshot saved to {image_path}", file=sys.stderr)
         
         # Query Ollama VLM
-        model_name = self.config.ollama_model
-        prompt = """You are the visual processing unit for the SNAPPER robot dog. Analyze the input image and output a dense, flat list of semantic tags, objects, spatial layout, and environmental context. 
-
-Strict constraints:
-1. No conversational filler, intro, or outro text.
-2. No markdown formatting, bullet points, or line breaks.
-3. Output a single, continuous paragraph of comma-separated descriptions.
-4. Prioritize: Exact object names, spatial relationships (e.g., "chair left of table"), room type, lighting conditions, and human presence/actions.
-
-Example Format:
-[room type], [primary lighting], [object 1 with location], [object 2], [detected person with posture/action]"""
+        model_name = self.config.vlm_model
+        prompt = "Describe the scene: setting, objects present, lighting, and any people and what they are doing."
         
         try:
             client = ollama.Client()
@@ -1982,20 +1973,14 @@ Example Format:
             )
             
             description_chunks = []
-            aborted = False
             for chunk in stream:
-                # If dialogue became active while we were querying, abort immediately
-                # to prevent holding up the dialogue language query
-                if is_dialogue_active or self.stop_event.is_set():
-                    print("[VLM Worker] Dialogue active! Aborting VLM query to free up Ollama.", file=sys.stderr)
+                if self.stop_event.is_set():
                     try:
                         stream.close()
                     except Exception:
                         pass
-                    aborted = True
-                    break
-                
-                # Extract content
+                    return
+
                 content = ""
                 if isinstance(chunk, dict):
                     content = chunk.get("message", {}).get("content", "")
@@ -2004,32 +1989,7 @@ Example Format:
                     if msg:
                         content = getattr(msg, "content", "")
                 description_chunks.append(content)
-                
-            if aborted:
-                # Fallback to YOLO detections as a scene descriptor
-                try:
-                    import urllib.request
-                    import json
-                    yolo_url = f"http://localhost:{dashboard_port}/detections"
-                    with urllib.request.urlopen(yolo_url, timeout=2.0) as response:
-                        data = json.loads(response.read().decode())
-                        dets = data.get('detections', [])
-                        classes = [d['class'] for d in dets]
-                        if classes:
-                            # Unique and sorted list of classes
-                            unique_classes = sorted(list(set(classes)))
-                            yolo_desc = f"YOLO detected: {', '.join(unique_classes)}"
-                        else:
-                            yolo_desc = "YOLO detected nothing"
-                        
-                        with vlm_lock:
-                            latest_scene_description = yolo_desc
-                            last_vlm_query_time = time.time()
-                        print(f"[VLM Worker] VLM query aborted. Fallback to YOLO descriptor: {yolo_desc}", file=sys.stderr)
-                except Exception as yolo_err:
-                    print(f"[VLM Worker] Failed to fetch YOLO fallback: {yolo_err}", file=sys.stderr)
-                return
-                
+
             query_duration = time.perf_counter() - query_start
             description = "".join(description_chunks).strip()
             
@@ -2775,46 +2735,13 @@ def run_conversation(config: ConversationConfig) -> None:
                     turn += 1
                     continue
 
-            # --- VLM Visual Context & Query Handling ---
-            visual_keywords = [
-                "what do you see", 
-                "what are you looking at", 
-                "look at me", 
-                "who is this", 
-                "what is in front of you", 
-                "describe the room"
-            ]
-            user_asking_visual = any(kw in user_text.lower() for kw in visual_keywords)
-            
+            # --- VLM Visual Context Injection ---
+            # The background worker captures continuously (~1-2s cadence with a fast
+            # VLM like moondream), so the cache is always near-fresh; no on-demand
+            # synchronous capture is needed here.
             with vlm_lock:
                 current_description = latest_scene_description
-                vlm_age = time.time() - last_vlm_query_time
-                
-            if user_asking_visual:
-                # If cache is empty or stale, trigger immediate VLM capture & query
-                if not current_description or vlm_age > vlm_worker.vlm_stale_threshold:
-                    print(f"User asked visual query: '{user_text}'. Cached scene description is stale ({vlm_age:.1f}s) or empty. Triggering immediate capture...", file=sys.stderr)
-                    try:
-                        # Play vocal acknowledgment: "Let me look."
-                        vlm_ack_text = "Let me look."
-                        vlm_ack_audio = session_dir / f"turn-{turn:03d}-vlm-ack.wav"
-                        synthesize_with_piper(piper_voice, vlm_ack_text, vlm_ack_audio)
-                        playback_interrupt.clear()
-                        play_audio(
-                            vlm_ack_audio,
-                            playback_interrupt,
-                            interruptable=False,
-                            output_device_indices=config.output_device_indices,
-                            output_sample_rate=config.output_sample_rate,
-                        )
-                    except Exception as exc:
-                        print(f"VLM ack TTS/playback error: {exc}", file=sys.stderr)
-                        
-                    # Trigger synchronous capture and query via the worker
-                    vlm_worker._capture_and_query()
-                    with vlm_lock:
-                        current_description = latest_scene_description
-            
+
             # Clean up old visual context messages from dialogue history to avoid context bloating
             messages = [m for m in messages if not (m["role"] == "system" and m["content"].startswith("Visual context (what you see):"))]
             
