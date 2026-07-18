@@ -33,11 +33,12 @@ yolo_model = None
 try:
     from ultralytics import YOLO
     import torch
-    if os.path.exists("yolo11n.pt"):
-        yolo_model = YOLO("yolo11n.pt")
+    yolo_model_name = os.getenv("BFF_YOLO_MODEL", "yolo11n.pt")
+    if os.path.exists(yolo_model_name):
+        yolo_model = YOLO(yolo_model_name)
     else:
-        print("[YOLO] yolo11n.pt not found locally, downloading/initializing via Ultralytics...", file=sys.stderr)
-        yolo_model = YOLO("yolo11n.pt")
+        print(f"[YOLO] {yolo_model_name} not found locally, downloading/initializing via Ultralytics...", file=sys.stderr)
+        yolo_model = YOLO(yolo_model_name)
         
     # Automatically move model to best GPU if available (MPS on macOS, CUDA on Linux)
     if torch.backends.mps.is_available():
