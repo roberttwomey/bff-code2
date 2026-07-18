@@ -1141,6 +1141,51 @@ def resample_audio(
     return resampled
 
 
+class UnifiedAudioSystem:
+    def __init__(self):
+        self.active_buffer: np.ndarray = np.array([], dtype=np.float32)
+        self.buffer_mutex = threading.Lock()
+        self.interrupt_event = threading.Event()
+        self.is_playing = False
+
+    def play_chunk(self, chunk: np.ndarray):
+        with self.buffer_mutex:
+            if chunk.ndim > 1:
+                chunk = chunk.flatten()
+            self.active_buffer = np.concatenate((self.active_buffer, chunk.astype(np.float32)))
+            self.is_playing = True
+
+    def clear(self):
+        with self.buffer_mutex:
+            self.active_buffer = np.array([], dtype=np.float32)
+            self.is_playing = False
+
+    def fill_output(self, outdata: np.ndarray, frames: int):
+        with self.buffer_mutex:
+            if self.interrupt_event.is_set():
+                self.active_buffer = np.array([], dtype=np.float32)
+                self.is_playing = False
+                self.interrupt_event.clear()
+
+            n_samples = len(self.active_buffer)
+            if n_samples == 0:
+                outdata.fill(0.0)
+                self.is_playing = False
+                return
+
+            if n_samples >= frames:
+                outdata[:, 0] = self.active_buffer[:frames]
+                self.active_buffer = self.active_buffer[frames:]
+            else:
+                outdata[:n_samples, 0] = self.active_buffer
+                outdata[n_samples:, 0] = 0.0
+                self.active_buffer = np.array([], dtype=np.float32)
+                self.is_playing = False
+
+
+unified_audio = UnifiedAudioSystem()
+
+
 def phrase_stream(
     config: ConversationConfig, 
     stop_event: threading.Event | None = None,
@@ -1162,19 +1207,23 @@ def phrase_stream(
 
     q: queue.Queue[np.ndarray] = queue.Queue()
 
-    def audio_callback(indata, frames, time_info, status):
+    def audio_callback(indata, outdata, frames, time_info, status):
         # if status:
         #     print(f"[vad] {status}", file=sys.stderr)
         q.put(indata.copy())
+        unified_audio.fill_output(outdata, frames)
 
     print("Listening continuously… (Ctrl+C to exit)")
-    with sd.InputStream(
+    with sd.Stream(
         samplerate=config.sample_rate,
-        channels=channels,
+        channels=(channels, 1),
         dtype="float32",
         blocksize=block_size,
         callback=audio_callback,
-        device=config.input_device_index,
+        device=(
+            config.input_device_index,
+            config.output_device_indices[0] if config.output_device_indices else None
+        ),
     ):
         recording = False
         silence_blocks = 0
@@ -1644,12 +1693,7 @@ def play_audio_stream(
     output_device_indices: list[str] | None = None,
     output_sample_rate: int | None = None,
 ) -> None:
-    # print(f"Starting audio playback stream at {sample_rate}Hz...", file=sys.stderr)
     try:
-        # block_size = max(1024, sample_rate // 10) # 100ms latency
-        # Smaller block size for lower latency?
-        block_size = 1024 
-
         wav_file = None
         if save_path:
             wav_file = wave.open(str(save_path), "wb")
@@ -1657,76 +1701,38 @@ def play_audio_stream(
             wav_file.setsampwidth(2) # 16-bit PCM
             wav_file.setframerate(sample_rate)
 
-        stream_rate = output_sample_rate or sample_rate
-        streams: list[sd.OutputStream] = []
-        if output_device_indices:
-            for device_idx in output_device_indices:
-                try:
-                    streams.append(
-                        sd.OutputStream(
-                            samplerate=stream_rate,
-                            channels=1,
-                            dtype="float32",
-                            blocksize=block_size,
-                            device=device_idx,
-                        )
-                    )
-                except Exception as exc:
-                    print(
-                        f"Playback warning: could not open output device {device_idx}: {exc}",
-                        file=sys.stderr,
-                    )
-        if not streams:
-            streams.append(
-                sd.OutputStream(
-                    samplerate=stream_rate,
-                    channels=1,
-                    dtype="float32",
-                    blocksize=block_size,
-                )
-            )
+        target_rate = 16000
+        
+        while True:
+            if interruptable and interrupt_event.is_set():
+                unified_audio.clear()
+                break
 
-        for stream in streams:
-            stream.start()
+            try:
+                chunk = audio_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
 
-        try:
-            while True:
-                if interruptable and interrupt_event.is_set():
-                    # Gracefully stop playback when interrupted
-                    # print("Playback interrupted by event.", file=sys.stderr)
-                    break
+            if chunk is None:
+                # End of stream
+                break
 
-                try:
-                    chunk = audio_queue.get(timeout=0.1)
-                except queue.Empty:
-                    continue
+            # Process chunk for playing
+            play_chunk = chunk.copy()
+            if sample_rate != target_rate:
+                play_chunk = resample_audio(play_chunk, sample_rate, target_rate)
 
-                if chunk is None:
-                    # End of stream
-                    break
+            # Write chunk to unified audio system
+            unified_audio.play_chunk(play_chunk)
 
-                # Write chunk to stream
-                # sd.OutputStream.write expects (frames, channels)
+            # Write original chunk to wav file if needed
+            if wav_file:
                 if chunk.ndim == 1:
                     chunk = chunk[:, np.newaxis]
+                clipped = np.clip(chunk, -1.0, 1.0)
+                int16_data = (clipped * 32767).astype(np.int16)
+                wav_file.writeframes(int16_data.tobytes())
 
-                if stream_rate != sample_rate:
-                    chunk = resample_audio(chunk, sample_rate, stream_rate)
-
-                for stream in streams:
-                    stream.write(chunk)
-
-                if wav_file:
-                    # Convert float32 back to int16 for wav
-                    # formatting: clip to [-1, 1], scale to 32767
-                    clipped = np.clip(chunk, -1.0, 1.0)
-                    int16_data = (clipped * 32767).astype(np.int16)
-                    wav_file.writeframes(int16_data.tobytes())
-        finally:
-            for stream in streams:
-                stream.stop()
-                stream.close()
-        
         if wav_file:
             wav_file.close()
                 
@@ -1741,67 +1747,35 @@ def play_audio(
     output_device_indices: list[str] | None = None,
     output_sample_rate: int | None = None,
 ) -> bool:
-    data, samplerate = sf.read(audio_path, dtype="float32")
-    if output_sample_rate and output_sample_rate != samplerate:
-        data = resample_audio(data, samplerate, output_sample_rate)
-        samplerate = output_sample_rate
-    if data.ndim == 1:
-        data = data[:, np.newaxis]
-    frames_total = data.shape[0]
-    channels = data.shape[1]
-    block = max(1024, samplerate // 10)
-
-    interrupt_event.clear()
-
-    streams: list[sd.OutputStream] = []
-    if output_device_indices:
-        for device_idx in output_device_indices:
-            try:
-                streams.append(
-                    sd.OutputStream(
-                        samplerate=samplerate,
-                        channels=channels,
-                        dtype="float32",
-                        device=device_idx,
-                    )
-                )
-            except Exception as exc:
-                print(
-                    f"Playback warning: could not open output device {device_idx}: {exc}",
-                    file=sys.stderr,
-                )
-    if not streams:
-        streams.append(
-            sd.OutputStream(
-                samplerate=samplerate,
-                channels=channels,
-                dtype="float32",
-            )
-        )
-
-    for stream in streams:
-        stream.start()
-
     try:
-        cursor = 0
-        while cursor < frames_total:
+        data, samplerate = sf.read(audio_path, dtype="float32")
+        
+        # Always resample to 16000Hz (the bidirectional stream rate)
+        target_rate = 16000
+        if samplerate != target_rate:
+            data = resample_audio(data, samplerate, target_rate)
+            samplerate = target_rate
+            
+        if data.ndim > 1:
+            data = data.mean(axis=1) # mix down to mono
+            
+        interrupt_event.clear()
+        
+        # Clear any active playback and queue the new sound
+        unified_audio.clear()
+        unified_audio.play_chunk(data)
+        
+        # Wait until playback is finished or interrupted
+        while unified_audio.is_playing:
             if interruptable and interrupt_event.is_set():
-                for stream in streams:
-                    stream.abort()
-                    stream.stop()
+                unified_audio.clear()
                 return False
-
-            end = min(cursor + block, frames_total)
-            chunk = data[cursor:end]
-            for stream in streams:
-                stream.write(chunk)
-            cursor = end
-    finally:
-        for stream in streams:
-            stream.stop()
-            stream.close()
-
-    return True
+            time.sleep(0.05)
+            
+        return True
+    except Exception as e:
+        print(f"Playback Error: {e}", file=sys.stderr)
+        return False
 
 
 def is_lets_stop_command(text: str) -> bool:
@@ -2196,44 +2170,13 @@ def run_conversation(config: ConversationConfig) -> None:
         try:
             default_device = sd.query_devices(kind='input')
             default_name = default_device.get('name', 'unknown') if default_device else 'unknown'
-            
-            # Check if default input is a Bluetooth headset (which causes output silence on HFP switch)
-            is_bluetooth_input = any(kw in default_name.lower() for kw in ["openrun", "shokz", "bluetooth", "headset", "hands-free"])
-            
-            if is_bluetooth_input:
-                # Find a built-in microphone
-                builtin_idx = None
-                for idx, dev in enumerate(sd.query_devices()):
-                    dev_name = dev.get("name", "")
-                    if "microphone" in dev_name.lower() or "built-in" in dev_name.lower():
-                        if dev.get("max_input_channels", 0) > 0:
-                            builtin_idx = idx
-                            default_name = dev_name
-                            break
-                
-                if builtin_idx is not None:
-                    config.input_device_index = builtin_idx
-                    print(
-                        f"Notice: Using a Bluetooth headset for input on macOS causes output silence due to HFP limitations.\n"
-                        f"Falling back to built-in microphone for input: '{default_name}'\n"
-                        f"This allows headphones to remain in high-quality playback mode.",
-                        file=sys.stderr,
-                    )
-                else:
-                    print(
-                        f"On macOS, using system default input device: '{default_name}'.",
-                        file=sys.stderr,
-                    )
-                    config.input_device_index = None
-            else:
-                print(
-                    f"On macOS, using system default input device: '{default_name}'.",
-                    file=sys.stderr,
-                )
-                config.input_device_index = None
+            print(
+                f"On macOS, using system default input device: '{default_name}'.",
+                file=sys.stderr,
+            )
         except Exception:
             print("On macOS, using system default input device.", file=sys.stderr)
-            config.input_device_index = None
+        config.input_device_index = None
     elif config.input_device_keyword:
         device_index = find_input_device(config.input_device_keyword)
         if device_index is not None:
