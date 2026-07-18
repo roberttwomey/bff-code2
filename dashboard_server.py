@@ -562,7 +562,7 @@ def main():
                 # Automatically run overlay_detections immediately on exit
                 if hasattr(capturer, 'output_dir') and capturer.output_dir:
                     try:
-                        from overlay_detections import overlay_detections
+                        from post_processing.overlay_detections import overlay_detections
                         print(f"\n[Dashboard Server] Post-processing: Overlaying YOLO detections on recorded video chunks...")
                         import glob
                         chunk_paths = sorted(glob.glob(os.path.join(capturer.output_dir, "chunk_*")))

@@ -907,7 +907,7 @@ def main():
     capture_dir = args.capture_dir
     # Auto-find newest capture directory if none provided
     if not capture_dir:
-        workspace_dir = os.path.dirname(os.path.abspath(__file__))
+        workspace_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         captures_root = os.path.join(workspace_dir, "captures")
         if not os.path.exists(captures_root):
             print(f"Error: captures/ directory not found in {workspace_dir}")
@@ -1012,7 +1012,7 @@ def main():
     settings_data = None
     possible_paths = [
         os.path.join(capture_dir, "lidar_settings.json"),
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "lidar_settings.json")
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lidar_settings.json")
     ]
     for p in possible_paths:
         if os.path.exists(p):
