@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import queue
 import re
@@ -119,6 +120,10 @@ latest_scene_description = ""
 last_vlm_query_time = 0.0
 is_dialogue_active = False
 last_interaction_time = time.time()
+
+# --- Global Body State ---
+body_state_lock = threading.Lock()
+latest_body_state = ""
 
 from piper import PiperVoice
 try:  # Optional type that some versions expose
@@ -1911,10 +1916,47 @@ class VLMBackgroundWorker:
                 continue
 
             self._capture_and_query()
+            self._fetch_body_state()
 
             wait_until = last_vlm_query_time + self.vlm_interval
             while time.time() < wait_until and not self.stop_event.is_set():
                 time.sleep(0.1)
+
+    def _fetch_body_state(self):
+        """Poll the dashboard's /lowstate endpoint and cache a compact summary
+        (battery, velocity, tilt) for injection into the LLM prompt. Foot
+        contact is deliberately excluded - it doesn't return valid data on
+        the Go2 Pro."""
+        global latest_body_state
+        dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
+        url = f"http://localhost:{dashboard_port}/lowstate"
+        try:
+            import urllib.request
+            with urllib.request.urlopen(url, timeout=2.0) as response:
+                payload = json.loads(response.read().decode())
+
+            data = payload.get("data")
+            if not data:
+                return
+
+            power_v = data.get("power_v", 0.0)
+            battery_pct = max(0.0, min(100.0, ((power_v - 22.0) / (29.6 - 22.0)) * 100))
+
+            rpy = (data.get("imu_state") or {}).get("rpy") or [0.0, 0.0, 0.0]
+            pitch_deg = math.degrees(rpy[0])
+            roll_deg = math.degrees(rpy[1])
+
+            vx, vy = (data.get("velocity") or [0.0, 0.0, 0.0])[:2]
+            speed = math.hypot(vx, vy)
+
+            summary = (
+                f"battery {battery_pct:.0f}%, velocity {speed:.2f} m/s, "
+                f"tilt pitch {pitch_deg:+.1f}° roll {roll_deg:+.1f}°"
+            )
+            with body_state_lock:
+                latest_body_state = summary
+        except Exception as e:
+            print(f"[Body State] Failed to fetch lowstate: {e}", file=sys.stderr)
 
     def _capture_and_query(self):
         global latest_scene_description, last_vlm_query_time
@@ -2779,19 +2821,29 @@ def run_conversation(config: ConversationConfig) -> None:
                     turn += 1
                     continue
 
-            # --- VLM Visual Context Injection ---
+            # --- VLM Visual Context & Body State Injection ---
             # The background worker captures continuously (~1-2s cadence with a fast
             # VLM like moondream), so the cache is always near-fresh; no on-demand
             # synchronous capture is needed here.
             with vlm_lock:
                 current_description = latest_scene_description
+            with body_state_lock:
+                current_body_state = latest_body_state
 
-            # Clean up old visual context messages from dialogue history to avoid context bloating
-            messages = [m for m in messages if not (m["role"] == "system" and m["content"].startswith("Visual context (what you see):"))]
-            
-            # Inject new visual context if available
+            # Clean up old visual context / body state messages from dialogue history to avoid context bloating
+            messages = [
+                m for m in messages
+                if not (m["role"] == "system" and (
+                    m["content"].startswith("Visual context (what you see):")
+                    or m["content"].startswith("Body state:")
+                ))
+            ]
+
+            # Inject new visual context and body state if available
             if current_description:
                 messages.append({"role": "system", "content": f"Visual context (what you see): {current_description}"})
+            if current_body_state:
+                messages.append({"role": "system", "content": f"Body state: {current_body_state}"})
 
             messages.append({"role": "user", "content": user_text})
             

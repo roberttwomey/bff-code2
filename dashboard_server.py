@@ -158,6 +158,15 @@ def detections():
             'timestamp': latest_detection_time
         })
 
+@app.route('/lowstate')
+def lowstate():
+    """Returns the latest body-state telemetry payload as JSON."""
+    from flask import jsonify
+    with lowstate_lock:
+        if latest_lowstate is None:
+            return jsonify({}), 503
+        return jsonify(latest_lowstate)
+
 
 @app.route('/toggle_yolo', methods=['POST'])
 def toggle_yolo():
@@ -223,9 +232,14 @@ def handle_camera_move(payload):
 
 # Telemetry callbacks with rate-limiting
 last_lowstate_time = 0
+latest_lowstate = None
+lowstate_lock = threading.Lock()
+
 def on_lowstate_received(payload):
-    """Relays body state telemetry JSON packet via WebSockets."""
-    global last_lowstate_time
+    """Caches body state telemetry for HTTP polling and relays it via WebSockets."""
+    global last_lowstate_time, latest_lowstate
+    with lowstate_lock:
+        latest_lowstate = payload
     now = time.time()
     if now - last_lowstate_time < 0.1:  # Limit socket emissions to 10Hz
         return
