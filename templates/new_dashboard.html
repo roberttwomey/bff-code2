@@ -133,7 +133,7 @@
         .side-column {
             position: absolute;
             top: 0;
-            right: 0;
+            left: 0;
             flex: 0 0 30%;
             width: 30%;
             max-width: 30%;
@@ -144,7 +144,7 @@
             min-width: 0;
             background: transparent !important;
             backdrop-filter: none !important;
-            border-left: 1px solid var(--panel-border);
+            border-right: 1px solid var(--panel-border);
             z-index: 40;
         }
 
@@ -447,6 +447,42 @@
             border-color: #ffffff;
         }
 
+        .ui-record-btn {
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-transform: uppercase;
+            user-select: none;
+            padding: 4px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+        .ui-record-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+            color: #ffffff;
+        }
+        .ui-record-btn.recording {
+            border-color: rgba(255, 59, 48, 0.6);
+            background: rgba(255, 59, 48, 0.1);
+            color: #ff3b30;
+        }
+        .ui-record-btn.recording .record-dot {
+            background-color: #ff3b30 !important;
+            box-shadow: 0 0 8px #ff3b30;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
         .ui-button {
             font-size: 0.7rem;
             color: #ffffff;
@@ -539,13 +575,125 @@
 
     <div class="dashboard-container">
         <div class="workspace">
-            <!-- Left Column: Video Feed (Full Height) -->
+            <!-- Left Column: Telemetry (Top) and Session Logs (Bottom) -->
+            <div class="workspace-column side-column">
+                <div class="side-column-content">
+                    <!-- Device name and Connection Status -->
+                    <div
+                        style="display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px; margin-bottom: 12px;">
+                        <div><span style="color: var(--text-muted);">DEVICE NAME:</span> <span
+                                style="color: #ffffff; font-weight: 400;">snapper.local</span></div>
+                        <div><span style="color: var(--text-muted);">CONNECTION:</span> <span id="connStatus"
+                                style="color: #ffffff; font-weight: 400;">ONLINE</span></div>
+                    </div>
+
+                    <!-- General metrics block -->
+                    <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem;">
+                        <div><span style="color: var(--text-muted);">BATTERY PERCENT:</span> <span id="headerBattery"
+                                style="color: #ffffff; font-weight: 400;">--%</span></div>
+                        <div><span style="color: var(--text-muted);">OPERATION MODE:</span> <span id="headerMode"
+                                style="color: #ffffff; font-weight: 400;">--</span></div>
+                        <div><span style="color: var(--text-muted);">PING LATENCY:</span> <span id="headerPing"
+                                style="color: #ffffff; font-weight: 400;">-- ms</span></div>
+                        <div style="height: 1px; background: var(--panel-border); margin: 6px 0;"></div>
+                        <div><span style="color: var(--text-muted);">BATTERY VOLTS:</span> <span id="batVolt"
+                                style="color: #ffffff; font-weight: 400;">-- V</span></div>
+                        <div><span style="color: var(--text-muted);">VELOCITY:</span> <span id="bodyVel"
+                                style="color: #ffffff; font-weight: 400;">-- m/s</span></div>
+                        <div><span style="color: var(--text-muted);">IMU PITCH:</span> <span id="imuPitch"
+                                style="color: #ffffff; font-weight: 400;">--°</span></div>
+                        <div><span style="color: var(--text-muted);">IMU ROLL:</span> <span id="imuRoll"
+                                style="color: #ffffff; font-weight: 400;">--°</span></div>
+                        <div><span style="color: var(--text-muted);">IMU YAW:</span> <span id="imuYaw"
+                                style="color: #ffffff; font-weight: 400;">--°</span></div>
+                        <div><span style="color: var(--text-muted);">CONTACT:</span> <span id="footContact"
+                                style="color: #ffffff; font-weight: 400;">--</span></div>
+                        <div><span style="color: var(--text-muted);">TEMP AVG:</span> <span id="jointTemp"
+                                style="color: #ffffff; font-weight: 400;">--°C</span></div>
+                        <div><span style="color: var(--text-muted);">POWER:</span> <span id="powerState"
+                                style="color: #ffffff; font-weight: 400;">--</span></div>
+                    </div>
+
+                    <!-- Joints metrics block -->
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div
+                            style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--panel-border); padding-bottom: 4px;">
+                            JOINT STATES (ROTATION rad / TEMP °C)
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                            <!-- FL Leg -->
+                            <div class="leg-column">
+                                <div class="leg-header">FL</div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fl_hip">--</span>
+                                </div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span
+                                        id="fl_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fl_calf">--</span>
+                                </div>
+                            </div>
+                            <!-- FR Leg -->
+                            <div class="leg-column">
+                                <div class="leg-header">FR</div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fr_hip">--</span>
+                                </div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span
+                                        id="fr_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fr_calf">--</span>
+                                </div>
+                            </div>
+                            <!-- RL Leg -->
+                            <div class="leg-column">
+                                <div class="leg-header">RL</div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rl_hip">--</span>
+                                </div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span
+                                        id="rl_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rl_calf">--</span>
+                                </div>
+                            </div>
+                            <!-- RR Leg -->
+                            <div class="leg-column">
+                                <div class="leg-header">RR</div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rr_hip">--</span>
+                                </div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span
+                                        id="rr_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rr_calf">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Session Logs block -->
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div
+                            style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--panel-border); padding-bottom: 4px;">
+                            SESSION LOGS
+                        </div>
+                        <div class="console-container" id="consoleLogs"
+                            style="width: 100%; height: auto !important; padding: 0 !important; background: transparent !important; overflow-y: visible !important; font-size: 0.75rem; line-height: 1.6; display: flex; flex-direction: column; gap: 4px;">
+                            <div class="console-welcome">> listening for active session logs...</div>
+                        </div>
+                    </div>
+
+                    <!-- Dummy variables to satisfy JS listeners without script error -->
+                    <div id="logPanel" class="panel minimized" style="display: none !important;">
+                        <button id="toggleChatBtn"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Video Feed (Full Height) -->
             <div class="workspace-column visual-column">
                 <!-- Panel 1: Video View -->
                 <div class="panel" style="flex: 1; height: 100%;">
                     <div class="panel-header">
                         <div class="panel-title">Video Feed</div>
-                        <div class="panel-controls">
+                        <div class="panel-controls" style="display: flex; align-items: center; gap: 15px;">
+                            <div class="ui-record-btn" id="recordBtn">
+                                <span class="record-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.4); display: inline-block; transition: all 0.3s ease;"></span>
+                                <span id="recordText">REC</span>
+                            </div>
                             <div class="ui-checkbox">
                                 <input type="checkbox" id="yoloDetect" checked>
                                 <label for="yoloDetect">YOLO DETECT</label>
@@ -556,85 +704,6 @@
                         <div class="video-container">
                             <img src="/video_feed" class="video-stream" alt="Camera Stream">
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Column: Telemetry (Top) and Session Logs (Bottom) -->
-            <div class="workspace-column side-column">
-                <div class="side-column-content">
-                    <!-- Device name and Connection Status -->
-                    <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px; margin-bottom: 12px;">
-                        <div><span style="color: var(--text-muted);">DEVICE NAME:</span> <span style="color: #ffffff; font-weight: 400;">snapper.local</span></div>
-                        <div><span style="color: var(--text-muted);">CONNECTION:</span> <span id="connStatus" style="color: #ffffff; font-weight: 400;">ONLINE</span></div>
-                    </div>
-
-                    <!-- General metrics block -->
-                    <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem;">
-                        <div><span style="color: var(--text-muted);">BATTERY PERCENT:</span> <span id="headerBattery" style="color: #ffffff; font-weight: 400;">--%</span></div>
-                        <div><span style="color: var(--text-muted);">OPERATION MODE:</span> <span id="headerMode" style="color: #ffffff; font-weight: 400;">--</span></div>
-                        <div><span style="color: var(--text-muted);">PING LATENCY:</span> <span id="headerPing" style="color: #ffffff; font-weight: 400;">-- ms</span></div>
-                        <div style="height: 1px; background: var(--panel-border); margin: 6px 0;"></div>
-                        <div><span style="color: var(--text-muted);">BATTERY VOLTS:</span> <span id="batVolt" style="color: #ffffff; font-weight: 400;">-- V</span></div>
-                        <div><span style="color: var(--text-muted);">VELOCITY:</span> <span id="bodyVel" style="color: #ffffff; font-weight: 400;">-- m/s</span></div>
-                        <div><span style="color: var(--text-muted);">IMU PITCH:</span> <span id="imuPitch" style="color: #ffffff; font-weight: 400;">--°</span></div>
-                        <div><span style="color: var(--text-muted);">IMU ROLL:</span>  <span id="imuRoll"  style="color: #ffffff; font-weight: 400;">--°</span></div>
-                        <div><span style="color: var(--text-muted);">IMU YAW:</span>   <span id="imuYaw"   style="color: #ffffff; font-weight: 400;">--°</span></div>
-                        <div><span style="color: var(--text-muted);">CONTACT:</span>   <span id="footContact" style="color: #ffffff; font-weight: 400;">--</span></div>
-                        <div><span style="color: var(--text-muted);">TEMP AVG:</span>  <span id="jointTemp" style="color: #ffffff; font-weight: 400;">--°C</span></div>
-                        <div><span style="color: var(--text-muted);">POWER:</span>     <span id="powerState" style="color: #ffffff; font-weight: 400;">--</span></div>
-                    </div>
-
-                    <!-- Joints metrics block -->
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--panel-border); padding-bottom: 4px;">
-                            JOINT STATES (ROTATION rad / TEMP °C)
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                            <!-- FL Leg -->
-                            <div class="leg-column">
-                                <div class="leg-header">FL</div>
-                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fl_hip">--</span></div>
-                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="fl_thigh">--</span></div>
-                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fl_calf">--</span></div>
-                            </div>
-                            <!-- FR Leg -->
-                            <div class="leg-column">
-                                <div class="leg-header">FR</div>
-                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fr_hip">--</span></div>
-                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="fr_thigh">--</span></div>
-                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fr_calf">--</span></div>
-                            </div>
-                            <!-- RL Leg -->
-                            <div class="leg-column">
-                                <div class="leg-header">RL</div>
-                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rl_hip">--</span></div>
-                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="rl_thigh">--</span></div>
-                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rl_calf">--</span></div>
-                            </div>
-                            <!-- RR Leg -->
-                            <div class="leg-column">
-                                <div class="leg-header">RR</div>
-                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rr_hip">--</span></div>
-                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="rr_thigh">--</span></div>
-                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rr_calf">--</span></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Session Logs block -->
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--panel-border); padding-bottom: 4px;">
-                            SESSION LOGS
-                        </div>
-                        <div class="console-container" id="consoleLogs" style="width: 100%; height: auto !important; padding: 0 !important; background: transparent !important; overflow-y: visible !important; font-size: 0.75rem; line-height: 1.6; display: flex; flex-direction: column; gap: 4px;">
-                            <div class="console-welcome">> listening for active session logs...</div>
-                        </div>
-                    </div>
-
-                    <!-- Dummy variables to satisfy JS listeners without script error -->
-                    <div id="logPanel" class="panel minimized" style="display: none !important;">
-                        <button id="toggleChatBtn"></button>
                     </div>
                 </div>
             </div>
@@ -716,7 +785,7 @@
         const camera = new THREE.PerspectiveCamera(60, 1280 / 720, 0.1, 100);
 
         // Load default settings from server or localStorage if available
-        const serverSettings = {{ server_lidar_settings|tojson|safe if server_lidar_settings else 'null' }};
+        const serverSettings = {{ server_lidar_settings| tojson | safe if server_lidar_settings else 'null' }};
         const savedSettingsStr = localStorage.getItem('lidarSettings');
         let initialSettings = null;
         if (serverSettings) {
@@ -781,7 +850,7 @@
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.maxPolarAngle = Math.PI / 2 + 0.15; // Don't let users rotate below the ground line too much
-        
+
         if (initialSettings && initialSettings.controls && initialSettings.controls.target) {
             controls.target.set(initialSettings.controls.target.x, initialSettings.controls.target.y, initialSettings.controls.target.z);
         } else {
@@ -1154,6 +1223,41 @@
             });
         });
 
+        // Toggle Segmented Recording
+        const recordBtn = document.getElementById('recordBtn');
+        const recordText = document.getElementById('recordText');
+
+        function updateRecordUI(isRecording) {
+            if (isRecording) {
+                recordBtn.classList.add('recording');
+                recordText.textContent = 'RECORDING';
+            } else {
+                recordBtn.classList.remove('recording');
+                recordText.textContent = 'REC';
+            }
+        }
+
+        // Fetch initial status on load
+        fetch('/get_record_status')
+            .then(res => res.json())
+            .then(data => {
+                updateRecordUI(data.is_recording);
+            })
+            .catch(err => console.error("Error fetching record status:", err));
+
+        // Click listener for Record button
+        recordBtn.addEventListener('click', () => {
+            fetch('/toggle_record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                updateRecordUI(data.is_recording);
+            })
+            .catch(err => console.error("Error toggling record:", err));
+        });
+
 
 
         // Toggle LiDAR Footer Minimize/Expand
@@ -1195,10 +1299,10 @@
                 cutoff: lidarRangeCutoff,
                 size: pointSizeVal
             };
-            
+
             // Save to localStorage as the default for future page loads
             localStorage.setItem('lidarSettings', JSON.stringify(settings));
-            
+
             // Trigger JSON download
             const blob = new Blob([JSON.stringify(settings, null, 4)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -1222,7 +1326,7 @@
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(evt) {
+            reader.onload = function (evt) {
                 try {
                     const settings = JSON.parse(evt.target.result);
                     if (settings.camera && settings.camera.position) {
@@ -1236,7 +1340,7 @@
                         controls.target.set(settings.controls.target.x, settings.controls.target.y, settings.controls.target.z);
                     }
                     controls.update();
-                    
+
                     if (settings.accumulate !== undefined) {
                         document.getElementById('accumulateLidar').checked = settings.accumulate;
                     }
@@ -1253,7 +1357,7 @@
                             pointsMaterial.size = pointSizeVal;
                         }
                     }
-                    
+
                     // Also save to localStorage as the new default
                     localStorage.setItem('lidarSettings', JSON.stringify(settings));
                     console.log("LiDAR settings imported and saved to localStorage.");

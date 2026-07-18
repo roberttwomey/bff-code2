@@ -45,6 +45,7 @@ latest_detections = []
 latest_detection_time = 0.0
 detections_lock = threading.Lock()
 yolo_enabled = True   # toggled via /toggle_yolo; also propagated to capturer.yolo_enabled
+is_recording = False  # toggled via /toggle_record; also propagated to capturer.is_recording
 
 def detections_callback(payload):
     """Receives detection results from _yolo_worker and stores them for the MJPEG overlay."""
@@ -152,6 +153,31 @@ def toggle_yolo():
         capturer.yolo_enabled = yolo_enabled
     print(f"[YOLO] Detection {'enabled' if yolo_enabled else 'disabled'}.")
     return jsonify({'yolo_enabled': yolo_enabled})
+
+@app.route('/toggle_record', methods=['POST'])
+def toggle_record():
+    """Enable or disable continual 5-minute chunk recording.
+    Propagates to capturer.is_recording.
+    """
+    global is_recording, capturer
+    from flask import request, jsonify
+    data = request.get_json(silent=True) or {}
+    if 'enabled' in data:
+        is_recording = bool(data['enabled'])
+    else:
+        is_recording = not is_recording
+    # Propagate to the capturer
+    if capturer is not None:
+        capturer.set_recording(is_recording)
+    print(f"[Record] Recording {'enabled' if is_recording else 'disabled'}.")
+    return jsonify({'is_recording': is_recording})
+
+@app.route('/get_record_status', methods=['GET'])
+def get_record_status():
+    """Returns the current recording status."""
+    global is_recording
+    from flask import jsonify
+    return jsonify({'is_recording': is_recording})
 
 @socketio.on('ping_latency')
 def handle_ping():
@@ -268,6 +294,7 @@ def start_capturer_async(ip, aes_key, no_video, no_audio, no_lowstate, no_lidar)
         capture_lowstate=not no_lowstate,
         capture_lidar=not no_lidar
     )
+    capturer.set_recording(is_recording)
 
     # Register listener callbacks
     if not no_video:
@@ -305,126 +332,143 @@ def find_latest_capture_session():
 def simulation_worker(session_dir, stop_event):
     """Background worker that reads recorded capture session logs and plays them back in real time."""
     print(f"\n[Simulation] Initializing real-time playback for session: {session_dir}")
-    video_path = os.path.join(session_dir, "video.mp4")
-    lowstate_path = os.path.join(session_dir, "lowstate.jsonl")
-    lidar_path = os.path.join(session_dir, "lidar.jsonl")
-    detections_path = os.path.join(session_dir, "detections.jsonl")
-
-    # Load telemetry logs
-    lowstate_data = []
-    if os.path.exists(lowstate_path):
-        with open(lowstate_path, "r", encoding="utf-8") as f:
-            for line in f:
-                try:
-                    lowstate_data.append(json.loads(line.strip()))
-                except Exception:
-                    pass
-    print(f"[Simulation] Loaded {len(lowstate_data)} telemetry logs.")
-
-    # Load lidar scans
-    lidar_data = []
-    if os.path.exists(lidar_path):
-        with open(lidar_path, "r", encoding="utf-8") as f:
-            for line in f:
-                try:
-                    lidar_data.append(json.loads(line.strip()))
-                except Exception:
-                    pass
-    print(f"[Simulation] Loaded {len(lidar_data)} LiDAR scans.")
-
-    # Load YOLO detections
-    detections_data = []
-    if os.path.exists(detections_path):
-        with open(detections_path, "r", encoding="utf-8") as f:
-            for line in f:
-                try:
-                    detections_data.append(json.loads(line.strip()))
-                except Exception:
-                    pass
-    print(f"[Simulation] Loaded {len(detections_data)} detection logs.")
-
-    # Determine base log start time to sync streams
-    timestamps = []
-    if lowstate_data:
-        timestamps.append(lowstate_data[0]["timestamp"])
-    if lidar_data:
-        timestamps.append(lidar_data[0]["timestamp"])
-    if detections_data:
-        timestamps.append(detections_data[0]["timestamp"])
-
-    if not timestamps:
-        print("[Simulation] Error: No logged timestamps found. Simulation aborted.")
-        return
-
-    start_log_time = min(timestamps)
+    
+    session_path = Path(session_dir)
+    chunk_dirs = sorted([d for d in session_path.glob("chunk_*") if d.is_dir()], key=lambda d: int(d.name.split('_')[1]))
+    
+    if not chunk_dirs:
+        chunk_dirs = [session_path]
+        print("[Simulation] No chunk subdirectories found. Playing legacy single-directory session.")
+    else:
+        print(f"[Simulation] Found {len(chunk_dirs)} chunks: {[d.name for d in chunk_dirs]}")
 
     while not stop_event.is_set():
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            print(f"[Simulation] Error: Unable to open video capture file: {video_path}")
-            time.sleep(2.0)
-            continue
-
-        fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-        frame_delay = 1.0 / fps
-
-        # Copy data queues for this run iteration
-        lowstate_queue = list(lowstate_data)
-        lidar_queue = list(lidar_data)
-        detections_queue = list(detections_data)
-
-        # Ensure correct chronological order
-        lowstate_queue.sort(key=lambda x: x["timestamp"])
-        lidar_queue.sort(key=lambda x: x["timestamp"])
-        detections_queue.sort(key=lambda x: x["timestamp"])
-
-        start_wall_time = time.monotonic()
-        print("[Simulation] Playback loop active.")
-
-        frame_idx = 0
-        while cap.isOpened() and not stop_event.is_set():
-            ret, frame = cap.read()
-            if not ret:
+        for chunk_dir in chunk_dirs:
+            if stop_event.is_set():
                 break
+                
+            chunk_dir_str = str(chunk_dir)
+            print(f"\n[Simulation] Playing chunk: {chunk_dir.name}")
+            video_path = os.path.join(chunk_dir_str, "video.mp4")
+            lowstate_path = os.path.join(chunk_dir_str, "lowstate.jsonl")
+            lidar_path = os.path.join(chunk_dir_str, "lidar.jsonl")
+            detections_path = os.path.join(chunk_dir_str, "detections.jsonl")
 
-            # Update live frame buffer
-            global latest_frame
-            with frame_lock:
-                latest_frame = frame
+            # Load telemetry logs
+            lowstate_data = []
+            if os.path.exists(lowstate_path):
+                with open(lowstate_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        try:
+                            lowstate_data.append(json.loads(line.strip()))
+                        except Exception:
+                            pass
+            print(f"[Simulation] Loaded {len(lowstate_data)} telemetry logs.")
 
-            # Align log timeline with current wall time elapsed
-            elapsed = time.monotonic() - start_wall_time
-            current_log_time = start_log_time + elapsed
+            # Load lidar scans
+            lidar_data = []
+            if os.path.exists(lidar_path):
+                with open(lidar_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        try:
+                            lidar_data.append(json.loads(line.strip()))
+                        except Exception:
+                            pass
+            print(f"[Simulation] Loaded {len(lidar_data)} LiDAR scans.")
 
-            # Dispatch telemetry packets
-            while lowstate_queue and lowstate_queue[0]["timestamp"] <= current_log_time:
-                item = lowstate_queue.pop(0)
-                on_lowstate_received(item)
+            # Load YOLO detections
+            detections_data = []
+            if os.path.exists(detections_path):
+                with open(detections_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        try:
+                            detections_data.append(json.loads(line.strip()))
+                        except Exception:
+                            pass
+            print(f"[Simulation] Loaded {len(detections_data)} detection logs.")
 
-            # Dispatch LiDAR voxel scans
-            while lidar_queue and lidar_queue[0]["timestamp"] <= current_log_time:
-                item = lidar_queue.pop(0)
-                on_lidar_received(item)
+            # Determine base log start time to sync streams
+            timestamps = []
+            if lowstate_data:
+                timestamps.append(lowstate_data[0]["timestamp"])
+            if lidar_data:
+                timestamps.append(lidar_data[0]["timestamp"])
+            if detections_data:
+                timestamps.append(detections_data[0]["timestamp"])
 
-            # Dispatch YOLO detections (refresh timestamp to prevent caching eviction)
-            while detections_queue and detections_queue[0]["timestamp"] <= current_log_time:
-                item = detections_queue.pop(0)
-                item["timestamp"] = time.time()
-                detections_callback(item)
+            if not timestamps:
+                print(f"[Simulation] Warning: No logged timestamps found in chunk {chunk_dir.name}. Skipping chunk.")
+                continue
 
-            frame_idx += 1
+            start_log_time = min(timestamps)
 
-            # Precision frame sleep delay
-            expected_time = start_wall_time + (frame_idx * frame_delay)
-            sleep_time = expected_time - time.monotonic()
-            if sleep_time > 0:
-                time.sleep(sleep_time)
-            else:
-                time.sleep(0.001)
+            cap = cv2.VideoCapture(video_path)
+            if not cap.isOpened():
+                print(f"[Simulation] Error: Unable to open video capture file: {video_path}")
+                time.sleep(2.0)
+                continue
 
-        cap.release()
+            fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+            frame_delay = 1.0 / fps
+
+            # Copy data queues for this run iteration
+            lowstate_queue = list(lowstate_data)
+            lidar_queue = list(lidar_data)
+            detections_queue = list(detections_data)
+
+            # Ensure correct chronological order
+            lowstate_queue.sort(key=lambda x: x["timestamp"])
+            lidar_queue.sort(key=lambda x: x["timestamp"])
+            detections_queue.sort(key=lambda x: x["timestamp"])
+
+            start_wall_time = time.monotonic()
+            print(f"[Simulation] Playback loop active for chunk {chunk_dir.name}.")
+
+            frame_idx = 0
+            while cap.isOpened() and not stop_event.is_set():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                # Update live frame buffer
+                global latest_frame
+                with frame_lock:
+                    latest_frame = frame
+
+                # Align log timeline with current wall time elapsed
+                elapsed = time.monotonic() - start_wall_time
+                current_log_time = start_log_time + elapsed
+
+                # Dispatch telemetry packets
+                while lowstate_queue and lowstate_queue[0]["timestamp"] <= current_log_time:
+                    item = lowstate_queue.pop(0)
+                    on_lowstate_received(item)
+
+                # Dispatch LiDAR voxel scans
+                while lidar_queue and lidar_queue[0]["timestamp"] <= current_log_time:
+                    item = lidar_queue.pop(0)
+                    on_lidar_received(item)
+
+                # Dispatch YOLO detections (refresh timestamp to prevent caching eviction)
+                while detections_queue and detections_queue[0]["timestamp"] <= current_log_time:
+                    item = detections_queue.pop(0)
+                    item["timestamp"] = time.time()
+                    detections_callback(item)
+
+                frame_idx += 1
+
+                # Precision frame sleep delay
+                expected_time = start_wall_time + (frame_idx * frame_delay)
+                sleep_time = expected_time - time.monotonic()
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+                else:
+                    time.sleep(0.001)
+
+            cap.release()
+
         if not stop_event.is_set():
-            print("[Simulation] Replay complete. Looping simulation in 1.0s...")
+            print("[Simulation] Replay of all chunks complete. Looping simulation in 1.0s...")
             time.sleep(1.0)
 
 def main():
@@ -519,8 +563,15 @@ def main():
                 if hasattr(capturer, 'output_dir') and capturer.output_dir:
                     try:
                         from overlay_detections import overlay_detections
-                        print(f"\n[Dashboard Server] Post-processing: Overlaying YOLO detections on recorded video...")
-                        overlay_detections(capturer.output_dir)
+                        print(f"\n[Dashboard Server] Post-processing: Overlaying YOLO detections on recorded video chunks...")
+                        import glob
+                        chunk_paths = sorted(glob.glob(os.path.join(capturer.output_dir, "chunk_*")))
+                        if chunk_paths:
+                            for chunk_path in chunk_paths:
+                                print(f"[Dashboard Server] Overlaying detections on chunk: {os.path.basename(chunk_path)}")
+                                overlay_detections(chunk_path)
+                        else:
+                            overlay_detections(capturer.output_dir)
                     except Exception as e:
                         print(f"[Dashboard Server] Failed to run overlay_detections: {e}")
 

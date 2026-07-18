@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import os
+import shutil
 import sys
 import time
 import wave
@@ -114,6 +115,67 @@ class Go2DataCapturer:
         self.yolo_enabled = True
         self.start_time = None
 
+        # Circular Logging & Segmented Recording State
+        self.is_recording = False
+        self.chunk_duration = 60  # 1 minute by default for circular logging
+        self.chunk_index = 0
+        self.current_chunk_dir = None
+        self.chunk_start_time = None
+        self.prunable_chunks = []
+        self.lock = threading.RLock()
+
+    def set_recording(self, recording_state: bool):
+        with self.lock:
+            if self.is_recording == recording_state:
+                return
+            self.is_recording = recording_state
+            if self.is_recording:
+                self.chunk_duration = 300  # 5 minutes in recording mode
+                print(f"[Capturer] Recording started. Keeping history chunks: {self.prunable_chunks}")
+                self.prunable_chunks.clear()
+            else:
+                self.chunk_duration = 60  # 1 minute for circular logging
+                print(f"[Capturer] Recording stopped.")
+            
+            # Immediately rotate chunk to apply the new duration and separate boundaries
+            self._create_new_chunk()
+
+    def _create_new_chunk(self):
+        with self.lock:
+            chunk_dir = os.path.join(self.output_dir, f"chunk_{self.chunk_index}")
+            os.makedirs(chunk_dir, exist_ok=True)
+            self.current_chunk_dir = chunk_dir
+            self.chunk_start_time = time.monotonic()
+            
+            if not self.is_recording:
+                self.prunable_chunks.append(chunk_dir)
+                # Keep last 5 minutes of activity.
+                # Since chunk_duration is 60s (1 min) in circular mode, keeping 5 completed + 1 active = 6 total chunks
+                # ensures we always have at least 5 minutes of activity.
+                while len(self.prunable_chunks) > 6:
+                    oldest_chunk = self.prunable_chunks.pop(0)
+                    self._delete_chunk_dir(oldest_chunk)
+            
+            self.chunk_index += 1
+            print(f"\n[Capturer] Started new chunk: {chunk_dir} (is_recording={self.is_recording})")
+
+    def _delete_chunk_dir(self, directory):
+        try:
+            shutil.rmtree(directory, ignore_errors=True)
+            print(f"[Capturer] Pruned circular chunk: {directory}")
+        except Exception as e:
+            logging.error(f"Error pruning chunk directory {directory}: {e}")
+
+    def _chunk_manager_worker(self):
+        while not self.stop_event.is_set():
+            time.sleep(1.0)
+            with self.lock:
+                if self.chunk_start_time is not None:
+                    elapsed = time.monotonic() - self.chunk_start_time
+                    if elapsed >= self.chunk_duration:
+                        print(f"\n[Capturer] Chunk duration reached ({self.chunk_duration}s). Rotating chunk...")
+                        self._create_new_chunk()
+
     def add_listener(self, listener_type, callback):
         """Add a callback listener for real-time streaming.
         listener_type: 'video', 'lowstate', 'lidar', or 'detection'
@@ -129,6 +191,15 @@ class Go2DataCapturer:
 
     def start_writers(self):
         self.start_time = time.monotonic()
+        
+        # Initialize the first chunk before workers start
+        self._create_new_chunk()
+
+        # Start chunk manager thread
+        t_mgr = threading.Thread(target=self._chunk_manager_worker, daemon=True, name="ChunkManager")
+        t_mgr.start()
+        self.threads.append(t_mgr)
+
         if self.capture_video:
             t = threading.Thread(target=self._video_writer_worker, daemon=True, name="VideoWriter")
             t.start()
@@ -147,7 +218,7 @@ class Go2DataCapturer:
         if self.capture_lowstate:
             t = threading.Thread(
                 target=self._jsonl_writer_worker, 
-                args=(self.lowstate_queue, os.path.join(self.output_dir, "lowstate.jsonl")), 
+                args=(self.lowstate_queue, "lowstate.jsonl"), 
                 daemon=True,
                 name="LowStateWriter"
             )
@@ -157,7 +228,7 @@ class Go2DataCapturer:
         if self.capture_lidar:
             t = threading.Thread(
                 target=self._jsonl_writer_worker, 
-                args=(self.lidar_queue, os.path.join(self.output_dir, "lidar.jsonl")), 
+                args=(self.lidar_queue, "lidar.jsonl"), 
                 daemon=True,
                 name="LidarWriter"
             )
@@ -186,9 +257,19 @@ class Go2DataCapturer:
         writer = None
         last_frame = None   # most recently received frame; repeated when queue is dry
         frame_idx = 0
-        start_time = self.start_time if self.start_time is not None else time.monotonic()
+        current_chunk_dir = None
+        local_chunk_start_time = None
+        chunk_video_count = 0
 
         while not self.stop_event.is_set():
+            if current_chunk_dir != self.current_chunk_dir:
+                if writer is not None:
+                    writer.release()
+                    writer = None
+                current_chunk_dir = self.current_chunk_dir
+                local_chunk_start_time = self.chunk_start_time
+                chunk_video_count = 0
+
             now = time.monotonic()
 
             # Drain all pending frames; keep only the most recent one
@@ -216,25 +297,26 @@ class Go2DataCapturer:
                 continue
 
             # Initialise writer on the very first frame
-            if writer is None:
+            if writer is None and current_chunk_dir is not None:
                 height, width = last_frame.shape[:2]
                 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                video_path = os.path.join(self.output_dir, "video.mp4")
+                video_path = os.path.join(current_chunk_dir, "video.mp4")
                 writer = cv2.VideoWriter(video_path, fourcc, self.video_fps, (width, height))
                 print(f"\nInitialized VideoWriter: {video_path} ({width}x{height} @ {self.video_fps} FPS)")
 
-            # Calculate expected frames based on unified session start time
-            elapsed = now - start_time
-            expected_frames = int(elapsed * self.video_fps)
+            # Calculate expected frames based on chunk start time
+            if writer is not None and local_chunk_start_time is not None:
+                elapsed = now - local_chunk_start_time
+                expected_frames = int(elapsed * self.video_fps)
 
-            # Write missing frames to keep up with the elapsed time
-            written_in_loop = 0
-            while self.video_count < expected_frames and written_in_loop < 10:
-                writer.write(last_frame)
-
-                self.video_count += 1
-                frame_idx += 1
-                written_in_loop += 1
+                # Write missing frames to keep up with the elapsed time
+                written_in_loop = 0
+                while chunk_video_count < expected_frames and written_in_loop < 10:
+                    writer.write(last_frame)
+                    chunk_video_count += 1
+                    self.video_count += 1
+                    frame_idx += 1
+                    written_in_loop += 1
 
             # Sleep a short duration to remain responsive and not peg CPU
             time.sleep(0.005)
@@ -256,15 +338,23 @@ class Go2DataCapturer:
         Reads (frame_idx, frame) pairs from yolo_queue and writes results to
         detections.jsonl without ever blocking the VideoWriter thread.
         """
-        detections_path = os.path.join(self.output_dir, "detections.jsonl")
-        try:
-            detections_file = open(detections_path, "w", encoding="utf-8")
-            print(f"Initialized Detections JSONL Logger: {detections_path}")
-        except Exception as e:
-            logging.error(f"Failed to open detections.jsonl: {e}")
-            return
+        current_chunk_dir = None
+        detections_file = None
 
         while not self.stop_event.is_set() or not self.yolo_queue.empty():
+            if current_chunk_dir != self.current_chunk_dir:
+                if detections_file is not None:
+                    detections_file.close()
+                    detections_file = None
+                current_chunk_dir = self.current_chunk_dir
+                if current_chunk_dir is not None:
+                    detections_path = os.path.join(current_chunk_dir, "detections.jsonl")
+                    try:
+                        detections_file = open(detections_path, "w", encoding="utf-8")
+                        print(f"Initialized Detections JSONL Logger: {detections_path}")
+                    except Exception as e:
+                        logging.error(f"Failed to open detections.jsonl: {e}")
+
             try:
                 frame_idx, frame = self.yolo_queue.get(timeout=0.1)
             except queue.Empty:
@@ -297,7 +387,7 @@ class Go2DataCapturer:
                     except Exception as cb_err:
                         logging.error(f"Error in detection listener callback: {cb_err}")
 
-                if frame_detections:
+                if frame_detections and detections_file is not None:
                     detections_file.write(json.dumps(detection_payload) + "\n")
                     detections_file.flush()
             except Exception as yolo_err:
@@ -305,51 +395,75 @@ class Go2DataCapturer:
             finally:
                 self.yolo_queue.task_done()
 
-        detections_file.close()
-        print("Detections JSONL file closed.")
+        if detections_file is not None:
+            detections_file.close()
+            print("Detections JSONL file closed.")
 
     def _audio_writer_worker(self):
         wf = None
+        current_chunk_dir = None
         while not self.stop_event.is_set() or not self.audio_queue.empty():
+            if current_chunk_dir != self.current_chunk_dir:
+                if wf is not None:
+                    wf.close()
+                    wf = None
+                current_chunk_dir = self.current_chunk_dir
+
             try:
                 audio_bytes = self.audio_queue.get(timeout=0.1)
             except queue.Empty:
                 continue
 
-            if wf is None:
-                audio_path = os.path.join(self.output_dir, "audio.wav")
+            if wf is None and current_chunk_dir is not None:
+                audio_path = os.path.join(current_chunk_dir, "audio.wav")
                 wf = wave.open(audio_path, 'wb')
                 wf.setnchannels(2)
                 wf.setsampwidth(2) # 16-bit PCM (2 bytes)
                 wf.setframerate(48000)
                 print(f"\nInitialized AudioWriter: {audio_path} (2 channels @ 48000 Hz)")
 
-            wf.writeframes(audio_bytes)
-            # 2 channels, 2 bytes per sample -> 4 bytes per stereo sample
-            self.audio_frames += len(audio_bytes) // 4
+            if wf is not None:
+                wf.writeframes(audio_bytes)
+                # 2 channels, 2 bytes per sample -> 4 bytes per stereo sample
+                self.audio_frames += len(audio_bytes) // 4
             self.audio_queue.task_done()
 
         if wf is not None:
             wf.close()
             print("AudioWriter closed.")
 
-    def _jsonl_writer_worker(self, data_queue, file_path):
-        with open(file_path, 'w', encoding='utf-8') as f:
-            while not self.stop_event.is_set() or not data_queue.empty():
-                try:
-                    item = data_queue.get(timeout=0.1)
-                except queue.Empty:
-                    continue
+    def _jsonl_writer_worker(self, data_queue, filename):
+        current_chunk_dir = None
+        f = None
+        while not self.stop_event.is_set() or not data_queue.empty():
+            if current_chunk_dir != self.current_chunk_dir:
+                if f is not None:
+                    f.close()
+                    f = None
+                current_chunk_dir = self.current_chunk_dir
+                if current_chunk_dir is not None:
+                    file_path = os.path.join(current_chunk_dir, filename)
+                    f = open(file_path, 'w', encoding='utf-8')
+
+            try:
+                item = data_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+            
+            if f is not None:
                 f.write(json.dumps(item) + "\n")
                 f.flush()
                 
-                # Increment statistics based on the file name
-                if "lowstate.jsonl" in file_path:
-                    self.lowstate_count += 1
-                elif "lidar.jsonl" in file_path:
-                    self.lidar_count += 1
-                    
-                data_queue.task_done()
+            # Increment statistics based on the filename
+            if filename == "lowstate.jsonl":
+                self.lowstate_count += 1
+            elif filename == "lidar.jsonl":
+                self.lidar_count += 1
+                
+            data_queue.task_done()
+
+        if f is not None:
+            f.close()
 
     async def run(self):
         # 1. Connect to the WebRTC connection
