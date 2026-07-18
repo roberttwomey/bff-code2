@@ -1064,6 +1064,9 @@ def resolve_output_devices(config: ConversationConfig) -> list[str]:
         return output_indices
 
     # 2. On macOS/non-PulseAudio platforms, search for matched hardware output devices.
+    if sys.platform == "darwin":
+        return []
+
     matched_devices = []
     seen = set()
     
@@ -2189,7 +2192,49 @@ def run_conversation(config: ConversationConfig) -> None:
     if LAST_HEADSET_NAME and not config.output_bt_keyword:
         config.output_bt_keyword = LAST_HEADSET_NAME
 
-    if config.input_device_keyword:
+    if sys.platform == "darwin":
+        try:
+            default_device = sd.query_devices(kind='input')
+            default_name = default_device.get('name', 'unknown') if default_device else 'unknown'
+            
+            # Check if default input is a Bluetooth headset (which causes output silence on HFP switch)
+            is_bluetooth_input = any(kw in default_name.lower() for kw in ["openrun", "shokz", "bluetooth", "headset", "hands-free"])
+            
+            if is_bluetooth_input:
+                # Find a built-in microphone
+                builtin_idx = None
+                for idx, dev in enumerate(sd.query_devices()):
+                    dev_name = dev.get("name", "")
+                    if "microphone" in dev_name.lower() or "built-in" in dev_name.lower():
+                        if dev.get("max_input_channels", 0) > 0:
+                            builtin_idx = idx
+                            default_name = dev_name
+                            break
+                
+                if builtin_idx is not None:
+                    config.input_device_index = builtin_idx
+                    print(
+                        f"Notice: Using a Bluetooth headset for input on macOS causes output silence due to HFP limitations.\n"
+                        f"Falling back to built-in microphone for input: '{default_name}'\n"
+                        f"This allows headphones to remain in high-quality playback mode.",
+                        file=sys.stderr,
+                    )
+                else:
+                    print(
+                        f"On macOS, using system default input device: '{default_name}'.",
+                        file=sys.stderr,
+                    )
+                    config.input_device_index = None
+            else:
+                print(
+                    f"On macOS, using system default input device: '{default_name}'.",
+                    file=sys.stderr,
+                )
+                config.input_device_index = None
+        except Exception:
+            print("On macOS, using system default input device.", file=sys.stderr)
+            config.input_device_index = None
+    elif config.input_device_keyword:
         device_index = find_input_device(config.input_device_keyword)
         if device_index is not None:
             config.input_device_index = device_index
@@ -2255,10 +2300,30 @@ def run_conversation(config: ConversationConfig) -> None:
                     file=sys.stderr,
                 )
     else:
-        print(
-            "Using default system output device.",
-            file=sys.stderr,
-        )
+        if sys.platform == "darwin":
+            try:
+                default_device = sd.query_devices(kind='output')
+                default_name = default_device.get('name', 'unknown') if default_device else 'unknown'
+                print(
+                    f"On macOS, using system default output device: '{default_name}'.",
+                    file=sys.stderr,
+                )
+                # Force output sample rate to match system default output device rate
+                config.output_sample_rate = int(default_device.get('default_samplerate', 16000))
+                print(
+                    f"On macOS, resampling output to device default rate: {config.output_sample_rate}Hz.",
+                    file=sys.stderr,
+                )
+            except Exception:
+                print(
+                    "On macOS, using system default output device.",
+                    file=sys.stderr,
+                )
+        else:
+            print(
+                "Using default system output device.",
+                file=sys.stderr,
+            )
 
     stop_event = threading.Event()
     segment_queue: queue.Queue[np.ndarray] = queue.Queue()
