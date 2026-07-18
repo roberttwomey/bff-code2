@@ -282,6 +282,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         let scene, camera, renderer, controls;
         let pointsObject = null;
         let accumulatedPointsObject = null;
+        let lidarRangeCutoff = 12;
+        let pointSizeVal = 4;
         
         let currentFrameIndex = 0;
         let isPlaying = false;
@@ -354,6 +356,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     if (initialSettings.accumulate !== undefined) {
                         document.getElementById('accumulateCheck').checked = initialSettings.accumulate;
                     }
+                    if (initialSettings.cutoff !== undefined) {
+                        lidarRangeCutoff = initialSettings.cutoff;
+                    }
+                    if (initialSettings.size !== undefined) {
+                        pointSizeVal = initialSettings.size;
+                    }
                 } catch (e) {
                     console.warn("Failed to apply initial settings:", e);
                     camera.position.set(0, 5, 8);
@@ -392,7 +400,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             // Initialize Point Cloud Geometries
             const geometry = new THREE.BufferGeometry();
             const material = new THREE.PointsMaterial({
-                size: 0.06,
+                size: 0.015 * pointSizeVal,
                 vertexColors: true,
                 transparent: true,
                 opacity: 0.9,
@@ -404,7 +412,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             // Initialize Accumulated Point Cloud
             const accGeometry = new THREE.BufferGeometry();
             const accMaterial = new THREE.PointsMaterial({
-                size: 0.04,
+                size: 0.01 * pointSizeVal,
                 vertexColors: true,
                 transparent: true,
                 opacity: 0.45,
@@ -430,20 +438,22 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             const points = snapshot.points;
 
             // Update Single Frame Points
-            const positions = new Float32Array(points.length * 3);
-            const colors = new Float32Array(points.length * 3);
-
+            const filteredPos = [];
+            const filteredColors = [];
             for (let i = 0; i < points.length; i++) {
                 const pt = points[i];
-                positions[i * 3] = -pt[1];      // Three.js X = -y_robot
-                positions[i * 3 + 1] = pt[2];  // Three.js Y = z_robot (up)
-                positions[i * 3 + 2] = -pt[0]; // Three.js Z = -x_robot
+                const x = pt[0];
+                const y = pt[1];
+                const z = pt[2];
+                const distance = Math.sqrt(x * x + y * y + z * z);
+                if (distance > lidarRangeCutoff) continue;
 
-                const color = getHeightColorRGB(pt[2]);
-                colors[i * 3] = color.r;
-                colors[i * 3 + 1] = color.g;
-                colors[i * 3 + 2] = color.b;
+                filteredPos.push(-y, z, -x);
+                const color = getHeightColorRGB(z);
+                filteredColors.push(color.r, color.g, color.b);
             }
+            const positions = new Float32Array(filteredPos);
+            const colors = new Float32Array(filteredColors);
 
             pointsObject.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             pointsObject.geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
@@ -455,30 +465,28 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 accumulatedPointsObject.visible = true;
 
                 // Collect points from start to current frame
+                const accPos = [];
+                const accColorsList = [];
                 let totalAccumulated = 0;
-                for (let f = 0; f <= currentFrameIndex; f++) {
-                    totalAccumulated += snapshots[f].points.length;
-                }
-
-                const accPositions = new Float32Array(totalAccumulated * 3);
-                const accColors = new Float32Array(totalAccumulated * 3);
-                
-                let idx = 0;
                 for (let f = 0; f <= currentFrameIndex; f++) {
                     const snapPoints = snapshots[f].points;
                     for (let p = 0; p < snapPoints.length; p++) {
                         const pt = snapPoints[p];
-                        accPositions[idx * 3] = -pt[1];      // Three.js X = -y_robot
-                        accPositions[idx * 3 + 1] = pt[2];  // Three.js Y = z_robot (up)
-                        accPositions[idx * 3 + 2] = -pt[0]; // Three.js Z = -x_robot
+                        const x = pt[0];
+                        const y = pt[1];
+                        const z = pt[2];
+                        const distance = Math.sqrt(x * x + y * y + z * z);
+                        if (distance > lidarRangeCutoff) continue;
 
-                        const color = getHeightColorRGB(pt[2]);
-                        accColors[idx * 3] = color.r;
-                        accColors[idx * 3 + 1] = color.g;
-                        accColors[idx * 3 + 2] = color.b;
-                        idx++;
+                        accPos.push(-y, z, -x);
+                        const color = getHeightColorRGB(z);
+                        accColorsList.push(color.r, color.g, color.b);
+                        totalAccumulated++;
                     }
                 }
+
+                const accPositions = new Float32Array(accPos);
+                const accColors = new Float32Array(accColorsList);
 
                 accumulatedPointsObject.geometry.setAttribute('position', new THREE.BufferAttribute(accPositions, 3));
                 accumulatedPointsObject.geometry.setAttribute('color', new THREE.BufferAttribute(accColors, 3));
@@ -487,7 +495,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             } else {
                 pointsObject.visible = true;
                 accumulatedPointsObject.visible = false;
-                pointCountDisplay.textContent = points.length.toLocaleString();
+                pointCountDisplay.textContent = (filteredPos.length / 3).toLocaleString();
             }
 
             // Update Metadata Info Displays
@@ -746,7 +754,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                     controls: {
                         target: { x: controls.target.x, y: controls.target.y, z: controls.target.z }
                     },
-                    accumulate: document.getElementById('accumulateCheck').checked
+                    accumulate: document.getElementById('accumulateCheck').checked,
+                    cutoff: lidarRangeCutoff,
+                    size: pointSizeVal
                 };
                 
                 // Save to localStorage as the default for future page loads
@@ -791,8 +801,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                         
                         if (settings.accumulate !== undefined) {
                             document.getElementById('accumulateCheck').checked = settings.accumulate;
-                            updatePointCloud();
                         }
+                        if (settings.cutoff !== undefined) {
+                            lidarRangeCutoff = settings.cutoff;
+                        }
+                        if (settings.size !== undefined) {
+                            pointSizeVal = settings.size;
+                            if (pointsObject && pointsObject.material) {
+                                pointsObject.material.size = 0.015 * pointSizeVal;
+                            }
+                            if (accumulatedPointsObject && accumulatedPointsObject.material) {
+                                accumulatedPointsObject.material.size = 0.01 * pointSizeVal;
+                            }
+                        }
+                        updatePointCloud();
                         
                         // Also save to localStorage as the new default
                         localStorage.setItem('lidarSettings', JSON.stringify(settings));

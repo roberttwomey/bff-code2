@@ -382,7 +382,7 @@
 
         .lidar-footer-content {
             display: flex;
-            gap: 20px;
+            gap: 15px;
             align-items: center;
             height: 26px;
             opacity: 1;
@@ -689,16 +689,6 @@
                 <div class="panel" style="flex: 1; height: 100%;">
                     <div class="panel-header">
                         <div class="panel-title">Video Feed</div>
-                        <div class="panel-controls" style="display: flex; align-items: center; gap: 15px;">
-                            <div class="ui-record-btn" id="recordBtn">
-                                <span class="record-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.4); display: inline-block; transition: all 0.3s ease;"></span>
-                                <span id="recordText">REC</span>
-                            </div>
-                            <div class="ui-checkbox">
-                                <input type="checkbox" id="yoloDetect" checked>
-                                <label for="yoloDetect">YOLO DETECT</label>
-                            </div>
-                        </div>
                     </div>
                     <div class="panel-content">
                         <div class="video-container">
@@ -720,6 +710,14 @@
                                 zoom</span>
                         </div>
                         <div class="lidar-footer-content">
+                            <div class="ui-record-btn" id="recordBtn">
+                                <span class="record-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.4); display: inline-block; transition: all 0.3s ease;"></span>
+                                <span id="recordText">REC</span>
+                            </div>
+                            <div class="ui-checkbox">
+                                <input type="checkbox" id="yoloDetect" checked>
+                                <label for="yoloDetect">YOLO DETECT</label>
+                            </div>
                             <div class="ui-checkbox">
                                 <input type="checkbox" id="interactMap" checked>
                                 <label for="interactMap">INTERACT MAP</label>
@@ -1263,7 +1261,7 @@
         // Toggle LiDAR Footer Minimize/Expand
         const lidarFooterEl = document.getElementById('lidarFooter');
         lidarFooterEl.addEventListener('click', (e) => {
-            if (e.target.closest('.ui-checkbox') || e.target.closest('.ui-slider') || e.target.closest('.ui-button') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
+            if (e.target.closest('.ui-checkbox') || e.target.closest('.ui-slider') || e.target.closest('.ui-button') || e.target.closest('.ui-record-btn') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
                 return;
             }
             lidarFooterEl.classList.toggle('minimized');
