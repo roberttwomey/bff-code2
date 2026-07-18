@@ -26,6 +26,8 @@ ollama run gemma3n:e2b
 Environment variables:
     BFF_OLLAMA_MODEL   override Ollama model name for text chat (default: gemma3n:e2b)
     BFF_VLM_MODEL      override Ollama model name for VLM scene captioning (default: moondream)
+    BFF_VLM_NUM_PREDICT override max tokens generated per VLM scene description (default: 50)
+    BFF_VLM_INTERVAL   override minimum seconds between VLM capture starts (default: 1.5)
     BFF_WHISPER_MODEL  override Whisper model size (default: base)
     BFF_PIPER_VOICE    override Piper voice path if --piper-voice not provided
     BFF_INTERRUPTABLE  override interruptable behavior (default: true)
@@ -191,6 +193,7 @@ DEFAULT_OLLAMA_TOP_P = float(os.environ.get("BFF_OLLAMA_TOP_P", "0.9"))
 DEFAULT_OLLAMA_TOP_K = int(os.environ.get("BFF_OLLAMA_TOP_K", "40"))
 DEFAULT_OLLAMA_NUM_PREDICT = int(os.environ.get("BFF_OLLAMA_NUM_PREDICT", "100"))
 DEFAULT_OLLAMA_NUM_CTX = int(os.environ.get("BFF_OLLAMA_NUM_CTX", "2048"))
+DEFAULT_VLM_NUM_PREDICT = int(os.environ.get("BFF_VLM_NUM_PREDICT", "50"))
 DEFAULT_OLLAMA_THINK_ENV = os.environ.get("BFF_OLLAMA_THINK", "false").lower()
 DEFAULT_OLLAMA_THINK = DEFAULT_OLLAMA_THINK_ENV in ("true", "1", "yes", "on")
 DEFAULT_REQUIRE_WAKEWORD_ENV = os.environ.get("BFF_REQUIRE_WAKEWORD", "false").lower()
@@ -1890,9 +1893,11 @@ class VLMBackgroundWorker:
         if not self.aes_key:
             self.aes_key = None
         
-        # Minimum gap between capture starts. Default 0 = back-to-back, continuous
-        # capture paced only by the VLM's own latency (~1-2s with moondream).
-        self.vlm_interval = float(os.getenv("BFF_VLM_INTERVAL", "0.0"))
+        # Minimum gap between capture starts. Scene descriptions don't need
+        # sub-second freshness, so pace queries to leave GPU headroom for the
+        # interactive chat/whisper turns rather than running back-to-back.
+        # Set to 0 to restore continuous back-to-back capture.
+        self.vlm_interval = float(os.getenv("BFF_VLM_INTERVAL", "1.5"))
 
         # Previous SLAM sample, used to estimate velocity by position delta -
         # LowState_ has no velocity field on this hardware.
@@ -2039,8 +2044,11 @@ class VLMBackgroundWorker:
         
         # Query Ollama VLM
         model_name = self.config.vlm_model
-        prompt = "Describe the scene: setting, objects present, lighting, and any people and what they are doing."
-        
+        prompt = (
+            "Describe the scene in two short sentences: setting, objects present, "
+            "lighting, and any people and what they are doing."
+        )
+
         try:
             client = ollama.Client()
             query_start = time.perf_counter()
@@ -2054,7 +2062,10 @@ class VLMBackgroundWorker:
                     }
                 ],
                 stream=True,
-                keep_alive=-1
+                keep_alive=-1,
+                options={
+                    "num_predict": DEFAULT_VLM_NUM_PREDICT,
+                },
             )
             
             description_chunks = []

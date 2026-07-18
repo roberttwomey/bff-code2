@@ -39,9 +39,20 @@ try:
     else:
         print(f"[YOLO] {yolo_model_name} not found locally, downloading/initializing via Ultralytics...", file=sys.stderr)
         yolo_model = YOLO(yolo_model_name)
-        
+
+    # Exported backends (e.g. TensorRT .engine, ONNX) are already bound to a
+    # device at export time and don't support .to(device) like a PyTorch
+    # nn.Module does — skip straight to warmup for those.
+    is_exported_backend = yolo_model_name.lower().endswith((".engine", ".onnx", ".trt"))
+
+    if is_exported_backend:
+        print(f"[YOLO] Loaded exported model backend ({yolo_model_name}).")
+        print("[YOLO] Warming up model...")
+        dummy = np.zeros((720, 1280, 3), dtype=np.uint8)
+        yolo_model(dummy, verbose=False)
+        print("[YOLO] Warmup complete.")
     # Automatically move model to best GPU if available (MPS on macOS, CUDA on Linux)
-    if torch.backends.mps.is_available():
+    elif torch.backends.mps.is_available():
         yolo_model.to("mps")
         # Warm up model to compile Metal shaders now instead of blocking later
         print("[YOLO] Warming up model on MPS...")
