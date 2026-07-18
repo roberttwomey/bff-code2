@@ -29,6 +29,7 @@ Environment variables:
     BFF_WHISPER_MODEL  override Whisper model size (default: base)
     BFF_PIPER_VOICE    override Piper voice path if --piper-voice not provided
     BFF_INTERRUPTABLE  override interruptable behavior (default: true)
+    BFF_LOG_ROOT       override session history root (default: ./captures, alongside AV/lidar capture data)
 """
 
 from __future__ import annotations
@@ -176,7 +177,9 @@ DEFAULT_INTERRUPTABLE_ENV = os.environ.get("BFF_INTERRUPTABLE", "true").lower()
 DEFAULT_INTERRUPTABLE = DEFAULT_INTERRUPTABLE_ENV in ("true", "1", "yes", "on")
 DEFAULT_FLUSH_ON_INTERRUPT_ENV = os.environ.get("BFF_FLUSH_ON_INTERRUPT", "false").lower()
 DEFAULT_FLUSH_ON_INTERRUPT = DEFAULT_FLUSH_ON_INTERRUPT_ENV in ("true", "1", "yes", "on")
-LOG_ROOT = Path(os.environ.get("BFF_LOG_ROOT", Path.home() / "bff" / "logs")).expanduser()
+LOG_ROOT = Path(
+    os.environ.get("BFF_LOG_ROOT", Path(__file__).resolve().parent / "captures")
+).expanduser()
 DEFAULT_HISTORY_TRUNCATION_LIMIT = int(os.environ.get("BFF_HISTORY_TRUNCATION_LIMIT", "11"))
 DEFAULT_OLLAMA_TEMPERATURE = float(os.environ.get("BFF_OLLAMA_TEMPERATURE", "0.7"))
 DEFAULT_OLLAMA_TOP_P = float(os.environ.get("BFF_OLLAMA_TOP_P", "0.9"))
@@ -2051,11 +2054,14 @@ def run_conversation(config: ConversationConfig) -> None:
             script_dir = Path(__file__).resolve().parent
             dashboard_server_path = script_dir / "dashboard_server.py"
             dashboard_log = open(session_dir / "dashboard_server.log", "w", encoding="utf-8")
+            dashboard_env = os.environ.copy()
+            dashboard_env["BFF_SESSION_ID"] = session_id
             dashboard_process = subprocess.Popen(
                 [sys.executable, str(dashboard_server_path)],
                 cwd=str(script_dir),
                 stdout=dashboard_log,
-                stderr=subprocess.STDOUT
+                stderr=subprocess.STDOUT,
+                env=dashboard_env
             )
 
             # Wait until the dashboard server is live

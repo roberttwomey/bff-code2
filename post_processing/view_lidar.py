@@ -914,7 +914,11 @@ def main():
             sys.exit(1)
         
         folders = [os.path.join(captures_root, f) for f in os.listdir(captures_root)]
-        folders = [f for f in folders if os.path.isdir(f) and f.split("/")[-1].startswith("go2_capture_")]
+        # "session-*" is the current naming; "go2_capture_*" covers older captures
+        folders = [
+            f for f in folders
+            if os.path.isdir(f) and f.split("/")[-1].startswith(("session-", "go2_capture_"))
+        ]
         if not folders:
             print("Error: No capture directories found in captures/")
             sys.exit(1)

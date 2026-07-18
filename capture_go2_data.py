@@ -73,7 +73,6 @@ class Go2DataCapturer:
     def __init__(self, ip, aes_key, output_dir, video_fps, capture_video, capture_audio, capture_lowstate, capture_lidar):
         self.ip = ip
         self.aes_key = aes_key
-        self.output_root = output_dir
         self.video_fps = video_fps
         self.capture_video = capture_video
         self.capture_audio = capture_audio
@@ -102,9 +101,8 @@ class Go2DataCapturer:
         self.stop_event = threading.Event()
         self.threads = []
 
-        # Create output directory
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.output_dir = os.path.join(self.output_root, f"go2_capture_{timestamp}")
+        # output_dir is the exact session directory to write into (caller decides naming)
+        self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
         print(f"Saving data to: {self.output_dir}")
 
@@ -697,11 +695,14 @@ def parse_args():
 
 def main():
     args = parse_args()
-    
+
+    session_id = os.getenv("BFF_SESSION_ID") or datetime.now().strftime("%Y%m%d-%H%M%S")
+    session_dir = os.path.join(args.output_dir, f"session-{session_id}")
+
     capturer = Go2DataCapturer(
         ip=args.ip,
         aes_key=args.aes_key,
-        output_dir=args.output_dir,
+        output_dir=session_dir,
         video_fps=args.fps,
         capture_video=not args.no_video,
         capture_audio=not args.no_audio,

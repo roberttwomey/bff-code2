@@ -87,7 +87,7 @@ Replay and explore recorded LiDAR voxel data in an interactive 3D scene (rotatab
 python3 post_processing/view_lidar.py
 
 # Or run targeting a specific capture directory
-python3 post_processing/view_lidar.py captures/go2_capture_20260704_130112
+python3 post_processing/view_lidar.py captures/session-20260704-130112
 
 # Adjust decimation/downsampling rate (default is 5; increase for faster loads)
 python3 post_processing/view_lidar.py --step 10
@@ -102,13 +102,13 @@ python3 post_processing/view_lidar.py --step 10
 ### 4. Manual Bounding Box Overlay
 If you ever want to re-run the YOLO overlay post-processing on a raw capture directory:
 ```bash
-python3 post_processing/overlay_detections.py captures/go2_capture_20260704_130112
+python3 post_processing/overlay_detections.py captures/session-20260704-130112
 ```
 
 ---
 
 ## Output Capture File Tree
-Captured directories are saved inside `captures/go2_capture_YYYYMMDD_HHMMSS/` containing:
+Captured directories are saved inside `captures/session-YYYYMMDD-HHMMSS/`. When launched via `chat-manager.py`, chat transcript, VLM snapshots, and AV/LiDAR capture data all share this same session directory. Contents include:
 ```yaml
 .
 ├── audio.wav             # Recorded audio (48kHz stereo wave)

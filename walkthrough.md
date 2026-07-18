@@ -12,7 +12,7 @@ I have implemented a clean and robust python script called [capture_go2_data.py]
 
 ## Output Structure
 
-When run, the script creates a folder like `captures/go2_capture_YYYYMMDD_HHMMSS/` containing:
+When run, the script creates a folder like `captures/session-YYYYMMDD-HHMMSS/` containing:
 - `video.mp4` – Video stream from the robot camera.
 - `audio.wav` – Audio stream recorded from the robot mic (stereo, 48kHz, 16-bit PCM).
 - `lowstate.jsonl` – Low-level body/motor states with local computer timestamps.

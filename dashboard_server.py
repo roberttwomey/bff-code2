@@ -252,13 +252,20 @@ def on_lidar_received(payload):
         'point_count': len(points)
     })
 
+def get_session_root() -> Path:
+    """Shared session root - same BFF_LOG_ROOT variable chat-manager.py uses, so
+    chat/VLM history and AV/LiDAR captures always land under one directory."""
+    default_root = Path(__file__).resolve().parent / "captures"
+    return Path(os.environ.get("BFF_LOG_ROOT", default_root)).expanduser()
+
 # Logs Watcher: Watches and tails JSONL logs written by chat-manager.py
 def get_latest_log_file():
     """Scans and retrieves the latest chat-manager log file."""
-    log_dir = Path(os.environ.get("BFF_LOG_ROOT", Path.home() / "bff" / "logs")).expanduser()
+    log_dir = get_session_root()
     if not log_dir.exists():
         return None
-    log_files = list(log_dir.glob("*.jsonl"))
+    # session.jsonl lives one level down, inside each session-{id}/ directory
+    log_files = list(log_dir.glob("session-*/session.jsonl"))
     if not log_files:
         return None
     # Sort files by modification date (newest first)
@@ -304,14 +311,19 @@ def tail_logs_worker():
 
 def start_capturer_async(ip, aes_key, no_video, no_audio, no_lowstate, no_lidar):
     """Sets up the WebRTC capturer loop in a separate daemon thread."""
-    workspace_dir = Path(__file__).resolve().parent
-    captures_dir = workspace_dir / "captures"
-    captures_dir.mkdir(exist_ok=True)
+    captures_dir = get_session_root()
+    captures_dir.mkdir(parents=True, exist_ok=True)
+
+    # BFF_SESSION_ID is set by chat-manager.py so this capture lands in the same
+    # session-{id} directory as the chat/VLM history it was spawned alongside.
+    # Standalone runs (no parent session) generate their own id, same tree shape.
+    session_id = os.getenv("BFF_SESSION_ID") or time.strftime("%Y%m%d-%H%M%S")
+    session_dir = captures_dir / f"session-{session_id}"
 
     capturer = Go2DataCapturer(
         ip=ip,
         aes_key=aes_key,
-        output_dir=str(captures_dir),
+        output_dir=str(session_dir),
         video_fps=30,
         capture_video=not no_video,
         capture_audio=not no_audio,
@@ -342,12 +354,11 @@ def start_capturer_async(ip, aes_key, no_video, no_audio, no_lowstate, no_lidar)
     print("[Capturer] WebRTC connection thread spawned successfully.")
     return capturer, capturer_thread
 def find_latest_capture_session():
-    """Scans the captures/ directory and returns the absolute path of the newest session."""
-    workspace_dir = Path(__file__).resolve().parent
-    captures_dir = workspace_dir / "captures"
+    """Scans the session root and returns the absolute path of the newest session."""
+    captures_dir = get_session_root()
     if not captures_dir.exists():
         return None
-    session_dirs = [d for d in captures_dir.glob("go2_capture_*") if d.is_dir()]
+    session_dirs = [d for d in captures_dir.glob("session-*") if d.is_dir()]
     if not session_dirs:
         return None
     session_dirs.sort(key=lambda p: p.name, reverse=True)
