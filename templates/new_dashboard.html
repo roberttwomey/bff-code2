@@ -148,6 +148,15 @@
             z-index: 40;
         }
 
+        .side-column-right {
+            position: absolute;
+            top: 0;
+            left: auto;
+            right: 0;
+            border-right: none;
+            border-left: 1px solid var(--panel-border);
+        }
+
         .side-column-content {
             padding: 20px;
             display: flex;
@@ -664,26 +673,10 @@
                         </div>
                     </div>
 
-                    <!-- Session Logs block -->
-                    <div style="display: flex; flex-direction: column; gap: 10px;">
-                        <div
-                            style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--panel-border); padding-bottom: 4px;">
-                            SESSION LOGS
-                        </div>
-                        <div class="console-container" id="consoleLogs"
-                            style="width: 100%; height: auto !important; padding: 0 !important; background: transparent !important; overflow-y: visible !important; font-size: 0.75rem; line-height: 1.6; display: flex; flex-direction: column; gap: 4px;">
-                            <div class="console-welcome">> listening for active session logs...</div>
-                        </div>
-                    </div>
-
-                    <!-- Dummy variables to satisfy JS listeners without script error -->
-                    <div id="logPanel" class="panel minimized" style="display: none !important;">
-                        <button id="toggleChatBtn"></button>
-                    </div>
                 </div>
             </div>
 
-            <!-- Right Column: Video Feed (Full Height) -->
+            <!-- Center Column: Video Feed (Full Height) -->
             <div class="workspace-column visual-column">
                 <!-- Panel 1: Video View -->
                 <div class="panel" style="flex: 1; height: 100%;">
@@ -694,6 +687,28 @@
                         <div class="video-container">
                             <img src="/video_feed" class="video-stream" alt="Camera Stream">
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Conversation History -->
+            <div class="workspace-column side-column side-column-right">
+                <div class="side-column-content" id="chatScrollContainer">
+                    <!-- Conversation block -->
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div
+                            style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--panel-border); padding-bottom: 4px;">
+                            Conversation
+                        </div>
+                        <div class="console-container" id="consoleLogs"
+                            style="width: 100%; height: auto !important; padding: 0 !important; background: transparent !important; overflow-y: visible !important; font-size: 0.75rem; line-height: 1.6; display: flex; flex-direction: column; gap: 4px;">
+                            <div class="console-welcome">> listening for active session logs...</div>
+                        </div>
+                    </div>
+
+                    <!-- Dummy variables to satisfy JS listeners without script error -->
+                    <div id="logPanel" class="panel minimized" style="display: none !important;">
+                        <button id="toggleChatBtn"></button>
                     </div>
                 </div>
             </div>
@@ -1126,16 +1141,23 @@
 
         // Console logger
         const consoleLogs = document.getElementById('consoleLogs');
+        const chatScrollContainer = document.getElementById('chatScrollContainer');
         let welcomeRemoved = false;
 
         socket.on('log_data', (payload) => {
+            // Chat history only: speech input and generated responses, no
+            // visual annotations (vlm_query) or other session bookkeeping.
+            const logType = payload.type || 'raw';
+            if (logType !== 'user' && logType !== 'assistant') {
+                return;
+            }
+
             if (!welcomeRemoved) {
                 consoleLogs.innerHTML = '';
                 welcomeRemoved = true;
             }
 
             const timestamp = payload.timestamp ? payload.timestamp.substring(11, 19) : new Date().toLocaleTimeString();
-            const logType = payload.type || 'raw';
 
             const lineDiv = document.createElement('div');
             lineDiv.className = `console-line line-${logType}`;
@@ -1145,51 +1167,16 @@
             timeSpan.textContent = `[${timestamp}]`;
             lineDiv.appendChild(timeSpan);
 
-            // Print styled log lines
-            if (logType === 'session_start') {
-                const msg = document.createElement('span');
-                msg.textContent = `[SESSION START]`;
-                lineDiv.appendChild(msg);
-            } else if (logType === 'session_end') {
-                const msg = document.createElement('span');
-                msg.textContent = `[SESSION END]`;
-                lineDiv.appendChild(msg);
-            } else if (logType === 'user') {
-                const prefix = document.createElement('span');
-                prefix.style.color = 'var(--text-muted)';
-                prefix.textContent = `[USER] `;
-                const text = document.createElement('span');
-                text.textContent = payload.text || '';
-                lineDiv.appendChild(prefix);
-                lineDiv.appendChild(text);
-            } else if (logType === 'assistant') {
-                const prefix = document.createElement('span');
-                prefix.style.color = 'var(--text-muted)';
-                prefix.textContent = `[GO2] `;
-                const text = document.createElement('span');
-                text.textContent = payload.text || '';
-                lineDiv.appendChild(prefix);
-                lineDiv.appendChild(text);
-            } else if (logType === 'special_command') {
-                const msg = document.createElement('span');
-                msg.textContent = `[COMMAND] ${payload.command} - "${payload.text}"`;
-                lineDiv.appendChild(msg);
-            } else if (logType === 'scene_switch') {
-                const msg = document.createElement('span');
-                msg.textContent = `[SCENE] ${payload.scene || payload.name || 'default'}`;
-                lineDiv.appendChild(msg);
-            } else if (payload.raw) {
-                const msg = document.createElement('span');
-                msg.textContent = payload.raw;
-                lineDiv.appendChild(msg);
-            } else {
-                const msg = document.createElement('span');
-                msg.textContent = JSON.stringify(payload);
-                lineDiv.appendChild(msg);
-            }
+            const prefix = document.createElement('span');
+            prefix.style.color = 'var(--text-muted)';
+            prefix.textContent = logType === 'user' ? `[USER] ` : `[GO2] `;
+            const text = document.createElement('span');
+            text.textContent = payload.text || '';
+            lineDiv.appendChild(prefix);
+            lineDiv.appendChild(text);
 
             consoleLogs.appendChild(lineDiv);
-            consoleLogs.scrollTop = consoleLogs.scrollHeight;
+            chatScrollContainer.scrollTop = chatScrollContainer.scrollHeight;
 
             if (consoleLogs.childElementCount > 200) {
                 consoleLogs.removeChild(consoleLogs.firstChild);
