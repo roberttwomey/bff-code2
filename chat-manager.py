@@ -56,6 +56,16 @@ from faster_whisper import WhisperModel
 import torch
 import dotenv
 
+import cv2
+import asyncio
+
+# --- Global VLM States ---
+vlm_lock = threading.Lock()
+latest_scene_description = ""
+last_vlm_query_time = 0.0
+is_dialogue_active = False
+last_interaction_time = time.time()
+
 from piper import PiperVoice
 try:  # Optional type that some versions expose
     from piper import AudioChunk  # type: ignore
@@ -1807,6 +1817,198 @@ def build_initial_messages(system_prompt: str) -> list[dict[str, str]]:
     return [{"role": "system", "content": system_prompt}]
 
 
+async def grab_go2_frame(ip, aes_key, timeout=5.0):
+    from unitree_webrtc_connect.webrtc_driver import UnitreeWebRTCConnection, WebRTCConnectionMethod
+    from aiortc import MediaStreamTrack
+    
+    conn = UnitreeWebRTCConnection(
+        WebRTCConnectionMethod.LocalSTA, 
+        ip=ip, 
+        aes_128_key=aes_key
+    )
+    
+    frame_future = asyncio.get_event_loop().create_future()
+    
+    async def recv_camera_stream(track: MediaStreamTrack):
+        try:
+            frame = await track.recv()
+            img = frame.to_ndarray(format="bgr24")
+            if not frame_future.done():
+                frame_future.set_result(img)
+        except Exception as e:
+            if not frame_future.done():
+                frame_future.set_exception(e)
+                 
+    print(f"Connecting to Go2 WebRTC at {ip}...")
+    await conn.connect()
+    print("Connected to Go2 WebRTC! Enabling video channel...")
+    
+    conn.video.add_track_callback(recv_camera_stream)
+    conn.video.switchVideoChannel(True)
+    
+    try:
+        img = await asyncio.wait_for(frame_future, timeout=timeout)
+        return img
+    finally:
+        print("Disconnecting from Go2 WebRTC...")
+        try:
+            await conn.disconnect()
+        except Exception as close_err:
+            print(f"Error disconnecting: {close_err}", file=sys.stderr)
+
+
+class VLMBackgroundWorker:
+    def __init__(self, config: ConversationConfig, session_dir: Path, log_file: Path):
+        self.config = config
+        self.session_dir = session_dir
+        self.log_file = log_file
+        self.stop_event = threading.Event()
+        self.thread = None
+        self.ip = os.getenv("UNITREE_ROBOT_IP", "192.168.4.30")
+        self.aes_key = os.getenv("UNITREE_AES_KEY", None)
+        if not self.aes_key:
+            self.aes_key = None
+        
+        # Load interval and idle thresholds from environment or default
+        self.vlm_interval = float(os.getenv("BFF_VLM_INTERVAL", "30.0"))
+        self.vlm_idle_threshold = float(os.getenv("BFF_VLM_IDLE_THRESHOLD", "20.0"))
+        
+    def start(self):
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+        
+    def stop(self):
+        self.stop_event.set()
+        if self.thread:
+            self.thread.join(timeout=1.0)
+            
+    def _run(self):
+        global latest_scene_description, last_vlm_query_time, is_dialogue_active, last_interaction_time
+        print("[VLM Worker] Started background VLM worker thread.", file=sys.stderr)
+        
+        while not self.stop_event.is_set():
+            # Wait in small sleep chunks to be responsive to shutdown
+            for _ in range(5):
+                if self.stop_event.is_set():
+                    break
+                time.sleep(0.2)
+            if self.stop_event.is_set():
+                break
+                
+            now = time.time()
+            time_since_interaction = now - last_interaction_time
+            time_since_vlm = now - last_vlm_query_time
+            
+            # Only trigger if the dialogue is inactive and we have been idle for long enough
+            if not is_dialogue_active and time_since_interaction >= self.vlm_idle_threshold and time_since_vlm >= self.vlm_interval:
+                print(f"[VLM Worker] Dialogue is inactive and idle for {time_since_interaction:.1f}s. Triggering capture...", file=sys.stderr)
+                self._capture_and_query()
+
+    def _capture_and_query(self):
+        global latest_scene_description, last_vlm_query_time
+        
+        # Update query time immediately to prevent overlapping runs or spamming if connection hangs
+        last_vlm_query_time = time.time()
+        
+        frame = None
+        if self.ip:
+            try:
+                # Capture frame via WebRTC
+                print(f"[VLM Worker] Fetching Go2 frame via WebRTC from {self.ip}...", file=sys.stderr)
+                frame = asyncio.run(asyncio.wait_for(grab_go2_frame(self.ip, self.aes_key, timeout=5.0), timeout=8.0))
+            except Exception as e:
+                print(f"[VLM Worker] Go2 WebRTC capture failed or timed out: {e}. Falling back to webcam...", file=sys.stderr)
+                
+        if frame is None:
+            # Fallback to local webcam
+            camera_index = 0
+            try:
+                cap = cv2.VideoCapture(camera_index)
+                if cap.isOpened():
+                    # Warm up camera exposure
+                    for _ in range(5):
+                        cap.read()
+                    ret, frame = cap.read()
+                    cap.release()
+                    if not ret:
+                        print("[VLM Worker] Failed to read frame from local webcam index 0.", file=sys.stderr)
+                        frame = None
+                else:
+                    print("[VLM Worker] Could not open local webcam index 0.", file=sys.stderr)
+            except Exception as webcam_err:
+                print(f"[VLM Worker] Webcam fallback error: {webcam_err}", file=sys.stderr)
+                
+        if frame is None:
+            print("[VLM Worker] Capture failed. No image retrieved.", file=sys.stderr)
+            return
+            
+        # Create output directory for VLM captures inside session directory
+        vlm_dir = self.session_dir / "vlm_captures"
+        vlm_dir.mkdir(parents=True, exist_ok=True)
+        
+        timestamp_str = datetime.now().strftime("%Y%m%d-%H%M%S")
+        image_path = vlm_dir / f"snapshot_{timestamp_str}.jpg"
+        cv2.imwrite(str(image_path), frame)
+        print(f"[VLM Worker] Snapshot saved to {image_path}", file=sys.stderr)
+        
+        # Query Ollama VLM
+        model_name = self.config.ollama_model
+        prompt = """You are the visual processing unit for the SNAPPER robot dog. Analyze the input image and output a dense, flat list of semantic tags, objects, spatial layout, and environmental context. 
+
+Strict constraints:
+1. No conversational filler, intro, or outro text.
+2. No markdown formatting, bullet points, or line breaks.
+3. Output a single, continuous paragraph of comma-separated descriptions.
+4. Prioritize: Exact object names, spatial relationships (e.g., "chair left of table"), room type, lighting conditions, and human presence/actions.
+
+Example Format:
+[room type], [primary lighting], [object 1 with location], [object 2], [detected person with posture/action]"""
+        
+        try:
+            client = ollama.Client()
+            query_start = time.perf_counter()
+            response = client.chat(
+                model=model_name,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt,
+                        "images": [str(image_path)]
+                    }
+                ],
+                keep_alive=-1
+            )
+            query_duration = time.perf_counter() - query_start
+            description = response["message"]["content"].strip()
+            
+            with vlm_lock:
+                latest_scene_description = description
+                last_vlm_query_time = time.time()
+                
+            print(f"[VLM Worker] VLM query finished in {query_duration:.2f}s.", file=sys.stderr)
+            print(f"[VLM Worker] Description: {description}", file=sys.stderr)
+            
+            # Save companion description text file
+            desc_path = vlm_dir / f"description_{timestamp_str}.txt"
+            with open(desc_path, "w", encoding="utf-8") as desc_file:
+                desc_file.write(description + "\n")
+                
+            # Log in session.jsonl
+            append_log_line(
+                self.log_file,
+                {
+                    "type": "vlm_query",
+                    "timestamp": timestamp_str,
+                    "image_path": str(image_path),
+                    "description": description,
+                    "duration_seconds": query_duration
+                }
+            )
+        except Exception as e:
+            print(f"[VLM Worker] Ollama vision query failed: {e}", file=sys.stderr)
+
+
+
 def run_conversation(config: ConversationConfig) -> None:
     whisper_model = load_whisper_model(config.whisper_model, config.whisper_compute_type)
     messages = build_initial_messages(config.system_prompt)
@@ -1839,7 +2041,6 @@ def run_conversation(config: ConversationConfig) -> None:
         current_system_prompt = default_scene.system_prompt
     
     messages = build_initial_messages(current_system_prompt)
-    
     log_file = session_dir / "session.jsonl"
     append_log_line(
         log_file,
@@ -1852,6 +2053,11 @@ def run_conversation(config: ConversationConfig) -> None:
             }
         },
     )
+
+    # Initialize and start VLM background worker
+    vlm_worker = VLMBackgroundWorker(config, session_dir, log_file)
+    vlm_worker.start()
+
 
     # Ensure Bluetooth headset is connected
     ensure_headset_connected()
@@ -2139,6 +2345,10 @@ def run_conversation(config: ConversationConfig) -> None:
 
         turn = 1
         listening_active = True  # When False, ignore all transcribed input until "start listening"
+        global is_dialogue_active, last_interaction_time
+        is_dialogue_active = True
+        last_interaction_time = time.time()
+
         while True:
             try:
                 # Prioritize any pending messages (e.g. from scene switch context)
@@ -2155,12 +2365,15 @@ def run_conversation(config: ConversationConfig) -> None:
                 # So I should Skip the standard append at 1861 if I already did it.
                 
                 # Let's adjust the flow in the replacement above to set a flag 'skip_standard_append' or just proceed carefully.
-                pass
+                is_dialogue_active = False
                 
                 if pending_segments:
                     phrase = pending_segments.pop(0)
                 else:
                     phrase = segment_queue.get(timeout=0.1)
+                
+                is_dialogue_active = True
+                last_interaction_time = time.time()
             except queue.Empty:
                 continue
 
@@ -2418,6 +2631,53 @@ def run_conversation(config: ConversationConfig) -> None:
                     turn += 1
                     continue
 
+            # --- VLM Visual Context & Query Handling ---
+            visual_keywords = [
+                "what do you see", 
+                "what are you looking at", 
+                "look at me", 
+                "who is this", 
+                "what is in front of you", 
+                "describe the room"
+            ]
+            user_asking_visual = any(kw in user_text.lower() for kw in visual_keywords)
+            
+            with vlm_lock:
+                current_description = latest_scene_description
+                vlm_age = time.time() - last_vlm_query_time
+                
+            if user_asking_visual:
+                # If cache is empty or stale (> 15 seconds), trigger immediate VLM capture & query
+                if not current_description or vlm_age > 15.0:
+                    print(f"User asked visual query: '{user_text}'. Cached scene description is stale ({vlm_age:.1f}s) or empty. Triggering immediate capture...", file=sys.stderr)
+                    try:
+                        # Play vocal acknowledgment: "Let me look."
+                        vlm_ack_text = "Let me look."
+                        vlm_ack_audio = session_dir / f"turn-{turn:03d}-vlm-ack.wav"
+                        synthesize_with_piper(piper_voice, vlm_ack_text, vlm_ack_audio)
+                        playback_interrupt.clear()
+                        play_audio(
+                            vlm_ack_audio,
+                            playback_interrupt,
+                            interruptable=False,
+                            output_device_indices=config.output_device_indices,
+                            output_sample_rate=config.output_sample_rate,
+                        )
+                    except Exception as exc:
+                        print(f"VLM ack TTS/playback error: {exc}", file=sys.stderr)
+                        
+                    # Trigger synchronous capture and query via the worker
+                    vlm_worker._capture_and_query()
+                    with vlm_lock:
+                        current_description = latest_scene_description
+            
+            # Clean up old visual context messages from dialogue history to avoid context bloating
+            messages = [m for m in messages if not (m["role"] == "system" and m["content"].startswith("Visual context (what you see):"))]
+            
+            # Inject new visual context if available
+            if current_description:
+                messages.append({"role": "system", "content": f"Visual context (what you see): {current_description}"})
+
             messages.append({"role": "user", "content": user_text})
             
             # Truncate history: Keep generic system prompt + last N messages
@@ -2628,6 +2888,9 @@ def run_conversation(config: ConversationConfig) -> None:
     except KeyboardInterrupt:
         print("\nExiting conversation.")
     finally:
+        # Stop VLM background worker
+        if 'vlm_worker' in locals():
+            vlm_worker.stop()
         stop_event.set()
         producer_thread.join(timeout=1.0)
         append_log_line(
