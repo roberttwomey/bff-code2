@@ -350,31 +350,31 @@ def parse_args() -> ConversationConfig:
     parser.add_argument(
         "--activation-threshold",
         type=float,
-        default=0.03,
+        default=DEFAULT_ACTIVATION_THRESHOLD,
         help="RMS amplitude that starts a speech segment (default: %(default)s)",
     )
     parser.add_argument(
         "--silence-threshold",
         type=float,
-        default=0.015,
+        default=DEFAULT_SILENCE_THRESHOLD,
         help="RMS amplitude below which audio counts as silence (default: %(default)s)",
     )
     parser.add_argument(
         "--silence-duration",
         type=float,
-        default=0.8,
+        default=DEFAULT_SILENCE_DURATION,
         help="Seconds of silence that end a speech segment (default: %(default)s)",
     )
     parser.add_argument(
         "--min-phrase-seconds",
         type=float,
-        default=0.5,
+        default=DEFAULT_MIN_PHRASE_SECONDS,
         help="Discard segments shorter than this many seconds (default: %(default)s)",
     )
     parser.add_argument(
         "--block-duration",
         type=float,
-        default=0.2,
+        default=DEFAULT_BLOCK_DURATION,
         help="Processing block size in seconds for VAD (default: %(default)s)",
     )
     parser.add_argument(

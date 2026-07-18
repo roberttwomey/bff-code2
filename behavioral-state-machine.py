@@ -4,6 +4,9 @@ import os
 import json
 import asyncio
 import enum
+import dotenv
+
+dotenv.load_dotenv()
 
 from unitree_sdk2py.core.channel import ChannelPublisher, ChannelSubscriber, ChannelFactoryInitialize
 from unitree_sdk2py.idl.unitree_go.msg.dds_ import LowCmd_, LowState_, UwbState_
@@ -104,7 +107,10 @@ class BehavioralStateMachine:
         self.current_state = RobotState.POWER_OFF  # None indicates no state has been set yet
         self.last_controller_activity_time = time.time()
         self.last_uwb_activity_time = time.time()
-        self.idle_timeout = 45  # seconds
+        try:
+            self.idle_timeout = float(os.getenv("BFF_IDLE_TIMEOUT", "45"))
+        except (ValueError, TypeError):
+            self.idle_timeout = 45.0
         self.monitoring = True
         
         # Wireless controller state
