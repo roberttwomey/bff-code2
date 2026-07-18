@@ -603,6 +603,20 @@ def ensure_log_dir() -> Path:
     return LOG_ROOT
 
 
+def is_jetson() -> bool:
+    """Detect Jetson hardware via the Tegra release marker file NVIDIA ships on L4T."""
+    return Path("/etc/nv_tegra_release").exists()
+
+
+def is_process_running(pattern: str) -> bool:
+    """Check whether a process matching `pattern` (as in `pgrep -f`) is currently running."""
+    try:
+        result = subprocess.run(["pgrep", "-f", pattern], capture_output=True)
+        return result.returncode == 0
+    except FileNotFoundError:
+        return False
+
+
 def append_log_line(log_path: Path, payload: dict[str, Any]) -> None:
     record = {"timestamp": datetime.now().isoformat(), **payload}
     with log_path.open("a", encoding="utf-8") as fh:
@@ -2095,6 +2109,30 @@ def run_conversation(config: ConversationConfig) -> None:
     else:
         print("Robot dog is offline or unavailable. Not starting dashboard server.", file=sys.stderr)
 
+    # Launch behavioral-state-machine.py on Jetson hardware, unless it's already running
+    bsm_process = None
+    bsm_log = None
+    if is_jetson():
+        if is_process_running("behavioral-state-machine.py"):
+            print("[Chat Manager] behavioral-state-machine.py is already running. Not starting another instance.", file=sys.stderr)
+        else:
+            print("[Chat Manager] Jetson detected. Starting behavioral-state-machine.py...", file=sys.stderr)
+            try:
+                script_dir = Path(__file__).resolve().parent
+                bsm_path = script_dir / "behavioral-state-machine.py"
+                bsm_log = open(session_dir / "behavioral_state_machine.log", "w", encoding="utf-8")
+                bsm_process = subprocess.Popen(
+                    [sys.executable, str(bsm_path)],
+                    cwd=str(script_dir),
+                    stdout=bsm_log,
+                    stderr=subprocess.STDOUT
+                )
+                print(f"[Chat Manager] behavioral-state-machine.py started (PID {bsm_process.pid}).", file=sys.stderr)
+            except Exception as e:
+                print(f"[Chat Manager] Failed to start behavioral-state-machine.py: {e}", file=sys.stderr)
+    else:
+        print("[Chat Manager] Not running on Jetson hardware. Not starting behavioral-state-machine.py.", file=sys.stderr)
+
     whisper_model = load_whisper_model(config.whisper_model, config.whisper_compute_type)
     messages = build_initial_messages(config.system_prompt)
     assert config.piper_voice is not None
@@ -2978,6 +3016,10 @@ def run_conversation(config: ConversationConfig) -> None:
             finally:
                 if 'dashboard_log' in locals() and dashboard_log is not None:
                     dashboard_log.close()
+
+        # behavioral-state-machine.py is intentionally left running - it controls
+        # the robot's physical stand-up/stand-down state, which shouldn't be
+        # tied to chat-manager.py's own lifecycle.
 
         # Stop VLM background worker
         if 'vlm_worker' in locals():
