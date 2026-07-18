@@ -2006,6 +2006,28 @@ Example Format:
                 description_chunks.append(content)
                 
             if aborted:
+                # Fallback to YOLO detections as a scene descriptor
+                try:
+                    import urllib.request
+                    import json
+                    yolo_url = f"http://localhost:{dashboard_port}/detections"
+                    with urllib.request.urlopen(yolo_url, timeout=2.0) as response:
+                        data = json.loads(response.read().decode())
+                        dets = data.get('detections', [])
+                        classes = [d['class'] for d in dets]
+                        if classes:
+                            # Unique and sorted list of classes
+                            unique_classes = sorted(list(set(classes)))
+                            yolo_desc = f"YOLO detected: {', '.join(unique_classes)}"
+                        else:
+                            yolo_desc = "YOLO detected nothing"
+                        
+                        with vlm_lock:
+                            latest_scene_description = yolo_desc
+                            last_vlm_query_time = time.time()
+                        print(f"[VLM Worker] VLM query aborted. Fallback to YOLO descriptor: {yolo_desc}", file=sys.stderr)
+                except Exception as yolo_err:
+                    print(f"[VLM Worker] Failed to fetch YOLO fallback: {yolo_err}", file=sys.stderr)
                 return
                 
             query_duration = time.perf_counter() - query_start

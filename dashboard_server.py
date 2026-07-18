@@ -147,6 +147,17 @@ def snapshot():
             return "Encoding error", 500
         return Response(jpeg.tobytes(), mimetype='image/jpeg')
 
+@app.route('/detections')
+def detections():
+    """Returns the latest YOLO detections as JSON."""
+    global latest_detections, latest_detection_time
+    from flask import jsonify
+    with detections_lock:
+        return jsonify({
+            'detections': latest_detections,
+            'timestamp': latest_detection_time
+        })
+
 
 @app.route('/toggle_yolo', methods=['POST'])
 def toggle_yolo():

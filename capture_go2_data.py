@@ -33,24 +33,28 @@ yolo_model = None
 try:
     from ultralytics import YOLO
     import torch
-    if os.path.exists("yolov8n.pt"):
-        yolo_model = YOLO("yolov8n.pt")
-        # Automatically move model to best GPU if available (MPS on macOS, CUDA on Linux)
-        if torch.backends.mps.is_available():
-            yolo_model.to("mps")
-            # Warm up model to compile Metal shaders now instead of blocking later
-            print("[YOLO] Warming up model on MPS...")
-            dummy = np.zeros((720, 1280, 3), dtype=np.uint8)
-            yolo_model(dummy, verbose=False)
-            print("[YOLO] Warmup complete.")
-        elif torch.cuda.is_available():
-            yolo_model.to("cuda")
-            # Warm up model to initialize CUDA context now instead of blocking later
-            print("[YOLO] Warming up model on CUDA...")
-            dummy = np.zeros((720, 1280, 3), dtype=np.uint8)
-            yolo_model(dummy, verbose=False)
-            print("[YOLO] Warmup complete.")
-        YOLO_AVAILABLE = True
+    if os.path.exists("yolo11n.pt"):
+        yolo_model = YOLO("yolo11n.pt")
+    else:
+        print("[YOLO] yolo11n.pt not found locally, downloading/initializing via Ultralytics...", file=sys.stderr)
+        yolo_model = YOLO("yolo11n.pt")
+        
+    # Automatically move model to best GPU if available (MPS on macOS, CUDA on Linux)
+    if torch.backends.mps.is_available():
+        yolo_model.to("mps")
+        # Warm up model to compile Metal shaders now instead of blocking later
+        print("[YOLO] Warming up model on MPS...")
+        dummy = np.zeros((720, 1280, 3), dtype=np.uint8)
+        yolo_model(dummy, verbose=False)
+        print("[YOLO] Warmup complete.")
+    elif torch.cuda.is_available():
+        yolo_model.to("cuda")
+        # Warm up model to initialize CUDA context now instead of blocking later
+        print("[YOLO] Warming up model on CUDA...")
+        dummy = np.zeros((720, 1280, 3), dtype=np.uint8)
+        yolo_model(dummy, verbose=False)
+        print("[YOLO] Warmup complete.")
+    YOLO_AVAILABLE = True
 except Exception as e:
     print(f"[YOLO] Warning: failed to load or warm up YOLO model: {e}")
 
