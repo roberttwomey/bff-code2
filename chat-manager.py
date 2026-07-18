@@ -58,6 +58,58 @@ import dotenv
 
 import cv2
 import asyncio
+import logging
+from contextlib import contextmanager
+
+# Suppress aiortc and pyav loggers
+logging.getLogger("aiortc").setLevel(logging.ERROR)
+logging.getLogger("aiortc.rtp").setLevel(logging.ERROR)
+logging.getLogger("aiortc.codecs.h264").setLevel(logging.ERROR)
+
+@contextmanager
+def silence_outputs():
+    # Redirect python stdout/stderr
+    old_stdout = sys.stdout
+    old_stderr = sys.stderr
+    null_file = open(os.devnull, 'w')
+    sys.stdout = null_file
+    sys.stderr = null_file
+    
+    # Redirect C-level file descriptors (FD 1 and FD 2)
+    try:
+        fd_out = os.dup(1)
+        fd_err = os.dup(2)
+        null_fd = os.open(os.devnull, os.O_RDWR)
+        os.dup2(null_fd, 1)
+        os.dup2(null_fd, 2)
+        os.close(null_fd)
+    except Exception:
+        fd_out = None
+        fd_err = None
+        
+    try:
+        yield
+    finally:
+        # Restore python streams
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
+        null_file.close()
+        
+        # Restore C file descriptors
+        if fd_out is not None:
+            try:
+                os.dup2(fd_out, 1)
+                os.close(fd_out)
+            except Exception:
+                pass
+        if fd_err is not None:
+            try:
+                os.dup2(fd_err, 2)
+                os.close(fd_err)
+            except Exception:
+                pass
+
+
 
 # --- Global VLM States ---
 vlm_lock = threading.Lock()
@@ -1817,45 +1869,6 @@ def build_initial_messages(system_prompt: str) -> list[dict[str, str]]:
     return [{"role": "system", "content": system_prompt}]
 
 
-async def grab_go2_frame(ip, aes_key, timeout=5.0):
-    from unitree_webrtc_connect.webrtc_driver import UnitreeWebRTCConnection, WebRTCConnectionMethod
-    from aiortc import MediaStreamTrack
-    
-    conn = UnitreeWebRTCConnection(
-        WebRTCConnectionMethod.LocalSTA, 
-        ip=ip, 
-        aes_128_key=aes_key
-    )
-    
-    frame_future = asyncio.get_event_loop().create_future()
-    
-    async def recv_camera_stream(track: MediaStreamTrack):
-        try:
-            frame = await track.recv()
-            img = frame.to_ndarray(format="bgr24")
-            if not frame_future.done():
-                frame_future.set_result(img)
-        except Exception as e:
-            if not frame_future.done():
-                frame_future.set_exception(e)
-                 
-    print(f"Connecting to Go2 WebRTC at {ip}...")
-    await conn.connect()
-    print("Connected to Go2 WebRTC! Enabling video channel...")
-    
-    conn.video.add_track_callback(recv_camera_stream)
-    conn.video.switchVideoChannel(True)
-    
-    try:
-        img = await asyncio.wait_for(frame_future, timeout=timeout)
-        return img
-    finally:
-        print("Disconnecting from Go2 WebRTC...")
-        try:
-            await conn.disconnect()
-        except Exception as close_err:
-            print(f"Error disconnecting: {close_err}", file=sys.stderr)
-
 
 class VLMBackgroundWorker:
     def __init__(self, config: ConversationConfig, session_dir: Path, log_file: Path):
@@ -1869,9 +1882,10 @@ class VLMBackgroundWorker:
         if not self.aes_key:
             self.aes_key = None
         
-        # Load interval and idle thresholds from environment or default
+        # Load interval, idle, and stale thresholds from environment or default
         self.vlm_interval = float(os.getenv("BFF_VLM_INTERVAL", "30.0"))
         self.vlm_idle_threshold = float(os.getenv("BFF_VLM_IDLE_THRESHOLD", "20.0"))
+        self.vlm_stale_threshold = float(os.getenv("BFF_VLM_STALE_THRESHOLD", "15.0"))
         
     def start(self):
         self.thread = threading.Thread(target=self._run, daemon=True)
@@ -1899,9 +1913,13 @@ class VLMBackgroundWorker:
             time_since_interaction = now - last_interaction_time
             time_since_vlm = now - last_vlm_query_time
             
-            # Only trigger if the dialogue is inactive and we have been idle for long enough
-            if not is_dialogue_active and time_since_interaction >= self.vlm_idle_threshold and time_since_vlm >= self.vlm_interval:
-                print(f"[VLM Worker] Dialogue is inactive and idle for {time_since_interaction:.1f}s. Triggering capture...", file=sys.stderr)
+            # Trigger if dialogue is inactive AND (never queried before OR idle thresholds met)
+            is_idle = time_since_interaction >= self.vlm_idle_threshold and time_since_vlm >= self.vlm_interval
+            if not is_dialogue_active and (last_vlm_query_time == 0.0 or is_idle):
+                if last_vlm_query_time == 0.0:
+                    print("[VLM Worker] Dialogue is inactive for the first time. Triggering initial VLM capture...", file=sys.stderr)
+                else:
+                    print(f"[VLM Worker] Dialogue is inactive and idle for {time_since_interaction:.1f}s. Triggering capture...", file=sys.stderr)
                 self._capture_and_query()
 
     def _capture_and_query(self):
@@ -1911,30 +1929,36 @@ class VLMBackgroundWorker:
         last_vlm_query_time = time.time()
         
         frame = None
-        if self.ip:
-            try:
-                # Capture frame via WebRTC
-                print(f"[VLM Worker] Fetching Go2 frame via WebRTC from {self.ip}...", file=sys.stderr)
-                frame = asyncio.run(asyncio.wait_for(grab_go2_frame(self.ip, self.aes_key, timeout=5.0), timeout=8.0))
-            except Exception as e:
-                print(f"[VLM Worker] Go2 WebRTC capture failed or timed out: {e}. Falling back to webcam...", file=sys.stderr)
+        dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
+        url = f"http://localhost:{dashboard_port}/snapshot"
+        try:
+            import urllib.request
+            import numpy as np
+            print(f"[VLM Worker] Fetching frame from dashboard server at {url}...", file=sys.stderr)
+            with urllib.request.urlopen(url, timeout=3.0) as response:
+                img_data = response.read()
+                nparr = np.frombuffer(img_data, np.uint8)
+                frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                print(f"[VLM Worker] Successfully retrieved frame from dashboard server.", file=sys.stderr)
+        except Exception as e:
+            print(f"[VLM Worker] Could not fetch frame from dashboard server: {e}. Falling back to webcam...", file=sys.stderr)
                 
         if frame is None:
             # Fallback to local webcam
             camera_index = 0
             try:
-                cap = cv2.VideoCapture(camera_index)
-                if cap.isOpened():
-                    # Warm up camera exposure
-                    for _ in range(5):
-                        cap.read()
-                    ret, frame = cap.read()
-                    cap.release()
-                    if not ret:
-                        print("[VLM Worker] Failed to read frame from local webcam index 0.", file=sys.stderr)
-                        frame = None
-                else:
-                    print("[VLM Worker] Could not open local webcam index 0.", file=sys.stderr)
+                ret = False
+                with silence_outputs():
+                    cap = cv2.VideoCapture(camera_index)
+                    if cap.isOpened():
+                        # Warm up camera exposure
+                        for _ in range(5):
+                            cap.read()
+                        ret, frame = cap.read()
+                        cap.release()
+                if not ret:
+                    print("[VLM Worker] Failed to read frame from local webcam index 0.", file=sys.stderr)
+                    frame = None
             except Exception as webcam_err:
                 print(f"[VLM Worker] Webcam fallback error: {webcam_err}", file=sys.stderr)
                 
@@ -1967,7 +1991,7 @@ Example Format:
         try:
             client = ollama.Client()
             query_start = time.perf_counter()
-            response = client.chat(
+            stream = client.chat(
                 model=model_name,
                 messages=[
                     {
@@ -1976,10 +2000,39 @@ Example Format:
                         "images": [str(image_path)]
                     }
                 ],
+                stream=True,
                 keep_alive=-1
             )
+            
+            description_chunks = []
+            aborted = False
+            for chunk in stream:
+                # If dialogue became active while we were querying, abort immediately
+                # to prevent holding up the dialogue language query
+                if is_dialogue_active or self.stop_event.is_set():
+                    print("[VLM Worker] Dialogue active! Aborting VLM query to free up Ollama.", file=sys.stderr)
+                    try:
+                        stream.close()
+                    except Exception:
+                        pass
+                    aborted = True
+                    break
+                
+                # Extract content
+                content = ""
+                if isinstance(chunk, dict):
+                    content = chunk.get("message", {}).get("content", "")
+                else:
+                    msg = getattr(chunk, "message", None)
+                    if msg:
+                        content = getattr(msg, "content", "")
+                description_chunks.append(content)
+                
+            if aborted:
+                return
+                
             query_duration = time.perf_counter() - query_start
-            description = response["message"]["content"].strip()
+            description = "".join(description_chunks).strip()
             
             with vlm_lock:
                 latest_scene_description = description
@@ -2010,6 +2063,73 @@ Example Format:
 
 
 def run_conversation(config: ConversationConfig) -> None:
+    dashboard_process = None
+    dashboard_log = None
+
+    # Create session directory first so dashboard log can write to it
+    log_dir = ensure_log_dir()
+    session_id = datetime.now().strftime("%Y%m%d-%H%M%S")
+    session_dir = log_dir / f"session-{session_id}"
+    session_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check if the robot dog is on and available
+    robot_ip = os.getenv("UNITREE_ROBOT_IP", "192.168.4.30")
+    dog_available = False
+    if robot_ip:
+        print(f"Checking if robot dog is available at {robot_ip}...", file=sys.stderr)
+        cmd = ["ping", "-c", "1", "-t", "1" if sys.platform == "darwin" else "1", robot_ip]
+        if sys.platform != "darwin":
+            cmd = ["ping", "-c", "1", "-W", "1", robot_ip]
+        try:
+            res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            dog_available = (res.returncode == 0)
+        except Exception:
+            dog_available = False
+
+    if dog_available:
+        print(f"Robot dog is on and available. Starting dashboard_server.py...", file=sys.stderr)
+        try:
+            script_dir = Path(__file__).resolve().parent
+            dashboard_server_path = script_dir / "dashboard_server.py"
+            dashboard_log = open(session_dir / "dashboard_server.log", "w", encoding="utf-8")
+            dashboard_process = subprocess.Popen(
+                [sys.executable, str(dashboard_server_path)],
+                cwd=str(script_dir),
+                stdout=dashboard_log,
+                stderr=subprocess.STDOUT
+            )
+
+            # Wait until the dashboard server is live
+            dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
+            url = f"http://localhost:{dashboard_port}/"
+            print(f"Waiting for dashboard server to become live at {url}...", file=sys.stderr)
+
+            import urllib.request
+            start_wait = time.time()
+            is_live = False
+            while time.time() - start_wait < 15.0:
+                if dashboard_process.poll() is not None:
+                    print("[Chat Manager] Dashboard server subprocess exited unexpectedly. Check dashboard_server.log for errors.", file=sys.stderr)
+                    break
+                try:
+                    # Query the dashboard server index route
+                    with urllib.request.urlopen(url, timeout=1.0) as response:
+                        if response.status == 200:
+                            is_live = True
+                            break
+                except Exception:
+                    pass
+                time.sleep(0.5)
+
+            if is_live:
+                print(f"Dashboard server is live! Proceeding with conversation...", file=sys.stderr)
+            else:
+                print("[Warning] Dashboard server did not respond in time. Proceeding without it.", file=sys.stderr)
+        except Exception as e:
+            print(f"Failed to start dashboard_server.py: {e}", file=sys.stderr)
+    else:
+        print("Robot dog is offline or unavailable. Not starting dashboard server.", file=sys.stderr)
+
     whisper_model = load_whisper_model(config.whisper_model, config.whisper_compute_type)
     messages = build_initial_messages(config.system_prompt)
     assert config.piper_voice is not None
@@ -2021,12 +2141,6 @@ def run_conversation(config: ConversationConfig) -> None:
         noise_w=config.piper_noise_w,
     )
 
-    # Create session directory
-    log_dir = ensure_log_dir()
-    session_id = datetime.now().strftime("%Y%m%d-%H%M%S")
-    session_dir = log_dir / f"session-{session_id}"
-    session_dir.mkdir(parents=True, exist_ok=True)
-    
     # Load scenes
     script_path = Path("performance-script.json")
     scenes = load_scenes(script_path)
@@ -2647,8 +2761,8 @@ def run_conversation(config: ConversationConfig) -> None:
                 vlm_age = time.time() - last_vlm_query_time
                 
             if user_asking_visual:
-                # If cache is empty or stale (> 15 seconds), trigger immediate VLM capture & query
-                if not current_description or vlm_age > 15.0:
+                # If cache is empty or stale, trigger immediate VLM capture & query
+                if not current_description or vlm_age > vlm_worker.vlm_stale_threshold:
                     print(f"User asked visual query: '{user_text}'. Cached scene description is stale ({vlm_age:.1f}s) or empty. Triggering immediate capture...", file=sys.stderr)
                     try:
                         # Play vocal acknowledgment: "Let me look."
@@ -2888,6 +3002,20 @@ def run_conversation(config: ConversationConfig) -> None:
     except KeyboardInterrupt:
         print("\nExiting conversation.")
     finally:
+        # Stop dashboard server if running
+        if 'dashboard_process' in locals() and dashboard_process is not None:
+            print("[Chat Manager] Terminating dashboard_server.py...", file=sys.stderr)
+            dashboard_process.terminate()
+            try:
+                dashboard_process.wait(timeout=3.0)
+            except subprocess.TimeoutExpired:
+                print("[Chat Manager] Force killing dashboard_server.py...", file=sys.stderr)
+                dashboard_process.kill()
+                dashboard_process.wait()
+            finally:
+                if 'dashboard_log' in locals() and dashboard_log is not None:
+                    dashboard_log.close()
+
         # Stop VLM background worker
         if 'vlm_worker' in locals():
             vlm_worker.stop()

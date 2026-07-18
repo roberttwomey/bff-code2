@@ -135,6 +135,19 @@ def video_feed():
     """HTTP streaming endpoint returning MJPEG multipart response."""
     return Response(generate_mjpeg(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
+@app.route('/snapshot')
+def snapshot():
+    """Returns the latest captured frame as a JPEG image."""
+    global latest_frame
+    with frame_lock:
+        if latest_frame is None:
+            return "No frame available", 503
+        ret, jpeg = cv2.imencode('.jpg', latest_frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+        if not ret:
+            return "Encoding error", 500
+        return Response(jpeg.tobytes(), mimetype='image/jpeg')
+
+
 @app.route('/toggle_yolo', methods=['POST'])
 def toggle_yolo():
     """Enable or disable YOLO inference and bounding-box overlays.
