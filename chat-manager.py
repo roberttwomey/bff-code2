@@ -1893,7 +1893,12 @@ class VLMBackgroundWorker:
         # Minimum gap between capture starts. Default 0 = back-to-back, continuous
         # capture paced only by the VLM's own latency (~1-2s with moondream).
         self.vlm_interval = float(os.getenv("BFF_VLM_INTERVAL", "0.0"))
-        
+
+        # Previous SLAM sample, used to estimate velocity by position delta -
+        # LowState_ has no velocity field on this hardware.
+        self._last_slam_position = None
+        self._last_slam_time = None
+
     def start(self):
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.thread.start()
@@ -1926,7 +1931,8 @@ class VLMBackgroundWorker:
         """Poll the dashboard's /lowstate endpoint and cache a compact summary
         (battery, velocity, tilt) for injection into the LLM prompt. Foot
         contact is deliberately excluded - it doesn't return valid data on
-        the Go2 Pro."""
+        the Go2 Pro. LowState_ has no velocity field on this hardware either,
+        so velocity is estimated from slam_pose position deltas between polls."""
         global latest_body_state
         dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
         url = f"http://localhost:{dashboard_port}/lowstate"
@@ -1939,15 +1945,34 @@ class VLMBackgroundWorker:
             if not data:
                 return
 
-            power_v = data.get("power_v", 0.0)
-            battery_pct = max(0.0, min(100.0, ((power_v - 22.0) / (29.6 - 22.0)) * 100))
+            bms_soc = (data.get("bms_state") or {}).get("soc")
+            if bms_soc is not None:
+                battery_pct = float(bms_soc)
+            else:
+                # Fallback voltage-based estimate if bms_state.soc isn't available
+                power_v = data.get("power_v", 0.0)
+                battery_pct = max(0.0, min(100.0, ((power_v - 22.0) / (29.6 - 22.0)) * 100))
 
             rpy = (data.get("imu_state") or {}).get("rpy") or [0.0, 0.0, 0.0]
             pitch_deg = math.degrees(rpy[0])
             roll_deg = math.degrees(rpy[1])
 
-            vx, vy = (data.get("velocity") or [0.0, 0.0, 0.0])[:2]
-            speed = math.hypot(vx, vy)
+            # Velocity via SLAM position delta between consecutive polls
+            speed = 0.0
+            position = (data.get("slam_pose") or {}).get("position")
+            sample_time = payload.get("timestamp")
+            if position is not None and sample_time is not None:
+                if self._last_slam_position is not None and self._last_slam_time is not None:
+                    dt = sample_time - self._last_slam_time
+                    if dt > 0.05:
+                        dx = position[0] - self._last_slam_position[0]
+                        dy = position[1] - self._last_slam_position[1]
+                        candidate_speed = math.hypot(dx, dy) / dt
+                        # Guard against SLAM relocalization jumps producing bogus spikes
+                        if candidate_speed <= 5.0:
+                            speed = candidate_speed
+                self._last_slam_position = position
+                self._last_slam_time = sample_time
 
             summary = (
                 f"battery {battery_pct:.0f}%, velocity {speed:.2f} m/s, "
@@ -1955,6 +1980,7 @@ class VLMBackgroundWorker:
             )
             with body_state_lock:
                 latest_body_state = summary
+            print(f"[Body State] {summary}", file=sys.stderr)
         except Exception as e:
             print(f"[Body State] Failed to fetch lowstate: {e}", file=sys.stderr)
 
