@@ -30,6 +30,7 @@ Environment variables:
     BFF_VLM_NUM_CTX    override context size for the VLM model (default: 2048)
     BFF_VLM_INTERVAL   override minimum seconds between VLM capture starts (default: 1.5)
     BFF_WHISPER_MODEL  override Whisper model size (default: tiny.en)
+    BFF_WHISPER_DEVICE override Whisper device, e.g. cpu to leave GPU memory for the VLM (default: cuda if available)
     BFF_PIPER_VOICE    override Piper voice path if --piper-voice not provided
     BFF_INTERRUPTABLE  override interruptable behavior (default: true)
     BFF_LOG_ROOT       override session history root (default: ./captures, alongside AV/lidar capture data)
@@ -517,7 +518,7 @@ def parse_args() -> ConversationConfig:
 
 
 def load_whisper_model(name: str, compute_type: str = "int8") -> WhisperModel:
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = os.environ.get("BFF_WHISPER_DEVICE") or ("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Loading Faster Whisper model '{name}' on {device} ({compute_type})…", file=sys.stderr)
     return WhisperModel(name, device=device, compute_type=compute_type)
 
