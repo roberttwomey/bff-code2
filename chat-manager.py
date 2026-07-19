@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Voice chat assistant using Whisper STT, Ollama Gemma 3 Nano, and Piper TTS.
+"""Voice chat assistant using Whisper STT, Ollama Gemma 4 Nano, and Piper TTS.
 
 This script performs continuous voice activity detection (VAD) on microphone
 audio, automatically segments speech, transcribes each utterance with Whisper,
-sends the resulting text to an Ollama model (`gemma3n:e2b` by default), and
+sends the resulting text to an Ollama model (`gemma4:e2b` by default), and
 plays back the assistant response via Piper text-to-speech using the Python
 `piper-tts` library.
 
 Requirements:
-    - ollama (Python package) with the `gemma3n:e2b` model pulled locally
+    - ollama (Python package) with the `gemma4:e2b` model pulled locally
     - openai-whisper
     - sounddevice
     - soundfile
@@ -21,10 +21,10 @@ Example usage:
     python local/bff-voice-chat.py --piper-voice local/piper/en_GB-alan-medium.onnx --show-levels
 
 To test just ollama: 
-ollama run gemma3n:e2b
+ollama run gemma4:e2b
 
 Environment variables:
-    BFF_OLLAMA_MODEL   override Ollama model name for text chat (default: gemma3n:e2b)
+    BFF_OLLAMA_MODEL   override Ollama model name for text chat (default: gemma4:e2b)
     BFF_VLM_MODEL      override Ollama model name for VLM scene captioning (default: moondream)
     BFF_VLM_NUM_PREDICT override max tokens generated per VLM scene description (default: 50)
     BFF_VLM_INTERVAL   override minimum seconds between VLM capture starts (default: 1.5)
@@ -185,7 +185,7 @@ DEFAULT_SYSTEM_PROMPT = (
     )
 )
 
-DEFAULT_OLLAMA_MODEL = os.environ.get("BFF_OLLAMA_MODEL", "gemma3n:e2b")
+DEFAULT_OLLAMA_MODEL = os.environ.get("BFF_OLLAMA_MODEL", "gemma4:e2b")
 DEFAULT_VLM_MODEL = os.environ.get("BFF_VLM_MODEL", "moondream")
 DEFAULT_WHISPER_MODEL = os.environ.get("BFF_WHISPER_MODEL", "tiny.en")
 DEFAULT_SAMPLE_RATE = int(os.environ.get("BFF_SAMPLE_RATE", "16000"))
