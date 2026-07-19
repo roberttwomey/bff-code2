@@ -21,6 +21,7 @@ A robust data acquisition, real-time telemetry, and visualization system for the
   * **Unified Inference:** YOLO runs only once in the background capturer; detections are piped directly to the live dashboard MJPEG stream and logged to `detections.jsonl`.
   * **Interactive Toggle:** Enable/disable YOLO detections instantly via the web dashboard interface.
 * **Live Camera Path Recording:** Tracks manual camera adjustments (rotation, target pan, zoom) on the dashboard's Three.js OrbitControls, saving them to `camera_path.jsonl` at 10 FPS.
+* **Episodic Memory (WIP):** Conversation turns, VLM scene captions, and telemetry snapshots are recorded into a shared, embedded, semantically-searchable database (`captures/memory.sqlite3`) spanning every session -- see [Memory System](#5-memory-system-experimental) below. Recall into the live conversation isn't wired up yet; this is currently write-only.
 * **Auto Post-Processing:** Automatically runs the overlay annotator to compile `video_annotated.mp4` with persistent, flicker-free bounding boxes immediately upon server shutdown (`Ctrl+C`).
 * **Interactive 3D LiDAR Playback & Rendering:** Replay 3D voxel clouds inside your browser with the option to follow the exact camera paths you recorded during the session, and automatically compiles `lidar_render.mp4` upon execution.
 
@@ -103,6 +104,33 @@ python3 post_processing/view_lidar.py --step 10
 If you ever want to re-run the YOLO overlay post-processing on a raw capture directory:
 ```bash
 python3 post_processing/overlay_detections.py captures/session-20260704-130112
+```
+
+### 5. Memory System (Experimental)
+Conversation turns, VLM scene captions, and telemetry snapshots are recorded into a shared, embedded, semantically-searchable database at `captures/memory.sqlite3` -- spanning all sessions, not just the current one. See `memory/` for the schema and write path (`memory/schema.sql`, `memory/writer.py`, `memory/embedder.py`). Recall into the live conversation isn't wired up yet -- this is currently write-only.
+
+**Setup (one-time):**
+```bash
+pip install -r memory/requirements.txt
+```
+The embedder (`memory/embedder.py`) downloads a small ONNX model (~23MB, all-MiniLM-L6-v2) from Hugging Face on first use and caches it locally. If `sqlite-vec` can't load on a given device, the memory system degrades to a no-op automatically -- it won't block the voice assistant from running.
+
+**Test without the physical robot, using a previously recorded session:**
+```bash
+# Terminal 1 -- replay the most recent captures/ session on the dashboard's HTTP endpoints
+python3 dashboard_server.py --simulate
+
+# Terminal 2 -- run the voice assistant with the robot dog powered off/unreachable, so
+# chat-manager.py doesn't try to spawn its own dashboard_server.py on the same port
+./run-chat-manager.sh
+```
+With the dog unreachable, `chat-manager.py`'s VLM worker polls the simulated dashboard's `/snapshot` and `/lowstate` endpoints instead of a live robot, driving real VLM captions and telemetry summaries from the replayed session -- which get written (and embedded) into `captures/memory.sqlite3` exactly as they would during a live run. Conversation turns still come from your live mic/Whisper input regardless of simulate mode.
+
+**Inspect what's been recorded:**
+```bash
+python3 -m memory.inspect                         # sessions overview + most recent session's events
+python3 -m memory.inspect --session <session_id>   # detail for a specific session
+python3 -m memory.inspect --limit 20               # show more/fewer recent events
 ```
 
 ---
