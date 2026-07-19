@@ -27,6 +27,7 @@ Environment variables:
     BFF_OLLAMA_MODEL   override Ollama model name for text chat (default: gemma3n:e2b)
     BFF_VLM_MODEL      override Ollama model name for VLM scene captioning (default: moondream)
     BFF_VLM_NUM_PREDICT override max tokens generated per VLM scene description (default: 50)
+    BFF_VLM_NUM_CTX    override context size for the VLM model (default: 2048)
     BFF_VLM_INTERVAL   override minimum seconds between VLM capture starts (default: 1.5)
     BFF_WHISPER_MODEL  override Whisper model size (default: tiny.en)
     BFF_PIPER_VOICE    override Piper voice path if --piper-voice not provided
@@ -202,6 +203,7 @@ DEFAULT_OLLAMA_TOP_K = int(os.environ.get("BFF_OLLAMA_TOP_K", "40"))
 DEFAULT_OLLAMA_NUM_PREDICT = int(os.environ.get("BFF_OLLAMA_NUM_PREDICT", "100"))
 DEFAULT_OLLAMA_NUM_CTX = int(os.environ.get("BFF_OLLAMA_NUM_CTX", "2048"))
 DEFAULT_VLM_NUM_PREDICT = int(os.environ.get("BFF_VLM_NUM_PREDICT", "50"))
+DEFAULT_VLM_NUM_CTX = int(os.environ.get("BFF_VLM_NUM_CTX", "2048"))
 DEFAULT_OLLAMA_THINK_ENV = os.environ.get("BFF_OLLAMA_THINK", "false").lower()
 DEFAULT_OLLAMA_THINK = DEFAULT_OLLAMA_THINK_ENV in ("true", "1", "yes", "on")
 DEFAULT_REQUIRE_WAKEWORD_ENV = os.environ.get("BFF_REQUIRE_WAKEWORD", "false").lower()
@@ -1498,7 +1500,7 @@ def query_ollama_streaming(
                 "top_p": 0.9,
                 "top_k": 40,
                 "num_predict": 100,
-                "num_ctx": 2048,
+                "num_ctx": DEFAULT_OLLAMA_NUM_CTX,
             },
         )
     except Exception as e:
@@ -2134,6 +2136,7 @@ class VLMBackgroundWorker:
                 keep_alive=-1,
                 options={
                     "num_predict": DEFAULT_VLM_NUM_PREDICT,
+                    "num_ctx": DEFAULT_VLM_NUM_CTX,
                 },
             )
             
@@ -2186,9 +2189,58 @@ class VLMBackgroundWorker:
 
 
 
+def preload_ollama_models(config: ConversationConfig) -> None:
+    """Warm the chat and VLM models in Ollama before anything touches CUDA.
+
+    Ollama decides CPU/GPU placement when a model loads and keeps it for as
+    long as later requests use the same runner settings (num_ctx). Loading
+    both models while the GPU is still empty — before Whisper, the dashboard's
+    TensorRT engine, etc. — gives them the best possible split, and matching
+    num_ctx here to what the real calls send means those calls never trigger
+    a reload that would re-place the models under memory pressure.
+    """
+    try:
+        client = ollama.Client()
+    except Exception as exc:
+        print(f"[Preload] Ollama unavailable, skipping model preload: {exc}", file=sys.stderr)
+        return
+
+    # A VLM runner left over from a previous run keeps whatever (possibly
+    # CPU-heavy) placement it got under that run's memory pressure — unload it
+    # so placement is re-decided now, while the GPU is free.
+    if config.vlm_model != config.ollama_model:
+        try:
+            client.generate(model=config.vlm_model, prompt="", keep_alive=0)
+        except Exception:
+            pass
+
+    # Chat model first so it claims full GPU; the VLM takes what remains.
+    for model_name, num_ctx in (
+        (config.ollama_model, config.ollama_num_ctx),
+        (config.vlm_model, DEFAULT_VLM_NUM_CTX),
+    ):
+        try:
+            start = time.perf_counter()
+            client.chat(
+                model=model_name,
+                messages=[{"role": "user", "content": "ping"}],
+                keep_alive=-1,
+                options={"num_ctx": num_ctx, "num_predict": 1},
+            )
+            print(
+                f"[Preload] {model_name} loaded (num_ctx={num_ctx}) "
+                f"in {time.perf_counter() - start:.1f}s",
+                file=sys.stderr,
+            )
+        except Exception as exc:
+            print(f"[Preload] Could not preload {model_name}: {exc}", file=sys.stderr)
+
+
 def run_conversation(config: ConversationConfig) -> None:
     dashboard_process = None
     dashboard_log = None
+
+    preload_ollama_models(config)
 
     # Create session directory first so dashboard log can write to it
     log_dir = ensure_log_dir()
