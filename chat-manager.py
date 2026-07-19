@@ -37,6 +37,7 @@ Environment variables:
 from __future__ import annotations
 
 import argparse
+import collections
 import json
 import math
 import os
@@ -58,7 +59,9 @@ import ollama
 
 # ALSA's pulse plugin reads this when a stream opens; PortAudio's default
 # latency there is tight enough to underrun whenever Whisper/Piper spike the CPU.
-os.environ.setdefault("PULSE_LATENCY_MSEC", "60")
+# Must comfortably exceed the stream block size (BFF_BLOCK_DURATION, 200 ms
+# default) or every block underruns.
+os.environ.setdefault("PULSE_LATENCY_MSEC", "400")
 
 import sounddevice as sd
 import soundfile as sf
@@ -735,7 +738,7 @@ def try_auto_connect_headset(mac: str, name: str) -> bool:
         if check_bluetooth_connection_status(mac):
             print(f"Device {name} ({mac}) is already connected.", file=sys.stderr)
             # Try to find and configure PulseAudio card
-            card_id = find_pulseaudio_card_by_mac(mac, max_retries=3, retry_delay=0.5)
+            card_id = find_pulseaudio_card_by_mac(mac, max_retries=6, retry_delay=1.0)
             if card_id:
                 subprocess.run(
                     ["pactl", "set-card-profile", card_id, "handsfree_head_unit"],
@@ -746,11 +749,20 @@ def try_auto_connect_headset(mac: str, name: str) -> bool:
                     print("Headset mic source not found; input stays on the previous default.", file=sys.stderr)
                 print(f"Auto-connect successful! {name} is connected and configured.", file=sys.stderr)
                 return True
-            else:
-                print(f"Device is connected via Bluetooth, but PulseAudio card not yet available.", file=sys.stderr)
-                print(f"This is normal - the device should work as the system default audio device.", file=sys.stderr)
-                return True
-        
+            # Connected at the BlueZ level but PulseAudio never attached a card:
+            # cycle the connection so PulseAudio's bluez5 discovery picks it up.
+            print(
+                "Bluetooth is connected but PulseAudio has no card for it; cycling the connection…",
+                file=sys.stderr,
+            )
+            subprocess.run(
+                ["bluetoothctl", "disconnect", mac],
+                capture_output=True,
+                check=False,
+                timeout=10,
+            )
+            time.sleep(2)
+
         # Initialize Bluetooth
         subprocess.run(["bluetoothctl", "power", "on"], capture_output=True, check=False)
         subprocess.run(["bluetoothctl", "agent", "on"], capture_output=True, check=False)
@@ -789,7 +801,10 @@ def try_auto_connect_headset(mac: str, name: str) -> bool:
             return True
         else:
             print(f"Bluetooth connection established to {name} ({mac}), but PulseAudio card not yet available.", file=sys.stderr)
-            print(f"This is normal - the device should work as the system default audio device.", file=sys.stderr)
+            print(
+                "Warning: the headset microphone will NOT be used; input stays on the previous default source.",
+                file=sys.stderr,
+            )
             return True
         
     except Exception as exc:
@@ -1221,44 +1236,53 @@ def resample_audio(
 
 
 class UnifiedAudioSystem:
+    """Queue of pending playback chunks, drained by the audio callback.
+
+    Chunks are kept as a deque rather than one concatenated array so neither
+    side ever holds the mutex for a large copy — the callback runs on the
+    audio thread and must not block.
+    """
+
     def __init__(self):
-        self.active_buffer: np.ndarray = np.array([], dtype=np.float32)
+        self.chunks: collections.deque[np.ndarray] = collections.deque()
         self.buffer_mutex = threading.Lock()
         self.interrupt_event = threading.Event()
         self.is_playing = False
 
     def play_chunk(self, chunk: np.ndarray):
+        if chunk.ndim > 1:
+            chunk = chunk.flatten()
+        chunk = chunk.astype(np.float32)
         with self.buffer_mutex:
-            if chunk.ndim > 1:
-                chunk = chunk.flatten()
-            self.active_buffer = np.concatenate((self.active_buffer, chunk.astype(np.float32)))
+            self.chunks.append(chunk)
             self.is_playing = True
 
     def clear(self):
         with self.buffer_mutex:
-            self.active_buffer = np.array([], dtype=np.float32)
+            self.chunks.clear()
             self.is_playing = False
 
     def fill_output(self, outdata: np.ndarray, frames: int):
         with self.buffer_mutex:
             if self.interrupt_event.is_set():
-                self.active_buffer = np.array([], dtype=np.float32)
+                self.chunks.clear()
                 self.is_playing = False
                 self.interrupt_event.clear()
 
-            n_samples = len(self.active_buffer)
-            if n_samples == 0:
-                outdata.fill(0.0)
-                self.is_playing = False
-                return
+            offset = 0
+            while offset < frames and self.chunks:
+                head = self.chunks[0]
+                take = min(len(head), frames - offset)
+                outdata[offset:offset + take, 0] = head[:take]
+                if take == len(head):
+                    self.chunks.popleft()
+                else:
+                    self.chunks[0] = head[take:]
+                offset += take
 
-            if n_samples >= frames:
-                outdata[:, 0] = self.active_buffer[:frames]
-                self.active_buffer = self.active_buffer[frames:]
-            else:
-                outdata[:n_samples, 0] = self.active_buffer
-                outdata[n_samples:, 0] = 0.0
-                self.active_buffer = np.array([], dtype=np.float32)
+            if offset < frames:
+                outdata[offset:, 0] = 0.0
+            if not self.chunks:
                 self.is_playing = False
 
 
