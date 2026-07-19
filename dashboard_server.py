@@ -367,8 +367,20 @@ def start_capturer_async(ip, aes_key, no_video, no_audio, no_lowstate, no_lidar)
     capturer_thread.start()
     print("[Capturer] WebRTC connection thread spawned successfully.")
     return capturer, capturer_thread
+def _session_has_replayable_video(session_dir: Path) -> bool:
+    """True if this session has a video.mp4 to replay, either chunked
+    (chunk_*/video.mp4) or in the legacy single-directory layout."""
+    if any(session_dir.glob("chunk_*/video.mp4")):
+        return True
+    return (session_dir / "video.mp4").exists()
+
+
 def find_latest_capture_session():
-    """Scans the session root and returns the absolute path of the newest session."""
+    """Scans the session root and returns the absolute path of the newest
+    session that actually has video to replay. Skips sessions with no
+    recorded video yet -- notably the current run's own session directory,
+    which chat-manager.py --simulate creates (empty) before spawning this
+    process, and which would otherwise always sort as "latest"."""
     captures_dir = get_session_root()
     if not captures_dir.exists():
         return None
@@ -376,7 +388,10 @@ def find_latest_capture_session():
     if not session_dirs:
         return None
     session_dirs.sort(key=lambda p: p.name, reverse=True)
-    return str(session_dirs[0])
+    for session_dir in session_dirs:
+        if _session_has_replayable_video(session_dir):
+            return str(session_dir)
+    return None
 
 def simulation_worker(session_dir, stop_event):
     """Background worker that reads recorded capture session logs and plays them back in real time."""
