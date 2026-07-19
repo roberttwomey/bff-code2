@@ -55,6 +55,11 @@ import wave
 
 import numpy as np
 import ollama
+
+# ALSA's pulse plugin reads this when a stream opens; PortAudio's default
+# latency there is tight enough to underrun whenever Whisper/Piper spike the CPU.
+os.environ.setdefault("PULSE_LATENCY_MSEC", "60")
+
 import sounddevice as sd
 import soundfile as sf
 from faster_whisper import WhisperModel
@@ -690,6 +695,34 @@ def find_pulseaudio_card_by_mac(mac: str, max_retries: int = 5, retry_delay: flo
     return None
 
 
+def set_default_bluez_source(mac: str, max_retries: int = 5, retry_delay: float = 1.0) -> bool:
+    """Make the headset's Bluetooth mic the default PulseAudio source."""
+    mac_token = mac.replace(":", "_").lower()
+    for attempt in range(max_retries):
+        result = subprocess.run(
+            ["pactl", "list", "short", "sources"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        for line in result.stdout.splitlines():
+            parts = line.split()
+            if len(parts) < 2:
+                continue
+            source_name = parts[1]
+            if mac_token in source_name.lower() and ".monitor" not in source_name:
+                subprocess.run(
+                    ["pactl", "set-default-source", source_name],
+                    capture_output=True,
+                    check=False,
+                )
+                print(f"Default input source set to headset mic: {source_name}", file=sys.stderr)
+                return True
+        if attempt < max_retries - 1:
+            time.sleep(retry_delay)
+    return False
+
+
 def try_auto_connect_headset(mac: str, name: str) -> bool:
     """Attempt to auto-connect to a saved headset."""
     if not mac or not name:
@@ -705,10 +738,12 @@ def try_auto_connect_headset(mac: str, name: str) -> bool:
             card_id = find_pulseaudio_card_by_mac(mac, max_retries=3, retry_delay=0.5)
             if card_id:
                 subprocess.run(
-                    ["pactl", "set-card-profile", card_id, "headset-head-unit"],
+                    ["pactl", "set-card-profile", card_id, "handsfree_head_unit"],
                     capture_output=True,
                     check=False,
                 )
+                if not set_default_bluez_source(mac, max_retries=3, retry_delay=0.5):
+                    print("Headset mic source not found; input stays on the previous default.", file=sys.stderr)
                 print(f"Auto-connect successful! {name} is connected and configured.", file=sys.stderr)
                 return True
             else:
@@ -744,10 +779,12 @@ def try_auto_connect_headset(mac: str, name: str) -> bool:
         card_id = find_pulseaudio_card_by_mac(mac, max_retries=5, retry_delay=1.0)
         if card_id:
             subprocess.run(
-                ["pactl", "set-card-profile", card_id, "headset-head-unit"],
+                ["pactl", "set-card-profile", card_id, "handsfree_head_unit"],
                 capture_output=True,
                 check=False,
             )
+            if not set_default_bluez_source(mac):
+                print("Headset mic source not found; input stays on the previous default.", file=sys.stderr)
             print(f"Auto-connect successful! Connected {name} ({mac}) in headset (HFP/HSP) mode.", file=sys.stderr)
             return True
         else:
@@ -848,7 +885,7 @@ def connect_to_headset(mac: str, name: str) -> bool:
         card_id = find_pulseaudio_card_by_mac(mac, max_retries=5, retry_delay=1.0)
         if card_id:
             subprocess.run(
-                ["pactl", "set-card-profile", card_id, "headset-head-unit"],
+                ["pactl", "set-card-profile", card_id, "handsfree_head_unit"],
                 capture_output=True,
                 check=False,
             )
