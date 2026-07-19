@@ -23,7 +23,15 @@ import os
 import sqlite3
 from pathlib import Path
 
+import dotenv
 import sqlite_vec
+
+# Load .env the same way chat-manager.py does, so BFF_LOG_ROOT (and anything
+# else) resolves the same regardless of which script is the entry point --
+# chat-manager.py loads it itself, but memory.inspect/other standalone
+# entry points otherwise wouldn't see it and would silently fall back to
+# the default path instead of the real, shared database.
+dotenv.load_dotenv()
 
 EMBEDDING_DIM = 384  # all-MiniLM-L6-v2 output size
 
