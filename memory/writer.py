@@ -52,7 +52,7 @@ class MemoryStore:
         if self.conn is None:
             return
         try:
-            self.conn.execute(
+            cur = self.conn.execute(
                 "INSERT INTO events (session_id, chunk_ref, ts_wall, type, text, metadata) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
                 (
@@ -67,6 +67,23 @@ class MemoryStore:
             self.conn.commit()
         except Exception as e:
             print(f"[Memory] Failed to record {event_type} event: {e}", file=sys.stderr)
+            return
+
+        # Embedding is a separate, independently-fail-soft step: the raw
+        # event above must land even if the embedder is unavailable (no
+        # internet for the first-run model download, missing onnxruntime,
+        # etc.) or a given piece of text fails to embed.
+        try:
+            from memory.embedder import embed
+
+            vector = embed(text)
+            self.conn.execute(
+                "INSERT INTO event_embeddings (event_id, embedding) VALUES (?, ?)",
+                (cur.lastrowid, vector),
+            )
+            self.conn.commit()
+        except Exception as e:
+            print(f"[Memory] Failed to embed {event_type} event: {e}", file=sys.stderr)
 
     def close(self) -> None:
         if self.conn is None:
