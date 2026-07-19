@@ -28,7 +28,7 @@ Environment variables:
     BFF_VLM_MODEL      override Ollama model name for VLM scene captioning (default: moondream)
     BFF_VLM_NUM_PREDICT override max tokens generated per VLM scene description (default: 50)
     BFF_VLM_INTERVAL   override minimum seconds between VLM capture starts (default: 1.5)
-    BFF_WHISPER_MODEL  override Whisper model size (default: base)
+    BFF_WHISPER_MODEL  override Whisper model size (default: tiny.en)
     BFF_PIPER_VOICE    override Piper voice path if --piper-voice not provided
     BFF_INTERRUPTABLE  override interruptable behavior (default: true)
     BFF_LOG_ROOT       override session history root (default: ./captures, alongside AV/lidar capture data)
@@ -169,7 +169,7 @@ DEFAULT_SYSTEM_PROMPT = (
 
 DEFAULT_OLLAMA_MODEL = os.environ.get("BFF_OLLAMA_MODEL", "gemma3n:e2b")
 DEFAULT_VLM_MODEL = os.environ.get("BFF_VLM_MODEL", "moondream")
-DEFAULT_WHISPER_MODEL = os.environ.get("BFF_WHISPER_MODEL", "tiny")
+DEFAULT_WHISPER_MODEL = os.environ.get("BFF_WHISPER_MODEL", "tiny.en")
 DEFAULT_SAMPLE_RATE = int(os.environ.get("BFF_SAMPLE_RATE", "16000"))
 DEFAULT_PLAYBACK_SPEED = float(os.environ.get("BFF_PLAYBACK_SPEED", "1.0"))
 DEFAULT_INPUT_DEVICE_KEYWORD = os.environ.get(
