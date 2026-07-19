@@ -1070,7 +1070,26 @@ def ensure_pulse_combined_sink(sinks: list[str], sink_name: str) -> str | None:
         )
         for line in modules.stdout.splitlines():
             if "module-combine-sink" in line and f"sink_name={sink_name}" in line:
-                return sink_name
+                # Reuse only if it still points at the sinks we want now — a
+                # combined sink left over from a run with different hardware
+                # (e.g. USB card since unplugged) would silently route nowhere.
+                current_slaves: set[str] = set()
+                for field_ in line.split():
+                    if field_.startswith("slaves="):
+                        current_slaves = set(field_[len("slaves="):].split(","))
+                if current_slaves == set(sinks):
+                    return sink_name
+                print(
+                    f"Recreating PulseAudio combined sink '{sink_name}': "
+                    f"slaves {sorted(current_slaves)} -> {sorted(sinks)}",
+                    file=sys.stderr,
+                )
+                subprocess.run(
+                    ["pactl", "unload-module", line.split()[0]],
+                    capture_output=True,
+                    check=False,
+                )
+                break
     except Exception:
         pass
 
@@ -2293,6 +2312,26 @@ def run_conversation(config: ConversationConfig) -> None:
                 start_dashboard = False
 
     if start_dashboard:
+        # Clear any dashboard orphaned by a previous crash: it still holds the
+        # port, so the new instance dies at bind while the orphan's dead robot
+        # feed answers the liveness check below with a healthy-looking 200.
+        try:
+            stale = subprocess.run(
+                ["pgrep", "-f", "dashboard_server.py"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if stale.stdout.strip():
+                print(
+                    f"[Chat Manager] Killing stale dashboard_server.py (PID {' '.join(stale.stdout.split())}) from a previous run...",
+                    file=sys.stderr,
+                )
+                subprocess.run(["pkill", "-f", "dashboard_server.py"], capture_output=True, check=False)
+                time.sleep(1.0)
+        except Exception:
+            pass
+
         print(f"Starting dashboard_server.py{' (simulate mode)' if config.simulate else ''}...", file=sys.stderr)
         try:
             script_dir = Path(__file__).resolve().parent
