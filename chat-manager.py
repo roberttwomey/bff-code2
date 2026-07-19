@@ -2332,11 +2332,15 @@ def run_conversation(config: ConversationConfig) -> None:
                 script_dir = Path(__file__).resolve().parent
                 bsm_path = script_dir / "behavioral-state-machine.py"
                 bsm_log = open(session_dir / "behavioral_state_machine.log", "w", encoding="utf-8")
+                # start_new_session so terminal Ctrl-C (SIGINT to the foreground
+                # process group) never reaches it — its own KeyboardInterrupt
+                # handler runs the robot POWER_OFF/stand-down sequence.
                 bsm_process = subprocess.Popen(
                     [sys.executable, str(bsm_path)],
                     cwd=str(script_dir),
                     stdout=bsm_log,
-                    stderr=subprocess.STDOUT
+                    stderr=subprocess.STDOUT,
+                    start_new_session=True,
                 )
                 print(f"[Chat Manager] behavioral-state-machine.py started (PID {bsm_process.pid}).", file=sys.stderr)
             except Exception as e:
