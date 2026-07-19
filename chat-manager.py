@@ -273,6 +273,7 @@ class ConversationConfig:
     ollama_think: bool = DEFAULT_OLLAMA_THINK
     require_wakeword: bool = DEFAULT_REQUIRE_WAKEWORD
     wake_phrases: list[str] = field(default_factory=list)
+    simulate: bool = False
 
 
 @dataclass
@@ -311,6 +312,12 @@ def parse_args() -> ConversationConfig:
         "--wake-phrases",
         default=DEFAULT_WAKE_PHRASES_ENV,
         help="Comma-separated list of wake phrases (default: from env or 'ok snapper, okay snapper, hey snapper, snapper')",
+    )
+    parser.add_argument(
+        "--simulate",
+        action="store_true",
+        help="Skip the live robot dog check and spawn dashboard_server.py in --simulate mode "
+        "instead, replaying the most recent captures/session-* recording for the VLM/telemetry feed",
     )
     parser.add_argument(
         "--whisper-model",
@@ -513,6 +520,7 @@ def parse_args() -> ConversationConfig:
         ollama_think=args.ollama_think,
         require_wakeword=args.require_wakeword,
         wake_phrases=[p.strip().lower() for p in args.wake_phrases.split(",") if p.strip()],
+        simulate=args.simulate,
     )
 
 
@@ -2170,22 +2178,33 @@ def run_conversation(config: ConversationConfig) -> None:
     session_dir = log_dir / f"session-{session_id}"
     session_dir.mkdir(parents=True, exist_ok=True)
 
-    # Check if the robot dog is on and available
-    robot_ip = os.getenv("UNITREE_ROBOT_IP", "192.168.4.30")
-    dog_available = False
-    if robot_ip:
-        print(f"Checking if robot dog is available at {robot_ip}...", file=sys.stderr)
-        cmd = ["ping", "-c", "1", "-t", "1" if sys.platform == "darwin" else "1", robot_ip]
-        if sys.platform != "darwin":
-            cmd = ["ping", "-c", "1", "-W", "1", robot_ip]
-        try:
-            res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            dog_available = (res.returncode == 0)
-        except Exception:
-            dog_available = False
+    # Check if the robot dog is on and available (skipped entirely in --simulate
+    # mode, which always starts dashboard_server.py itself, in playback mode)
+    dashboard_extra_args: list[str] = []
+    if config.simulate:
+        print(
+            "[Chat Manager] --simulate: skipping robot dog check, will start "
+            "dashboard_server.py --simulate to replay the most recent session.",
+            file=sys.stderr,
+        )
+        start_dashboard = True
+        dashboard_extra_args = ["--simulate"]
+    else:
+        robot_ip = os.getenv("UNITREE_ROBOT_IP", "192.168.4.30")
+        start_dashboard = False
+        if robot_ip:
+            print(f"Checking if robot dog is available at {robot_ip}...", file=sys.stderr)
+            cmd = ["ping", "-c", "1", "-t", "1" if sys.platform == "darwin" else "1", robot_ip]
+            if sys.platform != "darwin":
+                cmd = ["ping", "-c", "1", "-W", "1", robot_ip]
+            try:
+                res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                start_dashboard = (res.returncode == 0)
+            except Exception:
+                start_dashboard = False
 
-    if dog_available:
-        print(f"Robot dog is on and available. Starting dashboard_server.py...", file=sys.stderr)
+    if start_dashboard:
+        print(f"Starting dashboard_server.py{' (simulate mode)' if config.simulate else ''}...", file=sys.stderr)
         try:
             script_dir = Path(__file__).resolve().parent
             dashboard_server_path = script_dir / "dashboard_server.py"
@@ -2193,7 +2212,7 @@ def run_conversation(config: ConversationConfig) -> None:
             dashboard_env = os.environ.copy()
             dashboard_env["BFF_SESSION_ID"] = session_id
             dashboard_process = subprocess.Popen(
-                [sys.executable, str(dashboard_server_path)],
+                [sys.executable, str(dashboard_server_path)] + dashboard_extra_args,
                 cwd=str(script_dir),
                 stdout=dashboard_log,
                 stderr=subprocess.STDOUT,

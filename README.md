@@ -117,14 +117,11 @@ The embedder (`memory/embedder.py`) downloads a small ONNX model (~23MB, all-Min
 
 **Test without the physical robot, using a previously recorded session:**
 ```bash
-# Terminal 1 -- replay the most recent captures/ session on the dashboard's HTTP endpoints
-python3 dashboard_server.py --simulate
-
-# Terminal 2 -- run the voice assistant with the robot dog powered off/unreachable, so
-# chat-manager.py doesn't try to spawn its own dashboard_server.py on the same port
-./run-chat-manager.sh
+./run-chat-manager.sh --simulate
+# or directly:
+python3 chat-manager.py --simulate
 ```
-With the dog unreachable, `chat-manager.py`'s VLM worker polls the simulated dashboard's `/snapshot` and `/lowstate` endpoints instead of a live robot, driving real VLM captions and telemetry summaries from the replayed session -- which get written (and embedded) into `captures/memory.sqlite3` exactly as they would during a live run. Conversation turns still come from your live mic/Whisper input regardless of simulate mode.
+`--simulate` skips the robot-dog reachability check and has `chat-manager.py` spawn `dashboard_server.py --simulate` itself, which replays the most recent `captures/session-*` recording (video + telemetry) on the dashboard's HTTP endpoints. The VLM worker then polls that simulated dashboard's `/snapshot` and `/lowstate` endpoints instead of a live robot, driving real VLM captions and telemetry summaries from the replayed session -- which get written (and embedded) into `captures/memory.sqlite3` exactly as they would during a live run. Conversation turns still come from your live mic/Whisper input regardless of simulate mode. Note this needs at least one prior `session-*` capture to already exist -- it errors out if `captures/` has none yet.
 
 **Inspect what's been recorded:**
 ```bash
