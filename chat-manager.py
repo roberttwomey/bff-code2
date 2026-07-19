@@ -127,6 +127,24 @@ last_interaction_time = time.time()
 body_state_lock = threading.Lock()
 latest_body_state = ""
 
+try:
+    from memory.writer import MemoryStore
+except Exception as _memory_import_error:
+    print(
+        f"[Memory] Memory subsystem unavailable ({_memory_import_error}); recall disabled.",
+        file=sys.stderr,
+    )
+
+    class MemoryStore:  # no-op fallback when memory/ deps (e.g. sqlite-vec) aren't installed
+        def __init__(self, session_id: str) -> None:
+            pass
+
+        def record(self, *args, **kwargs) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
 from piper import PiperVoice
 try:  # Optional type that some versions expose
     from piper import AudioChunk  # type: ignore
@@ -1882,10 +1900,15 @@ def build_initial_messages(system_prompt: str) -> list[dict[str, str]]:
 
 
 class VLMBackgroundWorker:
-    def __init__(self, config: ConversationConfig, session_dir: Path, log_file: Path):
+    def __init__(self, config: ConversationConfig, session_dir: Path, log_file: Path, session_id: str):
         self.config = config
         self.session_dir = session_dir
         self.log_file = log_file
+        self.session_id = session_id
+        # Opened inside _run() rather than here: sqlite3 connections must be
+        # used from the thread that created them, and __init__ runs on the
+        # main thread while _run() is the worker thread.
+        self.memory_store = None
         self.stop_event = threading.Event()
         self.thread = None
         self.ip = os.getenv("UNITREE_ROBOT_IP", "192.168.4.30")
@@ -1916,6 +1939,7 @@ class VLMBackgroundWorker:
     def _run(self):
         global last_vlm_query_time
         print("[VLM Worker] Started background VLM worker thread (continuous capture).", file=sys.stderr)
+        self.memory_store = MemoryStore(self.session_id)
 
         while not self.stop_event.is_set():
             # Don't start a new capture while the chat model is generating a
@@ -1986,6 +2010,16 @@ class VLMBackgroundWorker:
             with body_state_lock:
                 latest_body_state = summary
             print(f"[Body State] {summary}", file=sys.stderr)
+            self.memory_store.record(
+                "telemetry",
+                summary,
+                metadata={
+                    "battery_pct": battery_pct,
+                    "velocity_mps": speed,
+                    "pitch_deg": pitch_deg,
+                    "roll_deg": roll_deg,
+                },
+            )
         except Exception as e:
             print(f"[Body State] Failed to fetch lowstate: {e}", file=sys.stderr)
 
@@ -2111,6 +2145,15 @@ class VLMBackgroundWorker:
                     "description": description,
                     "duration_seconds": query_duration
                 }
+            )
+            self.memory_store.record(
+                "vlm_caption",
+                description,
+                metadata={
+                    "model": model_name,
+                    "duration_seconds": query_duration,
+                    "image_path": str(image_path),
+                },
             )
         except Exception as e:
             print(f"[VLM Worker] Ollama vision query failed: {e}", file=sys.stderr)
@@ -2249,9 +2292,10 @@ def run_conversation(config: ConversationConfig) -> None:
             }
         },
     )
+    memory_store = MemoryStore(session_id)
 
     # Initialize and start VLM background worker
-    vlm_worker = VLMBackgroundWorker(config, session_dir, log_file)
+    vlm_worker = VLMBackgroundWorker(config, session_dir, log_file, session_id)
     vlm_worker.start()
 
 
@@ -2902,6 +2946,11 @@ def run_conversation(config: ConversationConfig) -> None:
                     "audio_path": str(raw_audio),
                 },
             )
+            memory_store.record(
+                "conversation_user",
+                user_text,
+                metadata={"turn": turn},
+            )
 
             abort_event = threading.Event()
             
@@ -3076,7 +3125,12 @@ def run_conversation(config: ConversationConfig) -> None:
                     "audio_path": str(response_audio_path),
                 },
             )
-            
+            memory_store.record(
+                "conversation_assistant",
+                full_assistant_text.strip(),
+                metadata={"turn": turn},
+            )
+
             tts_worker.stop() # Cleanup
             # Clear references after successful completion
             current_tts_worker = None
@@ -3119,6 +3173,8 @@ def run_conversation(config: ConversationConfig) -> None:
             log_file,
             {"type": "session_end"},
         )
+        if 'memory_store' in locals():
+            memory_store.close()
 
 
 def main() -> None:
