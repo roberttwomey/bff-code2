@@ -230,6 +230,7 @@ class ConversationConfig:
 
     ollama_model: str = DEFAULT_OLLAMA_MODEL
     vlm_model: str = DEFAULT_VLM_MODEL
+    no_vlm: bool = False
     whisper_model: str = DEFAULT_WHISPER_MODEL
     whisper_compute_type: str = "int8"  # optimized for Jetson
     piper_voice: Path | None = None
@@ -288,6 +289,12 @@ def parse_args() -> ConversationConfig:
         "--vlm-model",
         default=DEFAULT_VLM_MODEL,
         help="Ollama model name to use for VLM scene captioning (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--no-vlm",
+        action="store_true",
+        help="Disable VLM scene captioning entirely: no VLM background worker and no VLM model preload "
+        "(frees the VLM model's memory on constrained devices)",
     )
     parser.add_argument(
         "--ollama-think",
@@ -480,6 +487,7 @@ def parse_args() -> ConversationConfig:
     return ConversationConfig(
         ollama_model=args.ollama_model,
         vlm_model=args.vlm_model,
+        no_vlm=args.no_vlm,
         whisper_model=args.whisper_model,
         whisper_compute_type=args.whisper_compute_type,
         piper_voice=args.piper_voice,
@@ -2217,7 +2225,8 @@ def preload_ollama_models(config: ConversationConfig) -> None:
 
     # A VLM runner left over from a previous run keeps whatever (possibly
     # CPU-heavy) placement it got under that run's memory pressure — unload it
-    # so placement is re-decided now, while the GPU is free.
+    # so placement is re-decided now, while the GPU is free. With --no-vlm the
+    # unload still happens (reclaiming the model's memory) but nothing reloads it.
     if config.vlm_model != config.ollama_model:
         try:
             client.generate(model=config.vlm_model, prompt="", keep_alive=0)
@@ -2225,10 +2234,10 @@ def preload_ollama_models(config: ConversationConfig) -> None:
             pass
 
     # Chat model first so it claims full GPU; the VLM takes what remains.
-    for model_name, num_ctx in (
-        (config.ollama_model, config.ollama_num_ctx),
-        (config.vlm_model, DEFAULT_VLM_NUM_CTX),
-    ):
+    models_to_load = [(config.ollama_model, config.ollama_num_ctx)]
+    if not config.no_vlm:
+        models_to_load.append((config.vlm_model, DEFAULT_VLM_NUM_CTX))
+    for model_name, num_ctx in models_to_load:
         try:
             start = time.perf_counter()
             client.chat(
@@ -2397,8 +2406,12 @@ def run_conversation(config: ConversationConfig) -> None:
     )
 
     # Initialize and start VLM background worker
-    vlm_worker = VLMBackgroundWorker(config, session_dir, log_file)
-    vlm_worker.start()
+    if config.no_vlm:
+        print("[VLM Worker] Disabled via --no-vlm; skipping scene captioning.", file=sys.stderr)
+        vlm_worker = None
+    else:
+        vlm_worker = VLMBackgroundWorker(config, session_dir, log_file)
+        vlm_worker.start()
 
 
     # Ensure Bluetooth headset is connected
@@ -3257,7 +3270,7 @@ def run_conversation(config: ConversationConfig) -> None:
         # tied to chat-manager.py's own lifecycle.
 
         # Stop VLM background worker
-        if 'vlm_worker' in locals():
+        if 'vlm_worker' in locals() and vlm_worker is not None:
             vlm_worker.stop()
         stop_event.set()
         producer_thread.join(timeout=1.0)
