@@ -31,7 +31,7 @@ SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
 
 LOG_ROOT = Path(
     os.environ.get("BFF_LOG_ROOT", Path(__file__).resolve().parent.parent / "captures")
-)
+).expanduser()
 
 
 def default_db_path() -> Path:
