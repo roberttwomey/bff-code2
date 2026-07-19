@@ -520,7 +520,16 @@ def parse_args() -> ConversationConfig:
 def load_whisper_model(name: str, compute_type: str = "int8") -> WhisperModel:
     device = os.environ.get("BFF_WHISPER_DEVICE") or ("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Loading Faster Whisper model '{name}' on {device} ({compute_type})…", file=sys.stderr)
-    return WhisperModel(name, device=device, compute_type=compute_type)
+    try:
+        return WhisperModel(name, device=device, compute_type=compute_type)
+    except ValueError as exc:
+        # e.g. the Jetson's CUDA-built ctranslate2 has no efficient int8
+        # kernels for the ARM CPU backend; let ctranslate2 pick a supported type
+        print(
+            f"compute_type '{compute_type}' unsupported on {device} ({exc}); retrying with 'auto'…",
+            file=sys.stderr,
+        )
+        return WhisperModel(name, device=device, compute_type="auto")
 
 
 def resolve_piper_config_path(model_path: Path, config_path: Path | None) -> Path:
