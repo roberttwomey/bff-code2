@@ -16,6 +16,8 @@ Requirements:
     - piper-tts (Python package) and at least one Piper voice model file
     - silero-vad (optional; speech-aware segmentation. torchaudio must match
       the installed torch version. Falls back to RMS gating if missing)
+    - libspeexdsp system library (optional; acoustic echo cancellation via
+      ctypes. apt: libspeexdsp1 / brew: speexdsp. Disabled if not found)
 
 Example usage:
     python local/bff-voice-chat.py --piper-voice piper/en_GB-alan-medium.onnx
@@ -45,12 +47,16 @@ Environment variables:
     BFF_DUCK_LEVEL     playback gain while a barge-in is being confirmed, 1.0 disables (default: 0.15)
     BFF_ECHO_TAIL_SECONDS  seconds after playback ends that still count as playback for gating (default: 1.2)
     BFF_SELF_ECHO_FILTER   drop transcripts matching the robot's own recent speech (default: true)
+    BFF_AEC            subtract the robot's own playback from mic input via speex AEC (default: true)
+    BFF_AEC_FILTER_MS  AEC filter length in ms; must cover output-pipeline + acoustic + capture delay (default: 1000)
 """
 
 from __future__ import annotations
 
 import argparse
 import collections
+import ctypes
+import ctypes.util
 import difflib
 import json
 import math
@@ -218,6 +224,9 @@ DEFAULT_DUCK_LEVEL = float(os.environ.get("BFF_DUCK_LEVEL", "0.15"))
 DEFAULT_ECHO_TAIL_SECONDS = float(os.environ.get("BFF_ECHO_TAIL_SECONDS", "1.2"))
 DEFAULT_SELF_ECHO_FILTER_ENV = os.environ.get("BFF_SELF_ECHO_FILTER", "true").lower()
 DEFAULT_SELF_ECHO_FILTER = DEFAULT_SELF_ECHO_FILTER_ENV in ("true", "1", "yes", "on")
+DEFAULT_AEC_ENV = os.environ.get("BFF_AEC", "true").lower()
+DEFAULT_AEC = DEFAULT_AEC_ENV in ("true", "1", "yes", "on")
+DEFAULT_AEC_FILTER_MS = int(os.environ.get("BFF_AEC_FILTER_MS", "1000"))
 DEFAULT_INTERRUPTABLE_ENV = os.environ.get("BFF_INTERRUPTABLE", "true").lower()
 DEFAULT_INTERRUPTABLE = DEFAULT_INTERRUPTABLE_ENV in ("true", "1", "yes", "on")
 DEFAULT_FLUSH_ON_INTERRUPT_ENV = os.environ.get("BFF_FLUSH_ON_INTERRUPT", "false").lower()
@@ -310,6 +319,8 @@ class ConversationConfig:
     duck_level: float = DEFAULT_DUCK_LEVEL
     echo_tail_seconds: float = DEFAULT_ECHO_TAIL_SECONDS
     self_echo_filter: bool = DEFAULT_SELF_ECHO_FILTER
+    aec: bool = DEFAULT_AEC
+    aec_filter_ms: int = DEFAULT_AEC_FILTER_MS
     show_levels: bool = True
     input_device_keyword: str | None = DEFAULT_INPUT_DEVICE_KEYWORD
     input_device_index: int | None = None
@@ -479,6 +490,20 @@ def parse_args() -> ConversationConfig:
         "1.0 disables ducking (default: %(default)s)",
     )
     parser.add_argument(
+        "--no-aec",
+        dest="aec",
+        action="store_false",
+        default=DEFAULT_AEC,
+        help="Disable speex acoustic echo cancellation of the robot's own playback",
+    )
+    parser.add_argument(
+        "--aec-filter-ms",
+        type=int,
+        default=DEFAULT_AEC_FILTER_MS,
+        help="AEC filter length in ms; must cover output-pipeline + acoustic + "
+        "capture delay (default: %(default)s)",
+    )
+    parser.add_argument(
         "--no-self-echo-filter",
         dest="self_echo_filter",
         action="store_false",
@@ -623,6 +648,8 @@ def parse_args() -> ConversationConfig:
         barge_in_min_rms=args.barge_in_min_rms,
         duck_level=args.duck_level,
         self_echo_filter=args.self_echo_filter,
+        aec=args.aec,
+        aec_filter_ms=args.aec_filter_ms,
         show_levels=args.show_levels,
         input_device_keyword=input_keyword,
         interruptable=False if args.no_interruptable else DEFAULT_INTERRUPTABLE,
@@ -1382,6 +1409,129 @@ class SileroSpeechDetector:
         self._last_prob = 0.0
 
 
+class SpeexEchoCanceller:
+    """Subtracts the robot's own playback from mic input via libspeexdsp.
+
+    Bound with ctypes so no Python package or compiler is needed — only the
+    shared library (apt: libspeexdsp1, brew: speexdsp; PulseAudio systems
+    usually already have it). Mic and playback blocks come from the same
+    duplex callback, so they are aligned up to the output-pipeline +
+    acoustic + capture delay, which filter_ms must cover.
+    """
+
+    FRAME_MS = 20
+    _SPEEX_ECHO_SET_SAMPLING_RATE = 24
+    _SPEEX_PREPROCESS_SET_ECHO_STATE = 24
+
+    def __init__(self, sample_rate: int, filter_ms: int):
+        lib = self._load_lib()
+        lib.speex_echo_state_init.restype = ctypes.c_void_p
+        lib.speex_echo_state_init.argtypes = [ctypes.c_int, ctypes.c_int]
+        int16_p = ctypes.POINTER(ctypes.c_int16)
+        lib.speex_echo_cancellation.restype = None
+        lib.speex_echo_cancellation.argtypes = [ctypes.c_void_p, int16_p, int16_p, int16_p]
+        lib.speex_echo_ctl.restype = ctypes.c_int
+        lib.speex_echo_ctl.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p]
+        lib.speex_echo_state_destroy.restype = None
+        lib.speex_echo_state_destroy.argtypes = [ctypes.c_void_p]
+        lib.speex_preprocess_state_init.restype = ctypes.c_void_p
+        lib.speex_preprocess_state_init.argtypes = [ctypes.c_int, ctypes.c_int]
+        lib.speex_preprocess_ctl.restype = ctypes.c_int
+        lib.speex_preprocess_ctl.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p]
+        lib.speex_preprocess_run.restype = ctypes.c_int
+        lib.speex_preprocess_run.argtypes = [ctypes.c_void_p, int16_p]
+        lib.speex_preprocess_state_destroy.restype = None
+        lib.speex_preprocess_state_destroy.argtypes = [ctypes.c_void_p]
+
+        self.frame = max(1, int(sample_rate * self.FRAME_MS / 1000))
+        filter_length = max(self.frame, int(sample_rate * filter_ms / 1000))
+        self._lib = lib
+        self._state = lib.speex_echo_state_init(self.frame, filter_length)
+        if not self._state:
+            raise RuntimeError("speex_echo_state_init failed")
+        rate = ctypes.c_int(sample_rate)
+        lib.speex_echo_ctl(
+            self._state, self._SPEEX_ECHO_SET_SAMPLING_RATE, ctypes.byref(rate)
+        )
+        # Preprocessor stage: nonlinear residual echo suppression (plus
+        # denoise) on the canceller output — this is where most of the
+        # audible echo removal happens.
+        self._pp = lib.speex_preprocess_state_init(self.frame, sample_rate)
+        if self._pp:
+            lib.speex_preprocess_ctl(
+                self._pp, self._SPEEX_PREPROCESS_SET_ECHO_STATE, self._state
+            )
+        self._near = np.empty(0, dtype=np.float32)
+        self._far = np.empty(0, dtype=np.float32)
+        self._int16_p = int16_p
+
+    @staticmethod
+    def _load_lib() -> ctypes.CDLL:
+        candidates = []
+        found = ctypes.util.find_library("speexdsp")
+        if found:
+            candidates.append(found)
+        candidates += [
+            "libspeexdsp.so.1",
+            "libspeexdsp.so",
+            "/opt/homebrew/lib/libspeexdsp.dylib",
+            "/usr/local/lib/libspeexdsp.dylib",
+        ]
+        for candidate in candidates:
+            try:
+                return ctypes.CDLL(candidate)
+            except OSError:
+                continue
+        raise RuntimeError("libspeexdsp shared library not found")
+
+    def process(self, near_block: np.ndarray, far_block: np.ndarray) -> np.ndarray:
+        """Return near (mic) audio with the far (playback) signal cancelled.
+
+        Consumes complete FRAME_MS frames; a sub-frame remainder stays
+        buffered, so output length can differ from input by < one frame.
+        Output shape is (n, 1) to match the raw callback blocks.
+        """
+        near = near_block[:, 0] if near_block.ndim > 1 else near_block
+        far = far_block[:, 0] if far_block.ndim > 1 else far_block
+        self._near = np.concatenate((self._near, near.astype(np.float32)))
+        self._far = np.concatenate((self._far, far.astype(np.float32)))
+
+        out_frames = []
+        n = min(len(self._near), len(self._far)) // self.frame
+        for i in range(n):
+            sl = slice(i * self.frame, (i + 1) * self.frame)
+            rec = (np.clip(self._near[sl], -1.0, 1.0) * 32767.0).astype(np.int16)
+            play = (np.clip(self._far[sl], -1.0, 1.0) * 32767.0).astype(np.int16)
+            out = np.empty(self.frame, dtype=np.int16)
+            self._lib.speex_echo_cancellation(
+                self._state,
+                rec.ctypes.data_as(self._int16_p),
+                play.ctypes.data_as(self._int16_p),
+                out.ctypes.data_as(self._int16_p),
+            )
+            if self._pp:
+                self._lib.speex_preprocess_run(
+                    self._pp, out.ctypes.data_as(self._int16_p)
+                )
+            out_frames.append(out.astype(np.float32) / 32768.0)
+        consumed = n * self.frame
+        self._near = self._near[consumed:]
+        self._far = self._far[consumed:]
+        if not out_frames:
+            return np.empty((0, 1), dtype=np.float32)
+        return np.concatenate(out_frames).reshape(-1, 1)
+
+    def __del__(self):
+        pp = getattr(self, "_pp", None)
+        if pp:
+            self._lib.speex_preprocess_state_destroy(pp)
+            self._pp = None
+        state = getattr(self, "_state", None)
+        if state:
+            self._lib.speex_echo_state_destroy(state)
+            self._state = None
+
+
 def resample_audio(
     data: np.ndarray,
     source_rate: int,
@@ -1549,13 +1699,26 @@ def phrase_stream(
     max_blocks = max(1, int(config.max_record_seconds / config.block_duration))
     min_blocks = max(1, int(config.min_phrase_seconds / config.block_duration))
 
-    q: queue.Queue[np.ndarray] = queue.Queue()
+    q: queue.Queue[tuple[np.ndarray, np.ndarray]] = queue.Queue()
 
     def audio_callback(indata, outdata, frames, time_info, status):
         # if status:
         #     print(f"[vad] {status}", file=sys.stderr)
-        q.put(indata.copy())
+        # Fill playback first so the mic block is paired with exactly what
+        # went to the speaker in the same callback (the AEC far-end reference).
         unified_audio.fill_output(outdata, frames)
+        q.put((indata.copy(), outdata[:, :1].copy()))
+
+    aec: SpeexEchoCanceller | None = None
+    if config.aec:
+        try:
+            print("Initializing speex echo canceller…", file=sys.stderr)
+            aec = SpeexEchoCanceller(config.sample_rate, config.aec_filter_ms)
+        except Exception as exc:
+            print(
+                f"Speex AEC unavailable ({exc}); continuing without echo cancellation.",
+                file=sys.stderr,
+            )
 
     vad: SileroSpeechDetector | None = None
     if config.vad_backend == "silero":
@@ -1595,9 +1758,18 @@ def phrase_stream(
             if stop_event and stop_event.is_set():
                 break
             try:
-                block = q.get(timeout=0.1)
+                mic_block, far_block = q.get(timeout=0.1)
             except queue.Empty:
                 continue
+            if aec is not None:
+                # Always feed the canceller so its filter stays converged;
+                # everything downstream (VAD, gating, recording, Whisper)
+                # then operates on echo-cancelled audio.
+                block = aec.process(mic_block, far_block)
+                if block.shape[0] == 0:
+                    continue
+            else:
+                block = mic_block
             block_counter += 1 if recording else 0
 
             playback_recent = unified_audio.is_playing or (
