@@ -28,6 +28,7 @@ Environment variables:
     BFF_VLM_MODEL      override Ollama model name for VLM scene captioning (default: moondream)
     BFF_VLM_NUM_PREDICT override max tokens generated per VLM scene description (default: 50)
     BFF_VLM_NUM_CTX    override context size for the VLM model (default: 2048)
+    BFF_VLM_TEMPERATURE override VLM sampling temperature (default: 0.4; moondream's Modelfile defaults to 0)
     BFF_VLM_INTERVAL   override minimum seconds between VLM capture starts (default: 1.5)
     BFF_WHISPER_MODEL  override Whisper model size (default: tiny.en)
     BFF_WHISPER_DEVICE override Whisper device, e.g. cpu to leave GPU memory for the VLM (default: cuda if available)
@@ -205,6 +206,7 @@ DEFAULT_OLLAMA_NUM_PREDICT = int(os.environ.get("BFF_OLLAMA_NUM_PREDICT", "100")
 DEFAULT_OLLAMA_NUM_CTX = int(os.environ.get("BFF_OLLAMA_NUM_CTX", "2048"))
 DEFAULT_VLM_NUM_PREDICT = int(os.environ.get("BFF_VLM_NUM_PREDICT", "50"))
 DEFAULT_VLM_NUM_CTX = int(os.environ.get("BFF_VLM_NUM_CTX", "2048"))
+DEFAULT_VLM_TEMPERATURE = float(os.environ.get("BFF_VLM_TEMPERATURE", "0.4"))
 DEFAULT_OLLAMA_THINK_ENV = os.environ.get("BFF_OLLAMA_THINK", "false").lower()
 DEFAULT_OLLAMA_THINK = DEFAULT_OLLAMA_THINK_ENV in ("true", "1", "yes", "on")
 DEFAULT_REQUIRE_WAKEWORD_ENV = os.environ.get("BFF_REQUIRE_WAKEWORD", "false").lower()
@@ -2174,6 +2176,7 @@ class VLMBackgroundWorker:
                 options={
                     "num_predict": DEFAULT_VLM_NUM_PREDICT,
                     "num_ctx": DEFAULT_VLM_NUM_CTX,
+                    "temperature": DEFAULT_VLM_TEMPERATURE,
                 },
             )
             
