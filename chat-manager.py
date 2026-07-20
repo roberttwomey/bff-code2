@@ -14,6 +14,8 @@ Requirements:
     - soundfile
     - numpy
     - piper-tts (Python package) and at least one Piper voice model file
+    - silero-vad (optional; speech-aware segmentation. torchaudio must match
+      the installed torch version. Falls back to RMS gating if missing)
 
 Example usage:
     python local/bff-voice-chat.py --piper-voice piper/en_GB-alan-medium.onnx
@@ -35,6 +37,8 @@ Environment variables:
     BFF_PIPER_VOICE    override Piper voice path if --piper-voice not provided
     BFF_INTERRUPTABLE  override interruptable behavior (default: true)
     BFF_LOG_ROOT       override session history root (default: ./captures, alongside AV/lidar capture data)
+    BFF_VAD_BACKEND    speech gating backend: silero (default) or rms
+    BFF_VAD_THRESHOLD  Silero speech probability that starts a segment (default: 0.5)
 """
 
 from __future__ import annotations
@@ -191,6 +195,8 @@ DEFAULT_SILENCE_THRESHOLD = float(os.environ.get("BFF_SILENCE_THRESHOLD", "0.015
 DEFAULT_SILENCE_DURATION = float(os.environ.get("BFF_SILENCE_DURATION", "0.8"))
 DEFAULT_MIN_PHRASE_SECONDS = float(os.environ.get("BFF_MIN_PHRASE_SECONDS", "0.5"))
 DEFAULT_BLOCK_DURATION = float(os.environ.get("BFF_BLOCK_DURATION", "0.2"))
+DEFAULT_VAD_BACKEND = os.environ.get("BFF_VAD_BACKEND", "silero").lower()
+DEFAULT_VAD_THRESHOLD = float(os.environ.get("BFF_VAD_THRESHOLD", "0.5"))
 DEFAULT_INTERRUPTABLE_ENV = os.environ.get("BFF_INTERRUPTABLE", "true").lower()
 DEFAULT_INTERRUPTABLE = DEFAULT_INTERRUPTABLE_ENV in ("true", "1", "yes", "on")
 DEFAULT_FLUSH_ON_INTERRUPT_ENV = os.environ.get("BFF_FLUSH_ON_INTERRUPT", "false").lower()
@@ -248,6 +254,8 @@ class ConversationConfig:
     silence_duration: float = DEFAULT_SILENCE_DURATION
     min_phrase_seconds: float = DEFAULT_MIN_PHRASE_SECONDS
     block_duration: float = DEFAULT_BLOCK_DURATION
+    vad_backend: str = DEFAULT_VAD_BACKEND
+    vad_threshold: float = DEFAULT_VAD_THRESHOLD
     show_levels: bool = True
     input_device_keyword: str | None = DEFAULT_INPUT_DEVICE_KEYWORD
     input_device_index: int | None = None
@@ -373,6 +381,20 @@ def parse_args() -> ConversationConfig:
         "--piper-noise-w",
         type=float,
         help="Override Piper config noise_w",
+    )
+    parser.add_argument(
+        "--vad-backend",
+        choices=("silero", "rms"),
+        default=DEFAULT_VAD_BACKEND,
+        help="Speech gating backend: silero neural VAD or plain RMS amplitude "
+        "(default: %(default)s; silero falls back to rms if unavailable)",
+    )
+    parser.add_argument(
+        "--vad-threshold",
+        type=float,
+        default=DEFAULT_VAD_THRESHOLD,
+        help="Silero speech probability that starts a segment; speech ends below "
+        "threshold minus 0.15 (default: %(default)s)",
     )
     parser.add_argument(
         "--activation-threshold",
@@ -505,6 +527,8 @@ def parse_args() -> ConversationConfig:
         silence_duration=args.silence_duration,
         min_phrase_seconds=args.min_phrase_seconds,
         block_duration=args.block_duration,
+        vad_backend=args.vad_backend,
+        vad_threshold=args.vad_threshold,
         show_levels=args.show_levels,
         input_device_keyword=input_keyword,
         interruptable=False if args.no_interruptable else DEFAULT_INTERRUPTABLE,
@@ -1254,6 +1278,57 @@ def rms_amplitude(block: np.ndarray) -> float:
     return float(np.sqrt(np.mean(np.square(block))))
 
 
+VAD_SAMPLE_RATE = 16000
+VAD_FRAME_SAMPLES = 512  # Silero v5 accepts only 512-sample frames at 16 kHz
+
+
+class SileroSpeechDetector:
+    """Streaming speech probability from the Silero VAD model (CPU, ~1 ms/frame).
+
+    The model is stateful (LSTM) and consumes fixed 512-sample frames at
+    16 kHz, so incoming mic blocks are buffered into frames here and state
+    must be cleared between utterances via reset().
+    """
+
+    def __init__(self):
+        try:
+            from silero_vad import load_silero_vad
+
+            self.model = load_silero_vad()
+        except ImportError:
+            # Package not installed; torch.hub downloads to ~/.cache once.
+            self.model = torch.hub.load(
+                "snakers4/silero-vad", "silero_vad", trust_repo=True
+            )[0]
+        self._pending = np.empty(0, dtype=np.float32)
+        self._last_prob = 0.0
+
+    def speech_probability(self, block: np.ndarray, source_rate: int) -> float:
+        """Max speech probability over the complete frames in this block.
+
+        Returns the previous probability if the block is shorter than one
+        frame (the remainder stays buffered for the next call).
+        """
+        mono = block[:, 0] if block.ndim > 1 else block
+        mono = resample_audio(mono.astype(np.float32), source_rate, VAD_SAMPLE_RATE)
+        self._pending = np.concatenate((self._pending, mono))
+        prob: float | None = None
+        with torch.inference_mode():
+            while len(self._pending) >= VAD_FRAME_SAMPLES:
+                frame = torch.from_numpy(self._pending[:VAD_FRAME_SAMPLES].copy())
+                self._pending = self._pending[VAD_FRAME_SAMPLES:]
+                p = float(self.model(frame, VAD_SAMPLE_RATE).item())
+                prob = p if prob is None else max(prob, p)
+        if prob is not None:
+            self._last_prob = prob
+        return self._last_prob
+
+    def reset(self) -> None:
+        self.model.reset_states()
+        self._pending = np.empty(0, dtype=np.float32)
+        self._last_prob = 0.0
+
+
 def resample_audio(
     data: np.ndarray,
     source_rate: int,
@@ -1357,6 +1432,20 @@ def phrase_stream(
         q.put(indata.copy())
         unified_audio.fill_output(outdata, frames)
 
+    vad: SileroSpeechDetector | None = None
+    if config.vad_backend == "silero":
+        try:
+            print("Loading Silero VAD…", file=sys.stderr)
+            vad = SileroSpeechDetector()
+        except Exception as exc:
+            print(
+                f"Silero VAD unavailable ({exc}); falling back to RMS gating.",
+                file=sys.stderr,
+            )
+    # Hysteresis: speech starts above vad_threshold, only counts as silence
+    # well below it, mirroring the activation/silence RMS threshold pair.
+    vad_end_threshold = max(0.15, config.vad_threshold - 0.15)
+
     print("Listening continuously… (Ctrl+C to exit)")
     with sd.Stream(
         samplerate=config.sample_rate,
@@ -1384,21 +1473,35 @@ def phrase_stream(
             block_counter += 1 if recording else 0
             amp = rms_amplitude(block)
 
+            if vad is not None:
+                prob = vad.speech_probability(block, config.sample_rate)
+                voice_detected = prob >= config.vad_threshold
+                silence_detected = prob < vad_end_threshold
+            else:
+                prob = None
+                voice_detected = amp >= config.activation_threshold
+                silence_detected = amp < config.silence_threshold
+
             if config.show_levels:
                 meter_width = 40
-                normalized = min(1.0, amp / max(config.activation_threshold, 1e-6))
+                if prob is not None:
+                    normalized = min(1.0, prob)
+                    label = f"Speech {prob:0.2f}"
+                else:
+                    normalized = min(1.0, amp / max(config.activation_threshold, 1e-6))
+                    label = f"Level {amp:0.3f}"
                 filled = int(normalized * meter_width)
                 bar = "#" * filled + "-" * (meter_width - filled)
                 suffix = "REC"
-                if recording and amp >= config.activation_threshold:
+                if recording and voice_detected:
                     suffix = "REC (*)"
                 sys.stderr.write(
-                    f"\rLevel {amp:0.3f} |{bar}| {suffix}"
+                    f"\r{label} |{bar}| {suffix}"
                 )
                 sys.stderr.flush()
 
             if not recording:
-                if amp >= config.activation_threshold:
+                if voice_detected:
                     # Voice activity detected - pause immediately
                     if on_voice_activity:
                         on_voice_activity()
@@ -1408,7 +1511,7 @@ def phrase_stream(
                     block_counter = 1
             else:
                 collected.append(block)
-                if amp < config.silence_threshold:
+                if silence_detected:
                     silence_blocks += 1
                 else:
                     silence_blocks = 0
@@ -1418,6 +1521,8 @@ def phrase_stream(
                     recording = False
                     silence_blocks = 0
                     block_counter = 0
+                    if vad is not None:
+                        vad.reset()
 
                     if len(collected) < min_blocks:
                         print("Discarded short segment.", file=sys.stderr)
