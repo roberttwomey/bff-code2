@@ -48,7 +48,8 @@ Environment variables:
     BFF_ECHO_TAIL_SECONDS  seconds after playback ends that still count as playback for gating (default: 1.2)
     BFF_SELF_ECHO_FILTER   drop transcripts matching the robot's own recent speech (default: true)
     BFF_AEC            subtract the robot's own playback from mic input via speex AEC (default: true)
-    BFF_AEC_FILTER_MS  AEC filter length in ms; must cover output-pipeline + acoustic + capture delay (default: 1000)
+    BFF_AEC_FILTER_MS  AEC filter length in ms; must cover output-pipeline + acoustic + capture delay (default: 1500)
+    BFF_UNDERRUN_HOLDOFF  seconds after an output underrun during which barge-in is distrusted (default: 2.0)
 """
 
 from __future__ import annotations
@@ -82,7 +83,7 @@ import ollama
 # latency there is tight enough to underrun whenever Whisper/Piper spike the CPU.
 # Must comfortably exceed the stream block size (BFF_BLOCK_DURATION, 200 ms
 # default) or every block underruns.
-os.environ.setdefault("PULSE_LATENCY_MSEC", "400")
+os.environ.setdefault("PULSE_LATENCY_MSEC", "600")
 
 import sounddevice as sd
 import soundfile as sf
@@ -220,14 +221,18 @@ DEFAULT_BARGE_IN_THRESHOLD = float(os.environ.get("BFF_BARGE_IN_THRESHOLD", "0.7
 DEFAULT_BARGE_IN_MIN_RMS = float(os.environ.get("BFF_BARGE_IN_MIN_RMS", "0.0"))
 DEFAULT_DUCK_LEVEL = float(os.environ.get("BFF_DUCK_LEVEL", "0.15"))
 # Must cover everything between the last samples handed to the audio stack and
-# the echo dying out at the mic: PULSE_LATENCY_MSEC (400 ms) plus USB/BT output
+# the echo dying out at the mic: PULSE_LATENCY_MSEC (600 ms) plus USB/BT output
 # buffering, room reverb, and HFP capture latency.
 DEFAULT_ECHO_TAIL_SECONDS = float(os.environ.get("BFF_ECHO_TAIL_SECONDS", "1.2"))
 DEFAULT_SELF_ECHO_FILTER_ENV = os.environ.get("BFF_SELF_ECHO_FILTER", "true").lower()
 DEFAULT_SELF_ECHO_FILTER = DEFAULT_SELF_ECHO_FILTER_ENV in ("true", "1", "yes", "on")
 DEFAULT_AEC_ENV = os.environ.get("BFF_AEC", "true").lower()
 DEFAULT_AEC = DEFAULT_AEC_ENV in ("true", "1", "yes", "on")
-DEFAULT_AEC_FILTER_MS = int(os.environ.get("BFF_AEC_FILTER_MS", "1000"))
+DEFAULT_AEC_FILTER_MS = int(os.environ.get("BFF_AEC_FILTER_MS", "1500"))
+# Seconds after an output underrun during which barge-in candidates are
+# distrusted: the underrun desyncs the AEC reference, so leaked echo is likely
+# until the filter re-converges.
+DEFAULT_UNDERRUN_HOLDOFF = float(os.environ.get("BFF_UNDERRUN_HOLDOFF", "2.0"))
 DEFAULT_INTERRUPTABLE_ENV = os.environ.get("BFF_INTERRUPTABLE", "true").lower()
 DEFAULT_INTERRUPTABLE = DEFAULT_INTERRUPTABLE_ENV in ("true", "1", "yes", "on")
 DEFAULT_FLUSH_ON_INTERRUPT_ENV = os.environ.get("BFF_FLUSH_ON_INTERRUPT", "false").lower()
@@ -322,6 +327,7 @@ class ConversationConfig:
     self_echo_filter: bool = DEFAULT_SELF_ECHO_FILTER
     aec: bool = DEFAULT_AEC
     aec_filter_ms: int = DEFAULT_AEC_FILTER_MS
+    underrun_holdoff: float = DEFAULT_UNDERRUN_HOLDOFF
     show_levels: bool = True
     input_device_keyword: str | None = DEFAULT_INPUT_DEVICE_KEYWORD
     input_device_index: int | None = None
@@ -956,7 +962,7 @@ def try_auto_connect_headset(mac: str, name: str) -> bool:
             return False
         
         # Try to find and configure PulseAudio card (with retries)
-        card_id = find_pulseaudio_card_by_mac(mac, max_retries=5, retry_delay=1.0)
+        card_id = find_pulseaudio_card_by_mac(mac, max_retries=12, retry_delay=1.0)
         if card_id:
             subprocess.run(
                 ["pactl", "set-card-profile", card_id, "handsfree_head_unit"],
@@ -1065,7 +1071,7 @@ def connect_to_headset(mac: str, name: str) -> bool:
                 print(f"Warning: Could not verify Bluetooth connection to {name} ({mac}).", file=sys.stderr)
         
         # Try to find and configure PulseAudio card (with retries)
-        card_id = find_pulseaudio_card_by_mac(mac, max_retries=5, retry_delay=1.0)
+        card_id = find_pulseaudio_card_by_mac(mac, max_retries=12, retry_delay=1.0)
         if card_id:
             subprocess.run(
                 ["pactl", "set-card-profile", card_id, "handsfree_head_unit"],
@@ -1569,6 +1575,7 @@ class UnifiedAudioSystem:
         self.interrupt_event = threading.Event()
         self.is_playing = False
         self.last_active = 0.0  # wall time playback last wrote samples
+        self.last_underrun = 0.0  # wall time of last stream over/underrun
         self._gain = 1.0
         self._target_gain = 1.0
 
@@ -1703,8 +1710,10 @@ def phrase_stream(
     q: queue.Queue[tuple[np.ndarray, np.ndarray]] = queue.Queue()
 
     def audio_callback(indata, outdata, frames, time_info, status):
-        # if status:
-        #     print(f"[vad] {status}", file=sys.stderr)
+        if status:
+            # Over/underruns desync the AEC far-end reference until the
+            # filter re-converges; barge-in distrusts this window.
+            unified_audio.last_underrun = time.time()
         # Fill playback first so the mic block is paired with exactly what
         # went to the speaker in the same callback (the AEC far-end reference).
         unified_audio.fill_output(outdata, frames)
@@ -1851,6 +1860,10 @@ def phrase_stream(
                         else voice_detected
                     )
                     if config.barge_in_min_rms > 0.0 and amp < config.barge_in_min_rms:
+                        confident = False
+                    if (time.time() - unified_audio.last_underrun) < config.underrun_holdoff:
+                        # AEC reference just desynced; residual echo is
+                        # unpredictable, so don't trust speech candidates.
                         confident = False
                     if confident:
                         if not barge_candidate and duck_enabled:
