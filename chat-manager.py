@@ -1571,6 +1571,7 @@ def phrase_stream(
         barge_candidate: List[np.ndarray] = []
         block_counter = 0
         duck_enabled = config.interruptable and config.duck_level < 1.0
+        mic_gated = False
 
         while True:
             if stop_event and stop_event.is_set():
@@ -1580,6 +1581,23 @@ def phrase_stream(
             except queue.Empty:
                 continue
             block_counter += 1 if recording else 0
+
+            playback_recent = unified_audio.is_playing or (
+                time.time() - unified_audio.last_active
+            ) < config.echo_tail_seconds
+
+            if not config.interruptable and playback_recent and not recording:
+                # Half-duplex when interruption is disabled: ignore the mic
+                # completely until playback and its echo tail finish.
+                mic_gated = True
+                continue
+            if mic_gated:
+                # Leaving the gated period: drop VAD state accumulated from
+                # playback echo so it can't skew the next detection.
+                if vad is not None:
+                    vad.reset()
+                mic_gated = False
+
             amp = rms_amplitude(block)
 
             if vad is not None:
@@ -1608,10 +1626,6 @@ def phrase_stream(
                     f"\r{label} |{bar}| {suffix}"
                 )
                 sys.stderr.flush()
-
-            playback_recent = unified_audio.is_playing or (
-                time.time() - unified_audio.last_active
-            ) < config.echo_tail_seconds
 
             if not recording:
                 if playback_recent:
