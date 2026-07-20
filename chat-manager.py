@@ -39,12 +39,18 @@ Environment variables:
     BFF_LOG_ROOT       override session history root (default: ./captures, alongside AV/lidar capture data)
     BFF_VAD_BACKEND    speech gating backend: silero (default) or rms
     BFF_VAD_THRESHOLD  Silero speech probability that starts a segment (default: 0.5)
+    BFF_BARGE_IN_BLOCKS    consecutive voice blocks required to interrupt playback (default: 2)
+    BFF_BARGE_IN_THRESHOLD Silero probability required per block during playback (default: 0.7)
+    BFF_DUCK_LEVEL     playback gain while a barge-in is being confirmed, 1.0 disables (default: 0.15)
+    BFF_ECHO_TAIL_SECONDS  seconds after playback ends that still count as playback for gating (default: 0.3)
+    BFF_SELF_ECHO_FILTER   drop transcripts matching the robot's own recent speech (default: true)
 """
 
 from __future__ import annotations
 
 import argparse
 import collections
+import difflib
 import json
 import math
 import os
@@ -197,6 +203,12 @@ DEFAULT_MIN_PHRASE_SECONDS = float(os.environ.get("BFF_MIN_PHRASE_SECONDS", "0.5
 DEFAULT_BLOCK_DURATION = float(os.environ.get("BFF_BLOCK_DURATION", "0.2"))
 DEFAULT_VAD_BACKEND = os.environ.get("BFF_VAD_BACKEND", "silero").lower()
 DEFAULT_VAD_THRESHOLD = float(os.environ.get("BFF_VAD_THRESHOLD", "0.5"))
+DEFAULT_BARGE_IN_BLOCKS = int(os.environ.get("BFF_BARGE_IN_BLOCKS", "2"))
+DEFAULT_BARGE_IN_THRESHOLD = float(os.environ.get("BFF_BARGE_IN_THRESHOLD", "0.7"))
+DEFAULT_DUCK_LEVEL = float(os.environ.get("BFF_DUCK_LEVEL", "0.15"))
+DEFAULT_ECHO_TAIL_SECONDS = float(os.environ.get("BFF_ECHO_TAIL_SECONDS", "0.3"))
+DEFAULT_SELF_ECHO_FILTER_ENV = os.environ.get("BFF_SELF_ECHO_FILTER", "true").lower()
+DEFAULT_SELF_ECHO_FILTER = DEFAULT_SELF_ECHO_FILTER_ENV in ("true", "1", "yes", "on")
 DEFAULT_INTERRUPTABLE_ENV = os.environ.get("BFF_INTERRUPTABLE", "true").lower()
 DEFAULT_INTERRUPTABLE = DEFAULT_INTERRUPTABLE_ENV in ("true", "1", "yes", "on")
 DEFAULT_FLUSH_ON_INTERRUPT_ENV = os.environ.get("BFF_FLUSH_ON_INTERRUPT", "false").lower()
@@ -256,6 +268,11 @@ class ConversationConfig:
     block_duration: float = DEFAULT_BLOCK_DURATION
     vad_backend: str = DEFAULT_VAD_BACKEND
     vad_threshold: float = DEFAULT_VAD_THRESHOLD
+    barge_in_blocks: int = DEFAULT_BARGE_IN_BLOCKS
+    barge_in_threshold: float = DEFAULT_BARGE_IN_THRESHOLD
+    duck_level: float = DEFAULT_DUCK_LEVEL
+    echo_tail_seconds: float = DEFAULT_ECHO_TAIL_SECONDS
+    self_echo_filter: bool = DEFAULT_SELF_ECHO_FILTER
     show_levels: bool = True
     input_device_keyword: str | None = DEFAULT_INPUT_DEVICE_KEYWORD
     input_device_index: int | None = None
@@ -397,6 +414,34 @@ def parse_args() -> ConversationConfig:
         "threshold minus 0.15 (default: %(default)s)",
     )
     parser.add_argument(
+        "--barge-in-blocks",
+        type=int,
+        default=DEFAULT_BARGE_IN_BLOCKS,
+        help="Consecutive voice blocks required to interrupt active playback "
+        "(default: %(default)s)",
+    )
+    parser.add_argument(
+        "--barge-in-threshold",
+        type=float,
+        default=DEFAULT_BARGE_IN_THRESHOLD,
+        help="Silero speech probability each block must reach to count toward a "
+        "barge-in during playback (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--duck-level",
+        type=float,
+        default=DEFAULT_DUCK_LEVEL,
+        help="Playback gain applied while a barge-in is being confirmed; "
+        "1.0 disables ducking (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--no-self-echo-filter",
+        dest="self_echo_filter",
+        action="store_false",
+        default=DEFAULT_SELF_ECHO_FILTER,
+        help="Disable dropping transcripts that match the robot's own recent speech",
+    )
+    parser.add_argument(
         "--activation-threshold",
         type=float,
         default=DEFAULT_ACTIVATION_THRESHOLD,
@@ -529,6 +574,10 @@ def parse_args() -> ConversationConfig:
         block_duration=args.block_duration,
         vad_backend=args.vad_backend,
         vad_threshold=args.vad_threshold,
+        barge_in_blocks=args.barge_in_blocks,
+        barge_in_threshold=args.barge_in_threshold,
+        duck_level=args.duck_level,
+        self_echo_filter=args.self_echo_filter,
         show_levels=args.show_levels,
         input_device_keyword=input_keyword,
         interruptable=False if args.no_interruptable else DEFAULT_INTERRUPTABLE,
@@ -1364,6 +1413,9 @@ class UnifiedAudioSystem:
         self.buffer_mutex = threading.Lock()
         self.interrupt_event = threading.Event()
         self.is_playing = False
+        self.last_active = 0.0  # wall time playback last wrote samples
+        self._gain = 1.0
+        self._target_gain = 1.0
 
     def play_chunk(self, chunk: np.ndarray):
         if chunk.ndim > 1:
@@ -1377,6 +1429,13 @@ class UnifiedAudioSystem:
         with self.buffer_mutex:
             self.chunks.clear()
             self.is_playing = False
+            self._gain = 1.0
+            self._target_gain = 1.0
+
+    def set_duck(self, ducked: bool, level: float = 0.15):
+        """Duck (or restore) playback volume; ramped in fill_output to avoid clicks."""
+        with self.buffer_mutex:
+            self._target_gain = level if ducked else 1.0
 
     def fill_output(self, outdata: np.ndarray, frames: int):
         with self.buffer_mutex:
@@ -1396,6 +1455,18 @@ class UnifiedAudioSystem:
                     self.chunks[0] = head[take:]
                 offset += take
 
+            if offset > 0:
+                self.last_active = time.time()
+                if self._gain != self._target_gain:
+                    outdata[:offset, 0] *= np.linspace(
+                        self._gain, self._target_gain, offset, dtype=np.float32
+                    )
+                    self._gain = self._target_gain
+                elif self._gain != 1.0:
+                    outdata[:offset, 0] *= self._gain
+            else:
+                self._gain = self._target_gain
+
             if offset < frames:
                 outdata[offset:, 0] = 0.0
             if not self.chunks:
@@ -1403,6 +1474,56 @@ class UnifiedAudioSystem:
 
 
 unified_audio = UnifiedAudioSystem()
+
+
+class SelfEchoFilter:
+    """Drops transcripts that are the robot hearing its own TTS output.
+
+    note_spoken() records every sentence handed to synthesis; is_echo()
+    measures how much of a transcript is covered by in-order matches
+    against that recent speech. Coverage (rather than plain similarity)
+    catches partial captures of the robot's speech while leaving genuine
+    user interjections — which contain their own words — untouched.
+    """
+
+    def __init__(self, window_seconds: float = 25.0, coverage_threshold: float = 0.7):
+        self.window_seconds = window_seconds
+        self.coverage_threshold = coverage_threshold
+        self._recent: collections.deque[tuple[float, str]] = collections.deque()
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def _normalize(text: str) -> str:
+        return re.sub(r"[^a-z0-9' ]+", " ", text.lower()).strip()
+
+    def note_spoken(self, text: str) -> None:
+        norm = re.sub(r"\s+", " ", self._normalize(text))
+        if norm:
+            with self._lock:
+                self._recent.append((time.time(), norm))
+
+    def is_echo(self, text: str) -> bool:
+        norm = re.sub(r"\s+", " ", self._normalize(text))
+        if len(norm) < 4:
+            return False
+        cutoff = time.time() - self.window_seconds
+        with self._lock:
+            while self._recent and self._recent[0][0] < cutoff:
+                self._recent.popleft()
+            spoken = " ".join(t for _, t in self._recent)
+        if not spoken:
+            return False
+        matcher = difflib.SequenceMatcher(None, norm, spoken, autojunk=False)
+        # Only count runs long enough to be meaningful; scattered short
+        # fragments ("you", "the", "to") otherwise pile up false coverage
+        # on short transcripts.
+        matched = sum(
+            block.size for block in matcher.get_matching_blocks() if block.size >= 4
+        )
+        return matched / len(norm) >= self.coverage_threshold
+
+
+self_echo_filter = SelfEchoFilter()
 
 
 def phrase_stream(
@@ -1461,7 +1582,9 @@ def phrase_stream(
         recording = False
         silence_blocks = 0
         collected: List[np.ndarray] = []
+        barge_candidate: List[np.ndarray] = []
         block_counter = 0
+        duck_enabled = config.interruptable and config.duck_level < 1.0
 
         while True:
             if stop_event and stop_event.is_set():
@@ -1500,15 +1623,52 @@ def phrase_stream(
                 )
                 sys.stderr.flush()
 
+            playback_recent = unified_audio.is_playing or (
+                time.time() - unified_audio.last_active
+            ) < config.echo_tail_seconds
+
             if not recording:
-                if voice_detected:
+                if playback_recent:
+                    # Playback (or its echo tail) is live: demand sustained,
+                    # confident speech before interrupting. The first candidate
+                    # block ducks the volume; confirmation cuts it.
+                    confident = (
+                        prob >= config.barge_in_threshold
+                        if prob is not None
+                        else voice_detected
+                    )
+                    if confident:
+                        if not barge_candidate and duck_enabled:
+                            unified_audio.set_duck(True, config.duck_level)
+                        barge_candidate.append(block)
+                        if len(barge_candidate) >= max(1, config.barge_in_blocks):
+                            if on_voice_activity:
+                                on_voice_activity()
+                            unified_audio.set_duck(False)
+                            recording = True
+                            collected = barge_candidate
+                            barge_candidate = []
+                            silence_blocks = 0
+                            block_counter = len(collected)
+                    elif barge_candidate:
+                        # Not sustained: false alarm, restore volume
+                        unified_audio.set_duck(False)
+                        barge_candidate = []
+                elif voice_detected:
                     # Voice activity detected - pause immediately
                     if on_voice_activity:
                         on_voice_activity()
+                    if barge_candidate:
+                        # Playback just ended mid-candidate: keep those blocks
+                        unified_audio.set_duck(False)
                     recording = True
-                    collected = [block]
+                    collected = barge_candidate + [block]
+                    barge_candidate = []
                     silence_blocks = 0
-                    block_counter = 1
+                    block_counter = len(collected)
+                elif barge_candidate:
+                    unified_audio.set_duck(False)
+                    barge_candidate = []
             else:
                 collected.append(block)
                 if silence_detected:
@@ -1716,6 +1876,7 @@ def synthesize_with_piper(
     voice: PiperVoice, text: str, output_wav: Path
 ) -> None:
     print("Synthesizing speech with Piper…", file=sys.stderr)
+    self_echo_filter.note_spoken(text)
     audio_iter = voice.synthesize(text)
     base_sample_rate = int(
         getattr(voice, "sample_rate", getattr(getattr(voice, "config", {}), "sample_rate", DEFAULT_SAMPLE_RATE))
@@ -1893,6 +2054,7 @@ class TTSWorker:
             # Synthesize
             try:
                 # print(f"[TTS] Synthesizing: {text[:30]}...", file=sys.stderr)
+                self_echo_filter.note_spoken(text)
                 stream = self.voice.synthesize(text)
                 for chunk in stream:
                     if self.stop_event.is_set():
@@ -2906,7 +3068,8 @@ def run_conversation(config: ConversationConfig) -> None:
                     phrase = segment_queue.get(timeout=0.1)
                 
                 is_dialogue_active = True
-                last_interaction_time = time.time()
+                segment_received_at = time.time()
+                last_interaction_time = segment_received_at
             except queue.Empty:
                 continue
 
@@ -2944,6 +3107,27 @@ def run_conversation(config: ConversationConfig) -> None:
                 except Exception as exc:
                     print(f"Reprompt TTS/playback error: {exc}", file=sys.stderr)
                 continue
+
+            # Drop transcripts that are just the robot hearing itself. Applied
+            # only when playback overlapped this segment's recording window, so
+            # a user repeating the robot's words afterwards still gets through.
+            if config.self_echo_filter:
+                recording_started = (
+                    segment_received_at
+                    - len(phrase) / config.sample_rate
+                    - config.silence_duration
+                )
+                if (
+                    unified_audio.last_active >= recording_started - config.echo_tail_seconds
+                    and self_echo_filter.is_echo(user_text)
+                ):
+                    print(f"Ignoring self-echo: '{user_text}'", file=sys.stderr)
+                    append_log_line(
+                        log_file,
+                        {"type": "self_echo_dropped", "turn": turn, "text": user_text},
+                    )
+                    turn += 1
+                    continue
 
             # Stop conversation: stop listening, reset to default system prompt, wait until "snapper start listening"
             if is_lets_stop_command(user_text):
