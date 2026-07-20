@@ -2995,22 +2995,6 @@ def run_conversation(config: ConversationConfig) -> None:
 
             user_text = transcribe_audio(whisper_model, raw_audio, config.show_levels)
             if not user_text:
-                # Prompt the user via TTS instead of printing.
-                try:
-                    reprompt_text = "what did you say?"
-                    reprompt_audio = session_dir / f"turn-{turn:03d}-reprompt.wav"
-                    synthesize_with_piper(piper_voice, reprompt_text, reprompt_audio)
-                    # Clear interrupt flag since this didn't result in a query
-                    playback_interrupt.clear()
-                    play_audio(
-                        reprompt_audio,
-                        playback_interrupt,
-                        interruptable=config.interruptable,
-                        output_device_indices=config.output_device_indices,
-                        output_sample_rate=config.output_sample_rate,
-                    )
-                except Exception as exc:
-                    print(f"Reprompt TTS/playback error: {exc}", file=sys.stderr)
                 continue
 
             # Stop conversation: stop listening, reset to default system prompt, wait until "snapper start listening"
