@@ -41,6 +41,7 @@ Environment variables:
     BFF_VAD_THRESHOLD  Silero speech probability that starts a segment (default: 0.5)
     BFF_BARGE_IN_BLOCKS    consecutive voice blocks required to interrupt playback (default: 2)
     BFF_BARGE_IN_THRESHOLD Silero probability required per block during playback (default: 0.7)
+    BFF_BARGE_IN_MIN_RMS   RMS floor a block must also reach during playback, 0 disables (default: 0.0)
     BFF_DUCK_LEVEL     playback gain while a barge-in is being confirmed, 1.0 disables (default: 0.15)
     BFF_ECHO_TAIL_SECONDS  seconds after playback ends that still count as playback for gating (default: 1.2)
     BFF_SELF_ECHO_FILTER   drop transcripts matching the robot's own recent speech (default: true)
@@ -205,6 +206,11 @@ DEFAULT_VAD_BACKEND = os.environ.get("BFF_VAD_BACKEND", "silero").lower()
 DEFAULT_VAD_THRESHOLD = float(os.environ.get("BFF_VAD_THRESHOLD", "0.5"))
 DEFAULT_BARGE_IN_BLOCKS = int(os.environ.get("BFF_BARGE_IN_BLOCKS", "2"))
 DEFAULT_BARGE_IN_THRESHOLD = float(os.environ.get("BFF_BARGE_IN_THRESHOLD", "0.7"))
+# RMS floor a block must also reach to count toward a barge-in during playback.
+# With a near-mouth mic (Shokz), user speech is far louder than room echo of
+# the robot's own speaker, so this rejects echo that Silero rightly calls
+# speech. 0.0 disables.
+DEFAULT_BARGE_IN_MIN_RMS = float(os.environ.get("BFF_BARGE_IN_MIN_RMS", "0.0"))
 DEFAULT_DUCK_LEVEL = float(os.environ.get("BFF_DUCK_LEVEL", "0.15"))
 # Must cover everything between the last samples handed to the audio stack and
 # the echo dying out at the mic: PULSE_LATENCY_MSEC (400 ms) plus USB/BT output
@@ -300,6 +306,7 @@ class ConversationConfig:
     vad_threshold: float = DEFAULT_VAD_THRESHOLD
     barge_in_blocks: int = DEFAULT_BARGE_IN_BLOCKS
     barge_in_threshold: float = DEFAULT_BARGE_IN_THRESHOLD
+    barge_in_min_rms: float = DEFAULT_BARGE_IN_MIN_RMS
     duck_level: float = DEFAULT_DUCK_LEVEL
     echo_tail_seconds: float = DEFAULT_ECHO_TAIL_SECONDS
     self_echo_filter: bool = DEFAULT_SELF_ECHO_FILTER
@@ -458,6 +465,13 @@ def parse_args() -> ConversationConfig:
         "barge-in during playback (default: %(default)s)",
     )
     parser.add_argument(
+        "--barge-in-min-rms",
+        type=float,
+        default=DEFAULT_BARGE_IN_MIN_RMS,
+        help="RMS amplitude a block must also reach to count toward a barge-in "
+        "during playback; 0 disables (default: %(default)s)",
+    )
+    parser.add_argument(
         "--duck-level",
         type=float,
         default=DEFAULT_DUCK_LEVEL,
@@ -606,6 +620,7 @@ def parse_args() -> ConversationConfig:
         vad_threshold=args.vad_threshold,
         barge_in_blocks=args.barge_in_blocks,
         barge_in_threshold=args.barge_in_threshold,
+        barge_in_min_rms=args.barge_in_min_rms,
         duck_level=args.duck_level,
         self_echo_filter=args.self_echo_filter,
         show_levels=args.show_levels,
@@ -1616,7 +1631,7 @@ def phrase_stream(
                 meter_width = 40
                 if prob is not None:
                     normalized = min(1.0, prob)
-                    label = f"Speech {prob:0.2f}"
+                    label = f"Speech {prob:0.2f} (rms {amp:0.3f})"
                 else:
                     normalized = min(1.0, amp / max(config.activation_threshold, 1e-6))
                     label = f"Level {amp:0.3f}"
@@ -1640,6 +1655,8 @@ def phrase_stream(
                         if prob is not None
                         else voice_detected
                     )
+                    if config.barge_in_min_rms > 0.0 and amp < config.barge_in_min_rms:
+                        confident = False
                     if confident:
                         if not barge_candidate and duck_enabled:
                             unified_audio.set_duck(True, config.duck_level)
