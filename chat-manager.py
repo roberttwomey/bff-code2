@@ -1754,6 +1754,8 @@ def phrase_stream(
         block_counter = 0
         duck_enabled = config.interruptable and config.duck_level < 1.0
         mic_gated = False
+        aec_stat_in = aec_stat_out = 0.0
+        aec_stat_n = 0
 
         while True:
             if stop_event and stop_event.is_set():
@@ -1769,6 +1771,23 @@ def phrase_stream(
                 block = aec.process(mic_block, far_block)
                 if block.shape[0] == 0:
                     continue
+                if unified_audio.is_playing:
+                    # Report measured echo suppression every ~2 s of playback
+                    # so convergence is visible in the log.
+                    aec_stat_in += float(np.mean(np.square(mic_block)))
+                    aec_stat_out += float(np.mean(np.square(block)))
+                    aec_stat_n += 1
+                    if aec_stat_n * config.block_duration >= 2.0:
+                        suppression = 10.0 * math.log10(
+                            (aec_stat_in + 1e-12) / (aec_stat_out + 1e-12)
+                        )
+                        print(
+                            f"\n[aec] echo suppression {suppression:0.1f} dB "
+                            f"over last {aec_stat_n * config.block_duration:0.1f}s of playback",
+                            file=sys.stderr,
+                        )
+                        aec_stat_in = aec_stat_out = 0.0
+                        aec_stat_n = 0
             else:
                 block = mic_block
             block_counter += 1 if recording else 0
@@ -1803,7 +1822,7 @@ def phrase_stream(
             if config.show_levels:
                 if prob is not None:
                     normalized = min(1.0, prob)
-                    label = f"Speech {prob:0.2f} (rms {amp:0.3f})"
+                    label = f"Speech {prob:0.2f}"
                 else:
                     normalized = min(1.0, amp / max(config.activation_threshold, 1e-6))
                     label = f"Level {amp:0.3f}"
