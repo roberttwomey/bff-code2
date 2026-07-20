@@ -31,6 +31,7 @@ Environment variables:
     BFF_VLM_NUM_PREDICT override max tokens generated per VLM scene description (default: 50)
     BFF_VLM_NUM_CTX    override context size for the VLM model (default: 2048)
     BFF_VLM_TEMPERATURE override VLM sampling temperature (default: 0.4; moondream's Modelfile defaults to 0)
+    BFF_VLM_CHANGE_THRESHOLD override mean grayscale pixel-diff (0-255) required to trigger a re-description (default: 12.0)
     BFF_VLM_INTERVAL   override minimum seconds between VLM capture starts (default: 1.5)
     BFF_WHISPER_MODEL  override Whisper model size (default: tiny.en)
     BFF_WHISPER_DEVICE override Whisper device, e.g. cpu to leave GPU memory for the VLM (default: cuda if available)
@@ -229,8 +230,35 @@ DEFAULT_PULSE_COMBINED_SINK_NAME = os.environ.get(
     "BFF_PULSE_COMBINED_SINK_NAME", "bff_combined"
 )
 DEFAULT_PULSE_DEVICE_NAME = os.environ.get("BFF_PULSE_DEVICE_NAME", "pulse")
-LAST_HEADSET_MAC = os.environ.get("LAST_HEADSET_MAC")
-LAST_HEADSET_NAME = os.environ.get("LAST_HEADSET_NAME")
+HEADSET_STATE_FILE = Path(__file__).resolve().parent / "headset_state.json"
+
+
+def load_headset_state() -> tuple[str | None, str | None]:
+    """Last-connected headset (mac, name). Env vars override the state file."""
+    mac = os.environ.get("LAST_HEADSET_MAC")
+    name = os.environ.get("LAST_HEADSET_NAME")
+    if mac and name:
+        return mac, name
+    try:
+        state = json.loads(HEADSET_STATE_FILE.read_text())
+        return mac or state.get("mac"), name or state.get("name")
+    except (OSError, json.JSONDecodeError):
+        return mac, name
+
+
+def save_headset_state(mac: str, name: str) -> None:
+    try:
+        HEADSET_STATE_FILE.write_text(
+            json.dumps({"mac": mac, "name": name}, indent=2) + "\n"
+        )
+    except OSError as exc:
+        print(f"Could not save headset state: {exc}", file=sys.stderr)
+    # Keep the in-process env in sync for anything reading it later this run
+    os.environ["LAST_HEADSET_MAC"] = mac
+    os.environ["LAST_HEADSET_NAME"] = name
+
+
+LAST_HEADSET_MAC, LAST_HEADSET_NAME = load_headset_state()
 
 @dataclass
 class ConversationConfig:
@@ -955,9 +983,7 @@ def connect_to_headset(mac: str, name: str) -> bool:
             print(f"Bluetooth connection established to {name} ({mac}), but PulseAudio card not yet available.", file=sys.stderr)
             print(f"This is normal - the device should work as the system default audio device.", file=sys.stderr)
         
-        # Save to environment (will be saved to .env by caller)
-        os.environ["LAST_HEADSET_MAC"] = mac
-        os.environ["LAST_HEADSET_NAME"] = name
+        save_headset_state(mac, name)
         return True
     except Exception as exc:
         print(f"Connection error: {exc}", file=sys.stderr)
@@ -1009,46 +1035,7 @@ def ensure_headset_connected() -> None:
             return
         
         mac, name = devices[idx - 1]
-        if connect_to_headset(mac, name):
-            # Save to .env file (look for it in current dir or parent dirs, like dotenv does)
-            env_path = None
-            current = Path.cwd()
-            for parent in [current] + list(current.parents):
-                candidate = parent / ".env"
-                if candidate.exists():
-                    env_path = candidate
-                    break
-            
-            # If not found, use .env in current directory
-            if env_path is None:
-                env_path = Path(".env")
-            
-            # Read existing .env or create new content
-            if env_path.exists():
-                with open(env_path, "r") as f:
-                    content = f.read()
-                lines = content.splitlines()
-            else:
-                lines = []
-            
-            # Update or add headset info
-            updated_mac = False
-            updated_name = False
-            for i, line in enumerate(lines):
-                if line.startswith("LAST_HEADSET_MAC="):
-                    lines[i] = f'LAST_HEADSET_MAC={mac}'
-                    updated_mac = True
-                elif line.startswith("LAST_HEADSET_NAME="):
-                    lines[i] = f'LAST_HEADSET_NAME="{name}"'
-                    updated_name = True
-            
-            if not updated_mac:
-                lines.append(f"LAST_HEADSET_MAC={mac}")
-            if not updated_name:
-                lines.append(f'LAST_HEADSET_NAME="{name}"')
-            
-            with open(env_path, "w") as f:
-                f.write("\n".join(lines) + "\n")
+        connect_to_headset(mac, name)  # persists headset state on success
     except (ValueError, KeyboardInterrupt, EOFError):
         print("Cancelled or invalid input.", file=sys.stderr)
 
@@ -2108,11 +2095,17 @@ class VLMBackgroundWorker:
         if not self.aes_key:
             self.aes_key = None
         
-        # Minimum gap between capture starts. Scene descriptions don't need
-        # sub-second freshness, so pace queries to leave GPU headroom for the
-        # interactive chat/whisper turns rather than running back-to-back.
-        # Set to 0 to restore continuous back-to-back capture.
+        # Minimum gap between capture checks. Set to 0 for back-to-back checking.
         self.vlm_interval = float(os.getenv("BFF_VLM_INTERVAL", "1.5"))
+
+        # Only actually query the VLM (and save a snapshot) when the scene has
+        # visibly changed since the last description, checked via a cheap
+        # grayscale frame-difference on every capture tick - the VLM query
+        # itself is the expensive step, so most ticks should just look and
+        # skip. Mean per-pixel difference (0-255 scale) above this threshold
+        # counts as "changed"; higher = less sensitive to lighting/noise.
+        self.change_threshold = float(os.getenv("BFF_VLM_CHANGE_THRESHOLD", "12.0"))
+        self._last_compared_frame = None  # small grayscale frame, for change detection
 
         # Previous SLAM sample, used to estimate velocity by position delta -
         # LowState_ has no velocity field on this hardware.
@@ -2130,7 +2123,7 @@ class VLMBackgroundWorker:
             
     def _run(self):
         global last_vlm_query_time
-        print("[VLM Worker] Started background VLM worker thread (continuous capture).", file=sys.stderr)
+        print("[VLM Worker] Started background VLM worker thread (change-triggered capture).", file=sys.stderr)
 
         while not self.stop_event.is_set():
             # Don't start a new capture while the chat model is generating a
@@ -2204,27 +2197,21 @@ class VLMBackgroundWorker:
         except Exception as e:
             print(f"[Body State] Failed to fetch lowstate: {e}", file=sys.stderr)
 
-    def _capture_and_query(self):
-        global latest_scene_description, last_vlm_query_time
-        
-        # Update query time immediately to prevent overlapping runs or spamming if connection hangs
-        last_vlm_query_time = time.time()
-        
+    def _acquire_frame(self):
+        """Fetch a frame from the dashboard's /snapshot, falling back to the local webcam."""
         frame = None
         dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
         url = f"http://localhost:{dashboard_port}/snapshot"
         try:
             import urllib.request
             import numpy as np
-            print(f"[VLM Worker] Fetching frame from dashboard server at {url}...", file=sys.stderr)
             with urllib.request.urlopen(url, timeout=3.0) as response:
                 img_data = response.read()
                 nparr = np.frombuffer(img_data, np.uint8)
                 frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                print(f"[VLM Worker] Successfully retrieved frame from dashboard server.", file=sys.stderr)
         except Exception as e:
             print(f"[VLM Worker] Could not fetch frame from dashboard server: {e}. Falling back to webcam...", file=sys.stderr)
-                
+
         if frame is None:
             # Fallback to local webcam
             camera_index = 0
@@ -2243,20 +2230,50 @@ class VLMBackgroundWorker:
                     frame = None
             except Exception as webcam_err:
                 print(f"[VLM Worker] Webcam fallback error: {webcam_err}", file=sys.stderr)
-                
+
+        return frame
+
+    def _scene_has_changed(self, frame) -> bool:
+        """Cheap grayscale frame-difference check against the last frame that
+        was actually described. Keeps the (slow) VLM query from re-describing
+        a static scene on every tick - only fires when something's different."""
+        small = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        small = cv2.resize(small, (64, 64), interpolation=cv2.INTER_AREA)
+
+        if self._last_compared_frame is None:
+            self._last_compared_frame = small
+            return True  # nothing to compare against yet - always describe the first frame
+
+        mean_diff = float(cv2.absdiff(small, self._last_compared_frame).mean())
+        changed = mean_diff >= self.change_threshold
+        if changed:
+            self._last_compared_frame = small
+        return changed
+
+    def _capture_and_query(self):
+        global latest_scene_description, last_vlm_query_time
+
+        # Update immediately to pace the next check, regardless of whether
+        # this tick ends up actually querying the VLM.
+        last_vlm_query_time = time.time()
+
+        frame = self._acquire_frame()
         if frame is None:
             print("[VLM Worker] Capture failed. No image retrieved.", file=sys.stderr)
             return
-            
+
+        if not self._scene_has_changed(frame):
+            return
+
         # Create output directory for VLM captures inside session directory
         vlm_dir = self.session_dir / "vlm_captures"
         vlm_dir.mkdir(parents=True, exist_ok=True)
-        
+
         timestamp_str = datetime.now().strftime("%Y%m%d-%H%M%S")
         image_path = vlm_dir / f"snapshot_{timestamp_str}.jpg"
         cv2.imwrite(str(image_path), frame)
-        print(f"[VLM Worker] Snapshot saved to {image_path}", file=sys.stderr)
-        
+        print(f"[VLM Worker] Scene changed - snapshot saved to {image_path}", file=sys.stderr)
+
         # Query Ollama VLM
         model_name = self.config.vlm_model
         prompt = (
@@ -2563,12 +2580,9 @@ def run_conversation(config: ConversationConfig) -> None:
 
     # Ensure Bluetooth headset is connected
     ensure_headset_connected()
-    # Reload environment variables in case headset info was updated
-    dotenv.load_dotenv(override=True)
-    # Update module-level variables after reload
+    # Pick up headset state in case it was updated during connect
     global LAST_HEADSET_MAC, LAST_HEADSET_NAME
-    LAST_HEADSET_MAC = os.environ.get("LAST_HEADSET_MAC")
-    LAST_HEADSET_NAME = os.environ.get("LAST_HEADSET_NAME")
+    LAST_HEADSET_MAC, LAST_HEADSET_NAME = load_headset_state()
     # Log audio devices after Bluetooth connect/reload
     log_audio_devices()
     # Update the input/output device keywords if we have a saved headset name
