@@ -63,6 +63,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import difflib
 import json
 import math
 import os
@@ -332,7 +333,73 @@ class Scene:
     """Represents a conversational scene with a specific system prompt."""
     name: str
     system_prompt: str
-    trigger: str | None = None
+    trigger: str | list[str] | None = None
+
+
+def normalize_text(text: str) -> str:
+    """Normalize text by lowercasing, stripping non-alphanumeric characters, and collapsing whitespace."""
+    lowered = text.lower().strip()
+    lowered = re.sub(r"[^a-z0-9\s]", " ", lowered)
+    return " ".join(lowered.split())
+
+
+def stem_text(text: str) -> str:
+    """Simple stemmer removing trailing 's' from words (len > 3) for basic plural/singular matching."""
+    words = text.split()
+    stemmed = [w[:-1] if (len(w) > 3 and w.endswith('s') and not w.endswith('ss')) else w for w in words]
+    return " ".join(stemmed)
+
+
+def matches_trigger_phrase(trigger_phrase: str, user_text: str) -> bool:
+    """Check if user_text matches trigger_phrase using exact, normalized, stemmed, or fuzzy matching."""
+    if not trigger_phrase or not user_text:
+        return False
+
+    # 1. Direct lowercase substring match
+    tp_lower = trigger_phrase.lower().strip()
+    u_lower = user_text.lower().strip()
+    if tp_lower in u_lower:
+        return True
+
+    # 2. Normalized substring match (ignores punctuation/apostrophes)
+    norm_tp = normalize_text(trigger_phrase)
+    norm_u = normalize_text(user_text)
+    if not norm_tp or not norm_u:
+        return False
+    if norm_tp in norm_u:
+        return True
+
+    # 3. Stemmed substring match (handles color vs colors, number vs numbers)
+    stem_tp = stem_text(norm_tp)
+    stem_u = stem_text(norm_u)
+    if stem_tp in stem_u:
+        return True
+
+    # 4. Fuzzy sliding window match for STT mishearings
+    words_tp = norm_tp.split()
+    words_u = norm_u.split()
+    n = len(words_tp)
+    if n > 1 and len(words_u) >= n:
+        for i in range(len(words_u) - n + 1):
+            window = " ".join(words_u[i:i + n])
+            if difflib.SequenceMatcher(None, norm_tp, window).ratio() >= 0.82:
+                return True
+
+    return False
+
+
+def is_scene_triggered(scene: Scene, user_text: str) -> bool:
+    """Check if any trigger defined in scene matches the user's text."""
+    if not scene.trigger:
+        return False
+    if isinstance(scene.trigger, list):
+        triggers = scene.trigger
+    elif isinstance(scene.trigger, str):
+        triggers = [t.strip() for t in scene.trigger.split("|") if t.strip()]
+    else:
+        return False
+
+    return any(matches_trigger_phrase(t, user_text) for t in triggers)
 
 
 def parse_args() -> ConversationConfig:
@@ -3135,7 +3202,7 @@ def run_conversation(config: ConversationConfig) -> None:
 
             # Check for scene triggers
             matched_scene = next(
-                (s for s in scenes if s.trigger and s.trigger.lower() in user_text.lower()),
+                (s for s in scenes if is_scene_triggered(s, user_text)),
                 None,
             )
             
