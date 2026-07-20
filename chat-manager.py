@@ -44,6 +44,7 @@ Environment variables:
     BFF_BARGE_IN_BLOCKS    consecutive voice blocks required to interrupt playback (default: 2)
     BFF_BARGE_IN_THRESHOLD Silero probability required per block during playback (default: 0.7)
     BFF_BARGE_IN_MIN_RMS   RMS floor a block must also reach during playback, 0 disables (default: 0.0)
+    BFF_BARGE_IN_CONFIRM   text: interrupt only after transcript passes wake/echo gates; audio: interrupt on sustained speech (default: text)
     BFF_DUCK_LEVEL     playback gain while a barge-in is being confirmed, 1.0 disables (default: 0.15)
     BFF_ECHO_TAIL_SECONDS  seconds after playback ends that still count as playback for gating (default: 1.2)
     BFF_SELF_ECHO_FILTER   drop transcripts matching the robot's own recent speech (default: true)
@@ -214,6 +215,12 @@ DEFAULT_VAD_BACKEND = os.environ.get("BFF_VAD_BACKEND", "silero").lower()
 DEFAULT_VAD_THRESHOLD = float(os.environ.get("BFF_VAD_THRESHOLD", "0.5"))
 DEFAULT_BARGE_IN_BLOCKS = int(os.environ.get("BFF_BARGE_IN_BLOCKS", "2"))
 DEFAULT_BARGE_IN_THRESHOLD = float(os.environ.get("BFF_BARGE_IN_THRESHOLD", "0.7"))
+# How a barge-in during playback is confirmed. "text": record the utterance
+# (playback continues, ducked) and only interrupt once the transcript passes
+# the wake/echo gates — immune to echo leakage, costs ~2s of interrupt
+# latency. "audio": interrupt as soon as sustained speech is detected —
+# fastest, but only safe when the echo path is short and AEC converges.
+DEFAULT_BARGE_IN_CONFIRM = os.environ.get("BFF_BARGE_IN_CONFIRM", "text").lower()
 # RMS floor a block must also reach to count toward a barge-in during playback.
 # With a near-mouth mic (Shokz), user speech is far louder than room echo of
 # the robot's own speaker, so this rejects echo that Silero rightly calls
@@ -322,6 +329,7 @@ class ConversationConfig:
     barge_in_blocks: int = DEFAULT_BARGE_IN_BLOCKS
     barge_in_threshold: float = DEFAULT_BARGE_IN_THRESHOLD
     barge_in_min_rms: float = DEFAULT_BARGE_IN_MIN_RMS
+    barge_in_confirm: str = DEFAULT_BARGE_IN_CONFIRM
     duck_level: float = DEFAULT_DUCK_LEVEL
     echo_tail_seconds: float = DEFAULT_ECHO_TAIL_SECONDS
     self_echo_filter: bool = DEFAULT_SELF_ECHO_FILTER
@@ -481,6 +489,14 @@ def parse_args() -> ConversationConfig:
         default=DEFAULT_BARGE_IN_THRESHOLD,
         help="Silero speech probability each block must reach to count toward a "
         "barge-in during playback (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--barge-in-confirm",
+        choices=("text", "audio"),
+        default=DEFAULT_BARGE_IN_CONFIRM,
+        help="How playback barge-in is confirmed: text = only after the "
+        "transcript passes wake/echo gates (echo-proof, ~2s slower); audio = "
+        "on sustained speech (default: %(default)s)",
     )
     parser.add_argument(
         "--barge-in-min-rms",
@@ -653,6 +669,7 @@ def parse_args() -> ConversationConfig:
         barge_in_blocks=args.barge_in_blocks,
         barge_in_threshold=args.barge_in_threshold,
         barge_in_min_rms=args.barge_in_min_rms,
+        barge_in_confirm=args.barge_in_confirm,
         duck_level=args.duck_level,
         self_echo_filter=args.self_echo_filter,
         aec=args.aec,
@@ -1870,9 +1887,13 @@ def phrase_stream(
                             unified_audio.set_duck(True, config.duck_level)
                         barge_candidate.append(block)
                         if len(barge_candidate) >= max(1, config.barge_in_blocks):
-                            if on_voice_activity:
-                                on_voice_activity()
-                            unified_audio.set_duck(False)
+                            if config.barge_in_confirm == "audio":
+                                if on_voice_activity:
+                                    on_voice_activity()
+                                unified_audio.set_duck(False)
+                            # text mode: playback continues (still ducked while
+                            # we record); the main loop interrupts only once
+                            # the transcript passes the wake/echo gates.
                             recording = True
                             collected = barge_candidate
                             barge_candidate = []
@@ -1909,6 +1930,7 @@ def phrase_stream(
                     recording = False
                     silence_blocks = 0
                     block_counter = 0
+                    unified_audio.set_duck(False)  # release a text-mode recording duck
                     if vad is not None:
                         vad.reset()
 
@@ -3263,6 +3285,25 @@ def run_conversation(config: ConversationConfig) -> None:
 
             return False
 
+        def stop_current_turn():
+            """Stop any in-progress TTS/playback/generation from a previous turn.
+
+            Idempotent. In text-confirm barge-in mode this is deferred until a
+            transcript has passed the wake/echo gates, so echo leakage can't
+            silence the robot mid-sentence.
+            """
+            nonlocal current_tts_worker, current_playback_thread, current_abort_event
+            if current_tts_worker is not None:
+                current_tts_worker.stop()
+                current_tts_worker = None
+            if current_playback_thread is not None and current_playback_thread.is_alive():
+                playback_interrupt.set()
+                current_playback_thread.join(timeout=0.5)
+                current_playback_thread = None
+            if current_abort_event is not None:
+                current_abort_event.set()
+                current_abort_event = None
+
         turn = 1
         listening_active = True  # When False, ignore all transcribed input until "start listening"
         global is_dialogue_active, last_interaction_time
@@ -3301,17 +3342,11 @@ def run_conversation(config: ConversationConfig) -> None:
             raw_audio = session_dir / f"turn-{turn:03d}-input.wav"
             sf.write(raw_audio, phrase, config.sample_rate)
 
-            # If this segment interrupted a previous turn, ensure previous TTS is fully stopped
-            if current_tts_worker is not None:
-                current_tts_worker.stop()
-                current_tts_worker = None
-            if current_playback_thread is not None and current_playback_thread.is_alive():
-                playback_interrupt.set()
-                current_playback_thread.join(timeout=0.5)
-                current_playback_thread = None
-            if current_abort_event is not None:
-                current_abort_event.set()
-                current_abort_event = None
+            # If this segment interrupted a previous turn, stop that turn now
+            # (audio-confirm mode). In text-confirm mode keep playing until the
+            # transcript passes the wake/echo gates below.
+            if config.barge_in_confirm != "text":
+                stop_current_turn()
 
             user_text = transcribe_audio(whisper_model, raw_audio, config.show_levels)
             if not user_text:
@@ -3343,6 +3378,7 @@ def run_conversation(config: ConversationConfig) -> None:
 
             # Stop conversation: stop listening, reset to default system prompt, wait until "snapper start listening"
             if is_lets_stop_command(user_text):
+                stop_current_turn()
                 listening_active = False
                 # Reset to default system prompt (same as "let's start over")
                 if default_scene is not None:
@@ -3377,6 +3413,7 @@ def run_conversation(config: ConversationConfig) -> None:
 
             # Stop/start listening (no LLM prompting when stopped) — works with or without "snapper"
             if is_stop_listening_command(user_text):
+                stop_current_turn()
                 listening_active = False
                 print("Stopped listening (no LLM prompting until you say 'start listening').", file=sys.stderr)
                 try:
@@ -3399,6 +3436,7 @@ def run_conversation(config: ConversationConfig) -> None:
                 turn += 1
                 continue
             if is_start_listening_command(user_text):
+                stop_current_turn()
                 listening_active = True
                 print("Listening again.", file=sys.stderr)
                 try:
@@ -3440,6 +3478,7 @@ def run_conversation(config: ConversationConfig) -> None:
             matched_wake = find_wake_phrase(user_norm)
             
             if matched_wake:
+                stop_current_turn()
                 # Remove the wake phrase and attempt to treat remaining text as an inline command.
                 inline = strip_wake_phrase(user_norm, matched_wake).strip()
                 if inline:
@@ -3467,6 +3506,7 @@ def run_conversation(config: ConversationConfig) -> None:
                     continue
             else:
                 if wake_armed_until and now <= wake_armed_until:
+                    stop_current_turn()
                     if run_special_command(user_text, user_text):
                         return
                     # Not a special command: disarm wake window and fall through to normal chat handling.
@@ -3476,6 +3516,10 @@ def run_conversation(config: ConversationConfig) -> None:
                     if config.require_wakeword:
                         print(f"Ignoring input: Wake word not detected in '{user_text}'", file=sys.stderr)
                         continue
+
+            # Input accepted: any still-running previous turn stops now
+            # (no-op if the audio-confirm path already stopped it).
+            stop_current_turn()
 
             # Check for scene triggers
             matched_scene = next(
@@ -3624,6 +3668,11 @@ def run_conversation(config: ConversationConfig) -> None:
                 try:
                     new_segment = segment_queue.get_nowait()
                     pending_segments.append(new_segment)
+                    if config.barge_in_confirm == "text":
+                        # Text-confirm mode: keep the segment for the next
+                        # loop pass; generation/playback continue until its
+                        # transcript passes the wake/echo gates.
+                        return False
                     # Pause and flush TTS (already done by producer, but ensure it here too)
                     tts_worker.pause()
                     tts_worker.flush()
