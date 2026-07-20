@@ -63,6 +63,7 @@ import math
 import os
 import queue
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -1800,18 +1801,21 @@ def phrase_stream(
                 silence_detected = amp < config.silence_threshold
 
             if config.show_levels:
-                meter_width = 40
                 if prob is not None:
                     normalized = min(1.0, prob)
                     label = f"Speech {prob:0.2f} (rms {amp:0.3f})"
                 else:
                     normalized = min(1.0, amp / max(config.activation_threshold, 1e-6))
                     label = f"Level {amp:0.3f}"
-                filled = int(normalized * meter_width)
-                bar = "#" * filled + "-" * (meter_width - filled)
                 suffix = "REC"
                 if recording and voice_detected:
                     suffix = "REC (*)"
+                # Fit the whole line in the terminal: a wrapped meter line
+                # defeats \r and spills a new line per update.
+                cols = shutil.get_terminal_size((100, 20)).columns
+                meter_width = max(10, min(40, cols - len(label) - 12))
+                filled = int(normalized * meter_width)
+                bar = "#" * filled + "-" * (meter_width - filled)
                 sys.stderr.write(
                     f"\r{label} |{bar}| {suffix}"
                 )
