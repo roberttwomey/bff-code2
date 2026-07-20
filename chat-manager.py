@@ -42,7 +42,7 @@ Environment variables:
     BFF_BARGE_IN_BLOCKS    consecutive voice blocks required to interrupt playback (default: 2)
     BFF_BARGE_IN_THRESHOLD Silero probability required per block during playback (default: 0.7)
     BFF_DUCK_LEVEL     playback gain while a barge-in is being confirmed, 1.0 disables (default: 0.15)
-    BFF_ECHO_TAIL_SECONDS  seconds after playback ends that still count as playback for gating (default: 0.3)
+    BFF_ECHO_TAIL_SECONDS  seconds after playback ends that still count as playback for gating (default: 1.2)
     BFF_SELF_ECHO_FILTER   drop transcripts matching the robot's own recent speech (default: true)
 """
 
@@ -206,7 +206,10 @@ DEFAULT_VAD_THRESHOLD = float(os.environ.get("BFF_VAD_THRESHOLD", "0.5"))
 DEFAULT_BARGE_IN_BLOCKS = int(os.environ.get("BFF_BARGE_IN_BLOCKS", "2"))
 DEFAULT_BARGE_IN_THRESHOLD = float(os.environ.get("BFF_BARGE_IN_THRESHOLD", "0.7"))
 DEFAULT_DUCK_LEVEL = float(os.environ.get("BFF_DUCK_LEVEL", "0.15"))
-DEFAULT_ECHO_TAIL_SECONDS = float(os.environ.get("BFF_ECHO_TAIL_SECONDS", "0.3"))
+# Must cover everything between the last samples handed to the audio stack and
+# the echo dying out at the mic: PULSE_LATENCY_MSEC (400 ms) plus USB/BT output
+# buffering, room reverb, and HFP capture latency.
+DEFAULT_ECHO_TAIL_SECONDS = float(os.environ.get("BFF_ECHO_TAIL_SECONDS", "1.2"))
 DEFAULT_SELF_ECHO_FILTER_ENV = os.environ.get("BFF_SELF_ECHO_FILTER", "true").lower()
 DEFAULT_SELF_ECHO_FILTER = DEFAULT_SELF_ECHO_FILTER_ENV in ("true", "1", "yes", "on")
 DEFAULT_INTERRUPTABLE_ENV = os.environ.get("BFF_INTERRUPTABLE", "true").lower()
