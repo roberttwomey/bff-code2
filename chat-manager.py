@@ -241,8 +241,35 @@ DEFAULT_PULSE_COMBINED_SINK_NAME = os.environ.get(
     "BFF_PULSE_COMBINED_SINK_NAME", "bff_combined"
 )
 DEFAULT_PULSE_DEVICE_NAME = os.environ.get("BFF_PULSE_DEVICE_NAME", "pulse")
-LAST_HEADSET_MAC = os.environ.get("LAST_HEADSET_MAC")
-LAST_HEADSET_NAME = os.environ.get("LAST_HEADSET_NAME")
+HEADSET_STATE_FILE = Path(__file__).resolve().parent / "headset_state.json"
+
+
+def load_headset_state() -> tuple[str | None, str | None]:
+    """Last-connected headset (mac, name). Env vars override the state file."""
+    mac = os.environ.get("LAST_HEADSET_MAC")
+    name = os.environ.get("LAST_HEADSET_NAME")
+    if mac and name:
+        return mac, name
+    try:
+        state = json.loads(HEADSET_STATE_FILE.read_text())
+        return mac or state.get("mac"), name or state.get("name")
+    except (OSError, json.JSONDecodeError):
+        return mac, name
+
+
+def save_headset_state(mac: str, name: str) -> None:
+    try:
+        HEADSET_STATE_FILE.write_text(
+            json.dumps({"mac": mac, "name": name}, indent=2) + "\n"
+        )
+    except OSError as exc:
+        print(f"Could not save headset state: {exc}", file=sys.stderr)
+    # Keep the in-process env in sync for anything reading it later this run
+    os.environ["LAST_HEADSET_MAC"] = mac
+    os.environ["LAST_HEADSET_NAME"] = name
+
+
+LAST_HEADSET_MAC, LAST_HEADSET_NAME = load_headset_state()
 
 @dataclass
 class ConversationConfig:
@@ -1004,9 +1031,7 @@ def connect_to_headset(mac: str, name: str) -> bool:
             print(f"Bluetooth connection established to {name} ({mac}), but PulseAudio card not yet available.", file=sys.stderr)
             print(f"This is normal - the device should work as the system default audio device.", file=sys.stderr)
         
-        # Save to environment (will be saved to .env by caller)
-        os.environ["LAST_HEADSET_MAC"] = mac
-        os.environ["LAST_HEADSET_NAME"] = name
+        save_headset_state(mac, name)
         return True
     except Exception as exc:
         print(f"Connection error: {exc}", file=sys.stderr)
@@ -1058,46 +1083,7 @@ def ensure_headset_connected() -> None:
             return
         
         mac, name = devices[idx - 1]
-        if connect_to_headset(mac, name):
-            # Save to .env file (look for it in current dir or parent dirs, like dotenv does)
-            env_path = None
-            current = Path.cwd()
-            for parent in [current] + list(current.parents):
-                candidate = parent / ".env"
-                if candidate.exists():
-                    env_path = candidate
-                    break
-            
-            # If not found, use .env in current directory
-            if env_path is None:
-                env_path = Path(".env")
-            
-            # Read existing .env or create new content
-            if env_path.exists():
-                with open(env_path, "r") as f:
-                    content = f.read()
-                lines = content.splitlines()
-            else:
-                lines = []
-            
-            # Update or add headset info
-            updated_mac = False
-            updated_name = False
-            for i, line in enumerate(lines):
-                if line.startswith("LAST_HEADSET_MAC="):
-                    lines[i] = f'LAST_HEADSET_MAC={mac}'
-                    updated_mac = True
-                elif line.startswith("LAST_HEADSET_NAME="):
-                    lines[i] = f'LAST_HEADSET_NAME="{name}"'
-                    updated_name = True
-            
-            if not updated_mac:
-                lines.append(f"LAST_HEADSET_MAC={mac}")
-            if not updated_name:
-                lines.append(f'LAST_HEADSET_NAME="{name}"')
-            
-            with open(env_path, "w") as f:
-                f.write("\n".join(lines) + "\n")
+        connect_to_headset(mac, name)  # persists headset state on success
     except (ValueError, KeyboardInterrupt, EOFError):
         print("Cancelled or invalid input.", file=sys.stderr)
 
@@ -2725,12 +2711,9 @@ def run_conversation(config: ConversationConfig) -> None:
 
     # Ensure Bluetooth headset is connected
     ensure_headset_connected()
-    # Reload environment variables in case headset info was updated
-    dotenv.load_dotenv(override=True)
-    # Update module-level variables after reload
+    # Pick up headset state in case it was updated during connect
     global LAST_HEADSET_MAC, LAST_HEADSET_NAME
-    LAST_HEADSET_MAC = os.environ.get("LAST_HEADSET_MAC")
-    LAST_HEADSET_NAME = os.environ.get("LAST_HEADSET_NAME")
+    LAST_HEADSET_MAC, LAST_HEADSET_NAME = load_headset_state()
     # Log audio devices after Bluetooth connect/reload
     log_audio_devices()
     # Update the input/output device keywords if we have a saved headset name
