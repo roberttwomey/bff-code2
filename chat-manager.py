@@ -2153,7 +2153,7 @@ class VLMBackgroundWorker:
         # Query Ollama VLM
         model_name = self.config.vlm_model
         prompt = (
-            "Describe the scene in two short sentences: setting, objects present, "
+            "Describe the scene: setting, objects present, "
             "lighting, and any people and what they are doing."
         )
 
