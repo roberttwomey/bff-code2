@@ -39,6 +39,7 @@ Environment variables:
     BFF_LOG_ROOT       override session history root (default: ./captures, alongside AV/lidar capture data)
     BFF_VAD_BACKEND    speech gating backend: silero (default) or rms
     BFF_VAD_THRESHOLD  Silero speech probability that starts a segment (default: 0.5)
+    BFF_PULSE_SOURCE_VOLUME override mic capture volume percentage (e.g. 60%) via pactl
 """
 
 from __future__ import annotations
@@ -229,6 +230,7 @@ DEFAULT_PULSE_COMBINED_SINK_NAME = os.environ.get(
     "BFF_PULSE_COMBINED_SINK_NAME", "bff_combined"
 )
 DEFAULT_PULSE_DEVICE_NAME = os.environ.get("BFF_PULSE_DEVICE_NAME", "pulse")
+DEFAULT_PULSE_SOURCE_VOLUME = os.environ.get("BFF_PULSE_SOURCE_VOLUME")
 LAST_HEADSET_MAC = os.environ.get("LAST_HEADSET_MAC")
 LAST_HEADSET_NAME = os.environ.get("LAST_HEADSET_NAME")
 
@@ -265,6 +267,7 @@ class ConversationConfig:
     pulse_sinks: list[str] = field(default_factory=list)
     pulse_combined_sink_name: str = DEFAULT_PULSE_COMBINED_SINK_NAME
     pulse_device_name: str = DEFAULT_PULSE_DEVICE_NAME
+    pulse_source_volume: str | None = DEFAULT_PULSE_SOURCE_VOLUME
     output_device_indices: list[str] = field(default_factory=list)
     interruptable: bool = DEFAULT_INTERRUPTABLE
     flush_on_interrupt: bool = DEFAULT_FLUSH_ON_INTERRUPT
@@ -475,6 +478,11 @@ def parse_args() -> ConversationConfig:
         help="PulseAudio output device name for PortAudio (default: %(default)s)",
     )
     parser.add_argument(
+        "--pulse-source-volume",
+        default=DEFAULT_PULSE_SOURCE_VOLUME,
+        help="PulseAudio input source capture volume percentage (e.g. 60%% or 50) set via pactl (default: env BFF_PULSE_SOURCE_VOLUME)",
+    )
+    parser.add_argument(
         "--sample-rate",
         type=int,
         default=DEFAULT_SAMPLE_RATE,
@@ -538,6 +546,7 @@ def parse_args() -> ConversationConfig:
         pulse_sinks=pulse_sinks,
         pulse_combined_sink_name=args.pulse_combined_sink_name,
         pulse_device_name=args.pulse_device_name,
+        pulse_source_volume=args.pulse_source_volume,
         history_truncation_limit=DEFAULT_HISTORY_TRUNCATION_LIMIT,
         ollama_temperature=DEFAULT_OLLAMA_TEMPERATURE,
         ollama_top_p=DEFAULT_OLLAMA_TOP_P,
@@ -744,7 +753,7 @@ def find_pulseaudio_card_by_mac(mac: str, max_retries: int = 5, retry_delay: flo
     return None
 
 
-def set_default_bluez_source(mac: str, max_retries: int = 5, retry_delay: float = 1.0) -> bool:
+def set_default_bluez_source(mac: str, max_retries: int = 5, retry_delay: float = 1.0, volume: str | None = None) -> bool:
     """Make the headset's Bluetooth mic the default PulseAudio source."""
     mac_token = mac.replace(":", "_").lower()
     for attempt in range(max_retries):
@@ -766,6 +775,8 @@ def set_default_bluez_source(mac: str, max_retries: int = 5, retry_delay: float 
                     check=False,
                 )
                 print(f"Default input source set to headset mic: {source_name}", file=sys.stderr)
+                if volume:
+                    set_pulse_source_volume(volume, source_name)
                 return True
         if attempt < max_retries - 1:
             time.sleep(retry_delay)
@@ -1203,6 +1214,31 @@ def set_default_pulse_sink(sink_name: str) -> None:
         )
     except Exception:
         pass
+
+
+def set_pulse_source_volume(volume: str | None, source_name: str = "@DEFAULT_SOURCE@") -> bool:
+    """Set PulseAudio input source capture volume via pactl (e.g. '60%' or '50')."""
+    if not volume or not is_pulseaudio_available():
+        return False
+    vol_str = str(volume).strip()
+    if vol_str.isdigit():
+        vol_str = f"{vol_str}%"
+    try:
+        res = subprocess.run(
+            ["pactl", "set-source-volume", source_name, vol_str],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if res.returncode == 0:
+            print(f"PulseAudio input source '{source_name}' volume set to {vol_str}", file=sys.stderr)
+            return True
+        else:
+            print(f"Warning: Failed to set PulseAudio source volume for '{source_name}': {res.stderr.strip()}", file=sys.stderr)
+            return False
+    except Exception as exc:
+        print(f"Warning: Error setting PulseAudio source volume: {exc}", file=sys.stderr)
+        return False
 
 
 def resolve_output_devices(config: ConversationConfig) -> list[str]:
@@ -2569,6 +2605,9 @@ def run_conversation(config: ConversationConfig) -> None:
     global LAST_HEADSET_MAC, LAST_HEADSET_NAME
     LAST_HEADSET_MAC = os.environ.get("LAST_HEADSET_MAC")
     LAST_HEADSET_NAME = os.environ.get("LAST_HEADSET_NAME")
+    # Apply input source capture volume if configured
+    if config.pulse_source_volume:
+        set_pulse_source_volume(config.pulse_source_volume)
     # Log audio devices after Bluetooth connect/reload
     log_audio_devices()
     # Update the input/output device keywords if we have a saved headset name
