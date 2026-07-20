@@ -8,7 +8,7 @@ A robust data acquisition, real-time telemetry, and visualization system for the
 
 * **Voice Chat Assistant:** An interactive voice-based assistant ([chat-manager.py](file:///Volumes/Work/Projects/bff/code/bff-code2/chat-manager.py)) running locally on the robot:
   * **Speech-to-Text (STT):** Real-time voice segmenting and transcription via Whisper.
-  * **Local LLM:** Conversation generation using Ollama (e.g., `gemma3n:e2b` or `gemma4:e2b`).
+  * **Local LLM:** Conversation generation using Ollama (`gemma4:e2b`).
   * **Text-to-Speech (TTS):** High-quality voice synthesis via Piper.
   * **Bluetooth/PulseAudio Integration:** Automatic pairing and sound routing to a Bluetooth headset (e.g., Shokz OpenRun Pro 2).
 * **Multi-modal WebRTC Capture:** Decodes and records synchronized high-fidelity feeds:
