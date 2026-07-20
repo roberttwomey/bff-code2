@@ -1,44 +1,59 @@
 #!/usr/bin/env python3
-"""Voice chat assistant using Whisper STT, Ollama Gemma 3 Nano, and Piper TTS.
+"""Voice chat assistant using Whisper STT, Ollama Gemma LLM/VLM, and Piper TTS.
 
 This script performs continuous voice activity detection (VAD) on microphone
 audio, automatically segments speech, transcribes each utterance with Whisper,
-sends the resulting text to an Ollama model (`gemma3n:e2b` by default), and
+sends the resulting text to an Ollama model (`gemma3n:e2b` or `gemma4:e2b` by default), and
 plays back the assistant response via Piper text-to-speech using the Python
 `piper-tts` library.
 
 Requirements:
-    - ollama (Python package) with the `gemma3n:e2b` model pulled locally
-    - openai-whisper
-    - sounddevice
-    - soundfile
-    - numpy
+    - ollama (Python package) with the configured LLM/VLM models pulled locally
+    - openai-whisper / faster-whisper
+    - sounddevice, soundfile, numpy
     - piper-tts (Python package) and at least one Piper voice model file
     - silero-vad (optional; speech-aware segmentation. torchaudio must match
       the installed torch version. Falls back to RMS gating if missing)
 
 Example usage:
-    python local/bff-voice-chat.py --piper-voice piper/en_GB-alan-medium.onnx
+    python chat-manager.py --piper-voice speech/piper/en_GB-aru-medium.onnx
     
-    python local/bff-voice-chat.py --piper-voice local/piper/en_GB-alan-medium.onnx --show-levels
-
-To test just ollama: 
-ollama run gemma3n:e2b
+    python chat-manager.py --show-levels
 
 Environment variables:
-    BFF_OLLAMA_MODEL   override Ollama model name for text chat (default: gemma3n:e2b)
-    BFF_VLM_MODEL      override Ollama model name for VLM scene captioning (default: moondream)
-    BFF_VLM_NUM_PREDICT override max tokens generated per VLM scene description (default: 50)
-    BFF_VLM_NUM_CTX    override context size for the VLM model (default: 2048)
-    BFF_VLM_TEMPERATURE override VLM sampling temperature (default: 0.4; moondream's Modelfile defaults to 0)
-    BFF_VLM_INTERVAL   override minimum seconds between VLM capture starts (default: 1.5)
-    BFF_WHISPER_MODEL  override Whisper model size (default: tiny.en)
-    BFF_WHISPER_DEVICE override Whisper device, e.g. cpu to leave GPU memory for the VLM (default: cuda if available)
-    BFF_PIPER_VOICE    override Piper voice path if --piper-voice not provided
-    BFF_INTERRUPTABLE  override interruptable behavior (default: true)
-    BFF_LOG_ROOT       override session history root (default: ./captures, alongside AV/lidar capture data)
-    BFF_VAD_BACKEND    speech gating backend: silero (default) or rms
-    BFF_VAD_THRESHOLD  Silero speech probability that starts a segment (default: 0.5)
+    BFF_OLLAMA_MODEL        override Ollama model name for text chat (default: gemma3n:e2b)
+    BFF_OLLAMA_TEMPERATURE  override Ollama sampling temperature (default: 0.7)
+    BFF_OLLAMA_TOP_P        override Ollama top_p (default: 0.9)
+    BFF_OLLAMA_TOP_K        override Ollama top_k (default: 40)
+    BFF_OLLAMA_NUM_PREDICT  override max tokens generated per LLM response (default: 200)
+    BFF_OLLAMA_NUM_CTX      override context size for Ollama (default: 2048)
+    BFF_OLLAMA_THINK        enable thinking token parsing for reasoning models (default: false)
+    BFF_SYSTEM_PROMPT       override default system prompt for the chat assistant
+    BFF_HISTORY_TRUNCATION_LIMIT override conversation history truncation limit (default: 11)
+    BFF_VLM_MODEL           override Ollama model name for VLM scene captioning (default: moondream)
+    BFF_VLM_NUM_PREDICT     override max tokens generated per VLM scene description (default: 50)
+    BFF_VLM_NUM_CTX         override context size for the VLM model (default: 2048)
+    BFF_VLM_TEMPERATURE     override VLM sampling temperature (default: 0.4)
+    BFF_VLM_INTERVAL        override minimum seconds between VLM capture starts (default: 10.0)
+    BFF_WHISPER_MODEL       override Whisper model size (default: tiny.en)
+    BFF_WHISPER_DEVICE      override Whisper device, e.g. cpu or cuda (default: cuda if available)
+    BFF_PIPER_VOICE         override Piper voice path if --piper-voice not provided
+    BFF_PLAYBACK_SPEED      override playback speed multiplier (default: 1.0)
+    BFF_INTERRUPTABLE       override interruptable behavior (default: true)
+    BFF_FLUSH_ON_INTERRUPT  override audio queue flushing on user interruption (default: false)
+    BFF_LOG_ROOT            override session history root (default: ./captures)
+    BFF_VAD_BACKEND         speech gating backend: silero (default) or rms
+    BFF_VAD_THRESHOLD       Silero speech probability that starts a segment (default: 0.5)
+    BFF_INPUT_DEVICE_KEYWORD match input device name substring (default: OpenRun Pro 2 by Shokz)
+    BFF_ACTIVATION_THRESHOLD RMS activation threshold for RMS gating (default: 0.03)
+    BFF_SILENCE_THRESHOLD    RMS threshold for silence detection (default: 0.015)
+    BFF_SILENCE_DURATION     silence duration in seconds to trigger phrase end (default: 0.8)
+    BFF_MIN_PHRASE_SECONDS   minimum phrase length in seconds (default: 0.5)
+    BFF_REQUIRE_WAKEWORD    require wake phrase to activate (default: false)
+    BFF_WAKE_PHRASES        comma-separated list of wake phrases
+    BFF_PULSE_SINKS         comma-separated PulseAudio sink names to combine for output
+    BFF_PULSE_COMBINED_SINK_NAME combined PulseAudio sink name (default: bff_combined)
+    BFF_PULSE_DEVICE_NAME   PulseAudio device name for PortAudio (default: pulse)
     BFF_PULSE_SOURCE_VOLUME override mic capture volume percentage (e.g. 60%) via pactl
 """
 
