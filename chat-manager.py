@@ -1874,8 +1874,9 @@ def synthesize_with_piper(
 ) -> None:
     print("Synthesizing speech with Piper…", file=sys.stderr)
     audio_iter = voice.synthesize(text)
+    voice_config = getattr(voice, "config", None)
     base_sample_rate = int(
-        getattr(voice, "sample_rate", getattr(getattr(voice, "config", {}), "sample_rate", DEFAULT_SAMPLE_RATE))
+        getattr(voice_config, "sample_rate", getattr(voice, "sample_rate", 22050))
     )
 
     def extract_audio_field(obj: Any) -> Any | None:
