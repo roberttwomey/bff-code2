@@ -329,6 +329,7 @@ class ConversationConfig:
     require_wakeword: bool = DEFAULT_REQUIRE_WAKEWORD
     wake_phrases: list[str] = field(default_factory=list)
     simulate: bool = False
+    speaker: str = os.environ.get("BFF_SPEAKER", "SNAPPER")
 
 
 @dataclass
@@ -337,6 +338,7 @@ class Scene:
     name: str
     system_prompt: str
     trigger: str | list[str] | None = None
+    speaker: str | None = None
 
 
 def normalize_text(text: str) -> str:
@@ -471,6 +473,11 @@ def parse_args() -> ConversationConfig:
         "--system-prompt",
         default=DEFAULT_SYSTEM_PROMPT,
         help="System prompt sent with each conversation",
+    )
+    parser.add_argument(
+        "--speaker",
+        default=os.environ.get("BFF_SPEAKER", "SNAPPER"),
+        help="Speaker name displayed for assistant responses (default: %(default)s)",
     )
     parser.add_argument(
         "--max-record-seconds",
@@ -726,7 +733,8 @@ def load_scenes(script_path: Path) -> list[Scene]:
             scenes.append(Scene(
                 name=item["name"],
                 system_prompt=item["system_prompt"],
-                trigger=item.get("trigger")
+                trigger=item.get("trigger"),
+                speaker=item.get("speaker")
             ))
         print(f"Loaded {len(scenes)} scenes from {script_path}", file=sys.stderr)
         return scenes
@@ -2770,14 +2778,17 @@ def run_conversation(config: ConversationConfig) -> None:
     script_path = Path("performance-script.json")
     scenes = load_scenes(script_path)
     
-    # Set initial system prompt
+    # Set initial system prompt and speaker
     current_system_prompt = config.system_prompt
+    current_speaker = config.speaker
     
     # If "Default" scene exists, use its prompt as the base
     default_scene = next((s for s in scenes if s.name == "Default"), None)
     if default_scene:
         print(f"Using 'Default' scene system prompt.", file=sys.stderr)
         current_system_prompt = default_scene.system_prompt
+        if default_scene.speaker:
+            current_speaker = default_scene.speaker
     
     messages = build_initial_messages(current_system_prompt)
     log_file = session_dir / "session.jsonl"
@@ -3008,6 +3019,18 @@ def run_conversation(config: ConversationConfig) -> None:
             startup_text,
             startup_audio,
         )
+        startup_text = startup_text.strip()
+        if startup_text:
+            append_log_line(
+                log_file,
+                {
+                    "type": "assistant",
+                    "turn": 0,
+                    "text": startup_text,
+                    "audio_path": str(startup_audio),
+                    "speaker": current_speaker,
+                },
+            )
         # Clear interrupt before playing startup sound
         playback_interrupt.clear()
         play_audio(
@@ -3331,6 +3354,12 @@ def run_conversation(config: ConversationConfig) -> None:
                 if matched_scene:
                     print(f"Scene trigger detected: '{matched_scene.name}'", file=sys.stderr)
                     current_system_prompt = matched_scene.system_prompt
+                    if matched_scene.speaker:
+                        current_speaker = matched_scene.speaker
+                    elif default_scene and default_scene.speaker:
+                        current_speaker = default_scene.speaker
+                    else:
+                        current_speaker = config.speaker
                     reset_message = f"Switching to scene: {matched_scene.name}"
                     
                     # Log the scene switch
@@ -3352,8 +3381,10 @@ def run_conversation(config: ConversationConfig) -> None:
                     # otherwise fall back to the original configured system prompt.
                     if default_scene is not None:
                         current_system_prompt = default_scene.system_prompt
+                        current_speaker = default_scene.speaker or config.speaker
                     else:
                         current_system_prompt = config.system_prompt
+                        current_speaker = config.speaker
                     reset_message = "Ok, starting over"
                 
                 messages = build_initial_messages(current_system_prompt)
@@ -3444,6 +3475,7 @@ def run_conversation(config: ConversationConfig) -> None:
                     "turn": turn,
                     "text": user_text,
                     "audio_path": str(raw_audio),
+                    "speaker": "USER",
                 },
             )
 
@@ -3556,6 +3588,15 @@ def run_conversation(config: ConversationConfig) -> None:
 
                 if cleaned_sentence and not _is_punctuation_only(cleaned_sentence):
                     tts_worker.put_text(cleaned_sentence)
+                    append_log_line(
+                        log_file,
+                        {
+                            "type": "assistant_chunk",
+                            "turn": turn,
+                            "text": cleaned_sentence,
+                            "speaker": current_speaker,
+                        },
+                    )
                 
             tts_worker.put_text(None) # End of input
             print() # Newline after response
@@ -3566,7 +3607,7 @@ def run_conversation(config: ConversationConfig) -> None:
                 tts_worker.flush()
                 tts_worker.stop()
                 # print("Interrupted during generation.", file=sys.stderr)
-                append_log_line(log_file, {"type": "assistant_cancelled", "turn": turn})
+                append_log_line(log_file, {"type": "assistant_cancelled", "turn": turn, "speaker": current_speaker})
                  # Rollback
                 if messages and messages[-1]["role"] == "user":
                     messages.pop()
@@ -3618,6 +3659,7 @@ def run_conversation(config: ConversationConfig) -> None:
                     "turn": turn,
                     "text": full_assistant_text.strip(),
                     "audio_path": str(response_audio_path),
+                    "speaker": current_speaker,
                 },
             )
             

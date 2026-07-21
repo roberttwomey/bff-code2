@@ -128,7 +128,7 @@ def index():
                 lidar_settings = json.load(f)
         except Exception as e:
             print(f"[Dashboard Server] Error loading lidar_settings.json: {e}")
-    return render_template('new_dashboard.html', server_lidar_settings=lidar_settings)
+    return render_template('dashboard.html', server_lidar_settings=lidar_settings)
 
 @app.route('/video_feed')
 def video_feed():

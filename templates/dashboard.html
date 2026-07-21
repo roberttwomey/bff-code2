@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SNAPPER Robot Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400&family=JetBrains+Mono:wght@300;400;500&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <!-- Three.js and OrbitControls for 3D point cloud rendering -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -32,36 +35,31 @@
             color: var(--text-main);
             font-family: var(--font-mono);
             height: 100vh;
+            width: 100vw;
+            margin: 0;
+            padding: 0;
             overflow: hidden;
             display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .dashboard-container {
+            width: 100vw;
+            height: 66.66666667vw;
+            /* 3:2 aspect ratio based on width */
+            max-height: 100vh;
+            max-width: 150vh;
+            /* 3:2 aspect ratio based on height */
+            display: flex;
             flex-direction: column;
+            background-color: var(--bg-color);
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.8);
+            overflow: hidden;
         }
 
-        /* Header block */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 30px;
-            background: #000000;
-            border-bottom: 1px solid var(--panel-border);
-            z-index: 10;
-        }
 
-        .header-title {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .header-title h1 {
-            font-family: var(--font-main);
-            font-size: 1.1rem;
-            font-weight: 300;
-            letter-spacing: 0.25em;
-            text-transform: uppercase;
-            color: #ffffff;
-        }
 
         .status-badge {
             font-family: var(--font-mono);
@@ -100,11 +98,11 @@
         /* Workspace Flex Layout */
         .workspace {
             flex: 1;
+            min-height: 0;
             display: flex;
             flex-direction: row;
             gap: 0px;
             padding: 0px;
-            height: calc(100vh - 70px);
             background-color: var(--panel-border);
         }
 
@@ -114,6 +112,59 @@
             flex: 1;
             height: 100%;
             overflow: hidden;
+            min-width: 0;
+        }
+
+        .visual-column {
+            flex: 0 0 100%;
+            width: 100%;
+            max-width: 100%;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .visual-column .panel-header {
+            display: none !important;
+        }
+
+        .side-column {
+            position: absolute;
+            top: 0;
+            left: 0;
+            flex: 0 0 30%;
+            width: 30%;
+            max-width: 30%;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            min-width: 0;
+            background: transparent !important;
+            backdrop-filter: none !important;
+            border-right: 1px solid var(--panel-border);
+            z-index: 40;
+        }
+
+        .side-column-right {
+            position: absolute;
+            top: 0;
+            left: auto;
+            right: 0;
+            border-right: none;
+            border-left: 1px solid var(--panel-border);
+        }
+
+        .side-column-content {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
         }
 
         /* Panel block style */
@@ -131,6 +182,22 @@
 
         .panel.minimized .panel-content {
             display: none !important;
+        }
+
+        .lidar-panel {
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            background: transparent !important;
+            z-index: 50 !important;
+            pointer-events: none !important;
+        }
+
+        .lidar-panel .panel-content {
+            background: transparent !important;
+            pointer-events: none !important;
         }
 
         .panel-header {
@@ -176,9 +243,9 @@
         }
 
         .video-stream {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         /* Telemetry Joints Grid */
@@ -256,9 +323,10 @@
         .lidar-container {
             width: 100%;
             height: 100%;
-            background: #000000;
+            background: transparent !important;
             position: relative;
             overflow: hidden;
+            pointer-events: none;
         }
 
         #lidarWebGL {
@@ -268,28 +336,82 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            background: #000000;
+            background: transparent !important;
+            pointer-events: none;
         }
 
         #lidarWebGL canvas {
-            max-width: 100% !important;
-            max-height: 100% !important;
-            width: auto !important;
-            height: auto !important;
+            width: 100% !important;
+            height: 100% !important;
             display: block;
-            object-fit: contain;
+            object-fit: cover !important;
+            pointer-events: none;
         }
 
-        .canvas-instructions {
+        .lidar-footer {
             position: absolute;
-            bottom: 12px;
-            left: 20px;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid var(--panel-border);
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            height: 54px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 20px;
+            overflow: hidden;
+            pointer-events: auto;
+            /* always interactable */
+        }
+
+        .lidar-footer-handle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 24px;
+            font-family: var(--font-mono);
             font-size: 0.65rem;
-            color: var(--text-dim);
-            letter-spacing: 0.1em;
-            pointer-events: none;
             text-transform: uppercase;
-            z-index: 5;
+            letter-spacing: 0.1em;
+        }
+
+        .lidar-footer .footer-title {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .lidar-footer .footer-hint {
+            color: var(--text-dim);
+        }
+
+        .lidar-footer-content {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            height: 26px;
+            opacity: 1;
+            transition: opacity 0.2s ease;
+        }
+
+        .lidar-footer.minimized {
+            height: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, 0.65);
+        }
+
+        .lidar-footer.minimized .lidar-footer-content {
+            opacity: 0;
+            pointer-events: none;
+            display: none !important;
+        }
+
+        .lidar-footer:hover {
+            background: rgba(0, 0, 0, 0.9);
         }
 
         .ui-slider {
@@ -303,7 +425,7 @@
         .ui-slider input {
             accent-color: #ffffff;
             width: 70px;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             height: 2px;
             border: none;
         }
@@ -331,6 +453,63 @@
 
         .ui-checkbox input:checked {
             background: #ffffff;
+            border-color: #ffffff;
+        }
+
+        .ui-record-btn {
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-transform: uppercase;
+            user-select: none;
+            padding: 4px 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+        }
+        .ui-record-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+            color: #ffffff;
+        }
+        .ui-record-btn.recording {
+            border-color: rgba(255, 59, 48, 0.6);
+            background: rgba(255, 59, 48, 0.1);
+            color: #ff3b30;
+        }
+        .ui-record-btn.recording .record-dot {
+            background-color: #ff3b30 !important;
+            box-shadow: 0 0 8px #ff3b30;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+
+        .ui-button {
+            font-size: 0.7rem;
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 4px 8px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .ui-button:hover {
+            background: #ffffff;
+            color: #000000;
             border-color: #ffffff;
         }
 
@@ -386,186 +565,196 @@
             width: 4px;
             height: 4px;
         }
+
         ::-webkit-scrollbar-track {
             background: transparent;
         }
+
         ::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.1);
         }
+
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.3);
         }
-
-        @media (max-width: 900px) {
-            .workspace {
-                flex-direction: column;
-                height: auto;
-                overflow-y: auto;
-            }
-            .workspace-column {
-                height: auto;
-                overflow: visible;
-                flex: none;
-            }
-            .panel {
-                height: 350px !important;
-                flex: none !important;
-            }
-            body {
-                overflow: auto;
-            }
-        }
     </style>
 </head>
+
 <body>
 
-    <header>
-        <div class="header-title">
-            <h1>SNAPPER</h1>
-            <div class="status-badge" id="connStatus">ONLINE</div>
-        </div>
-        <div class="header-metrics">
-            <div class="metric-mini">
-                <span class="label">BATTERY:</span>
-                <span class="value" id="headerBattery">--%</span>
-            </div>
-            <div class="metric-mini">
-                <span class="label">MODE:</span>
-                <span class="value" id="headerMode">--</span>
-            </div>
-            <div class="metric-mini">
-                <span class="label">LATENCY:</span>
-                <span class="value" id="headerPing">-- ms</span>
-            </div>
-        </div>
-    </header>
+    <div class="dashboard-container">
+        <div class="workspace">
+            <!-- Left Column: Telemetry (Top) and Session Logs (Bottom) -->
+            <div class="workspace-column side-column">
+                <div class="side-column-content">
+                    <!-- Device name and Connection Status -->
+                    <div
+                        style="display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px; margin-bottom: 12px;">
+                        <div><span style="color: var(--text-muted);">DEVICE NAME:</span> <span
+                                style="color: #ffffff; font-weight: 400;">snapper.local</span></div>
+                        <div><span style="color: var(--text-muted);">CONNECTION:</span> <span id="connStatus"
+                                style="color: #ffffff; font-weight: 400;">ONLINE</span></div>
+                    </div>
 
-    <div class="workspace">
-        <div class="workspace-column">
-            <!-- Panel 1: Video View -->
-            <div class="panel" style="flex: 1; border-bottom: 1px solid var(--panel-border);">
-                <div class="panel-header">
-                    <div class="panel-title">Video Feed</div>
-                    <div class="panel-controls">
-                        <div class="ui-checkbox">
-                            <input type="checkbox" id="yoloDetect" checked>
-                            <label for="yoloDetect">YOLO DETECT</label>
-                        </div>
+                    <!-- General metrics block -->
+                    <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem;">
+                        <div><span style="color: var(--text-muted);">BATTERY PERCENT:</span> <span id="headerBattery"
+                                style="color: #ffffff; font-weight: 400;">--%</span></div>
+                        <div><span style="color: var(--text-muted);">OPERATION MODE:</span> <span id="headerMode"
+                                style="color: #ffffff; font-weight: 400;">--</span></div>
+                        <div><span style="color: var(--text-muted);">PING LATENCY:</span> <span id="headerPing"
+                                style="color: #ffffff; font-weight: 400;">-- ms</span></div>
+                        <div style="height: 1px; background: var(--panel-border); margin: 6px 0;"></div>
+                        <div><span style="color: var(--text-muted);">BATTERY VOLTS:</span> <span id="batVolt"
+                                style="color: #ffffff; font-weight: 400;">-- V</span></div>
+                        <div><span style="color: var(--text-muted);">VELOCITY:</span> <span id="bodyVel"
+                                style="color: #ffffff; font-weight: 400;">-- m/s</span></div>
+                        <div><span style="color: var(--text-muted);">IMU PITCH:</span> <span id="imuPitch"
+                                style="color: #ffffff; font-weight: 400;">--°</span></div>
+                        <div><span style="color: var(--text-muted);">IMU ROLL:</span> <span id="imuRoll"
+                                style="color: #ffffff; font-weight: 400;">--°</span></div>
+                        <div><span style="color: var(--text-muted);">IMU YAW:</span> <span id="imuYaw"
+                                style="color: #ffffff; font-weight: 400;">--°</span></div>
+                        <div><span style="color: var(--text-muted);">CONTACT:</span> <span id="footContact"
+                                style="color: #ffffff; font-weight: 400;">--</span></div>
+                        <div><span style="color: var(--text-muted);">TEMP AVG:</span> <span id="jointTemp"
+                                style="color: #ffffff; font-weight: 400;">--°C</span></div>
+                        <div><span style="color: var(--text-muted);">POWER:</span> <span id="powerState"
+                                style="color: #ffffff; font-weight: 400;">--</span></div>
                     </div>
-                </div>
-                <div class="panel-content">
-                    <div class="video-container">
-                        <img src="/video_feed" class="video-stream" alt="Camera Stream">
-                    </div>
-                </div>
-            </div>
 
-            <!-- Panel 3: LowState Telemetry (Smaller Card with Joints) -->
-            <div class="panel" id="telemetryPanel" style="flex: 0 0 160px; height: 160px;">
-                <div class="panel-header">
-                    <div class="panel-title">System Metrics & Joints</div>
-                </div>
-                <div class="panel-content" style="padding: 12px 20px; display: flex; flex-direction: row; gap: 20px; height: 100%; overflow: auto;">
-                    <!-- General metrics column -->
-                    <div style="flex: 0 0 180px; display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem; justify-content: center; border-right: 1px solid var(--panel-border); padding-right: 20px;">
-                        <div><span style="color: var(--text-muted);">BATTERY:</span> <span id="batVolt" style="color: #ffffff; font-weight: 400;">-- V</span></div>
-                        <div><span style="color: var(--text-muted);">VELOCITY:</span> <span id="bodyVel" style="color: #ffffff; font-weight: 400;">-- m/s</span></div>
-                        <div><span style="color: var(--text-muted);">IMU PITCH:</span> <span id="imuPitch" style="color: #ffffff; font-weight: 400;">--°</span></div>
-                        <div><span style="color: var(--text-muted);">IMU ROLL:</span>  <span id="imuRoll"  style="color: #ffffff; font-weight: 400;">--°</span></div>
-                        <div><span style="color: var(--text-muted);">IMU YAW:</span>   <span id="imuYaw"   style="color: #ffffff; font-weight: 400;">--°</span></div>
-                        <div><span style="color: var(--text-muted);">CONTACT:</span>   <span id="footContact" style="color: #ffffff; font-weight: 400;">--</span></div>
-                        <div><span style="color: var(--text-muted);">TEMP AVG:</span>  <span id="jointTemp" style="color: #ffffff; font-weight: 400;">--°C</span></div>
-                        <div><span style="color: var(--text-muted);">POWER:</span>     <span id="powerState" style="color: #ffffff; font-weight: 400;">--</span></div>
-                    </div>
-                    <!-- Joints metrics columns -->
-                    <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-                        <div style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid var(--panel-border); padding-bottom: 2px;">
+                    <!-- Joints metrics block -->
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div
+                            style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--panel-border); padding-bottom: 4px;">
                             JOINT STATES (ROTATION rad / TEMP °C)
                         </div>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
                             <!-- FL Leg -->
                             <div class="leg-column">
                                 <div class="leg-header">FL</div>
-                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fl_hip">--</span></div>
-                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="fl_thigh">--</span></div>
-                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fl_calf">--</span></div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fl_hip">--</span>
+                                </div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span
+                                        id="fl_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fl_calf">--</span>
+                                </div>
                             </div>
                             <!-- FR Leg -->
                             <div class="leg-column">
                                 <div class="leg-header">FR</div>
-                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fr_hip">--</span></div>
-                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="fr_thigh">--</span></div>
-                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fr_calf">--</span></div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="fr_hip">--</span>
+                                </div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span
+                                        id="fr_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="fr_calf">--</span>
+                                </div>
                             </div>
                             <!-- RL Leg -->
                             <div class="leg-column">
                                 <div class="leg-header">RL</div>
-                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rl_hip">--</span></div>
-                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="rl_thigh">--</span></div>
-                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rl_calf">--</span></div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rl_hip">--</span>
+                                </div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span
+                                        id="rl_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rl_calf">--</span>
+                                </div>
                             </div>
                             <!-- RR Leg -->
                             <div class="leg-column">
                                 <div class="leg-header">RR</div>
-                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rr_hip">--</span></div>
-                                <div class="joint-row"><span class="joint-name">THI:</span> <span id="rr_thigh">--</span></div>
-                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rr_calf">--</span></div>
+                                <div class="joint-row"><span class="joint-name">HIP:</span> <span id="rr_hip">--</span>
+                                </div>
+                                <div class="joint-row"><span class="joint-name">THI:</span> <span
+                                        id="rr_thigh">--</span></div>
+                                <div class="joint-row"><span class="joint-name">CAL:</span> <span id="rr_calf">--</span>
+                                </div>
                             </div>
                         </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Center Column: Video Feed (Full Height) -->
+            <div class="workspace-column visual-column">
+                <!-- Panel 1: Video View -->
+                <div class="panel" style="flex: 1; height: 100%;">
+                    <div class="panel-header">
+                        <div class="panel-title">Video Feed</div>
+                    </div>
+                    <div class="panel-content">
+                        <div class="video-container">
+                            <img src="/video_feed" class="video-stream" alt="Camera Stream">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Conversation History -->
+            <div class="workspace-column side-column side-column-right">
+                <div class="side-column-content" id="chatScrollContainer">
+                    <!-- Conversation block -->
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <div
+                            style="font-size: 0.65rem; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid var(--panel-border); padding-bottom: 4px;">
+                            Conversation
+                        </div>
+                        <div class="console-container" id="consoleLogs"
+                            style="width: 100%; height: auto !important; padding: 0 !important; background: transparent !important; overflow-y: visible !important; font-size: 0.75rem; line-height: 1.6; display: flex; flex-direction: column; gap: 4px;">
+                            <div class="console-welcome">> listening for active session logs...</div>
+                        </div>
+                    </div>
+
+                    <!-- Dummy variables to satisfy JS listeners without script error -->
+                    <div id="logPanel" class="panel minimized" style="display: none !important;">
+                        <button id="toggleChatBtn"></button>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="workspace-column" style="border-left: 1px solid var(--panel-border);">
-            <!-- Panel 2: Lidar Map -->
-            <div class="panel" style="flex: 1; height: 100%;">
-                <div class="panel-header">
-                    <div class="panel-title">LiDAR 3D Cloud</div>
-                    <div class="panel-controls">
-                        <div class="ui-checkbox">
-                            <input type="checkbox" id="alignToDog" checked>
-                            <label for="alignToDog">ALIGN DOG</label>
+        <!-- Panel 2: Lidar Map (Absolute transparent overlay) -->
+        <div class="panel lidar-panel" id="lidarPanel">
+            <div class="panel-content">
+                <div class="lidar-container">
+                    <div id="lidarWebGL"></div>
+                    <div class="lidar-footer minimized" id="lidarFooter">
+                        <div class="lidar-footer-handle">
+                            <span class="footer-title">LiDAR Controls</span>
+                            <span class="footer-hint">Click to toggle controls | Drag to rotate/pan | Scroll to
+                                zoom</span>
                         </div>
-                        <div class="ui-checkbox">
-                            <input type="checkbox" id="autoFrame">
-                            <label for="autoFrame">AUTO FRAME</label>
+                        <div class="lidar-footer-content">
+                            <div class="ui-record-btn" id="recordBtn">
+                                <span class="record-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.4); display: inline-block; transition: all 0.3s ease;"></span>
+                                <span id="recordText">REC</span>
+                            </div>
+                            <div class="ui-checkbox">
+                                <input type="checkbox" id="yoloDetect" checked>
+                                <label for="yoloDetect">YOLO DETECT</label>
+                            </div>
+                            <div class="ui-checkbox">
+                                <input type="checkbox" id="interactMap" checked>
+                                <label for="interactMap">INTERACT MAP</label>
+                            </div>
+                            <div class="ui-checkbox">
+                                <input type="checkbox" id="accumulateLidar">
+                                <label for="accumulateLidar">ACCUMULATE</label>
+                            </div>
+                            <div class="ui-slider">
+                                <label for="lidarRange">CUTOFF:</label>
+                                <input type="range" id="lidarRange" min="2" max="25" value="12" step="1">
+                                <span id="rangeVal">12m</span>
+                            </div>
+                            <div class="ui-slider">
+                                <label for="lidarPointSize">SIZE:</label>
+                                <input type="range" id="lidarPointSize" min="1" max="10" value="4" step="1">
+                                <span id="sizeVal">4px</span>
+                            </div>
+                            <button id="saveLidarSettings" class="ui-button">Save Settings</button>
+                            <button id="importLidarSettingsBtn" class="ui-button">Import Settings</button>
+                            <input type="file" id="importLidarSettingsFile" accept=".json" style="display: none;">
                         </div>
-                        <div class="ui-checkbox">
-                            <input type="checkbox" id="accumulateLidar">
-                            <label for="accumulateLidar">ACCUMULATE</label>
-                        </div>
-                        <div class="ui-slider">
-                            <label for="lidarRange">CUTOFF:</label>
-                            <input type="range" id="lidarRange" min="2" max="25" value="12" step="1">
-                            <span id="rangeVal">12m</span>
-                        </div>
-                        <div class="ui-slider">
-                            <label for="lidarPointSize">SIZE:</label>
-                            <input type="range" id="lidarPointSize" min="1" max="10" value="4" step="1">
-                            <span id="sizeVal">4px</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="panel-content">
-                    <div class="lidar-container">
-                        <div id="lidarWebGL"></div>
-                        <div class="canvas-instructions">Left Click + Drag to Rotate | Right Click + Drag to Pan | Scroll to Zoom</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Panel 4: LLM Reasoning Console (with Minimize Toggle) -->
-            <div class="panel minimized" id="logPanel" style="flex: 1; border-top: 1px solid var(--panel-border); transition: flex 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);">
-                <div class="panel-header">
-                    <div class="panel-title">Session Logs</div>
-                    <div class="panel-controls">
-                        <button id="toggleChatBtn" style="background: none; border: 1px solid var(--panel-border); color: var(--text-muted); font-size: 0.65rem; padding: 2px 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.1em; font-family: var(--font-mono); outline: none;">EXPAND</button>
-                    </div>
-                </div>
-                <div class="panel-content">
-                    <div class="console-container" id="consoleLogs">
-                        <div class="console-welcome">> listening for active session logs...</div>
                     </div>
                 </div>
             </div>
@@ -582,7 +771,7 @@
         const sizeSlider = document.getElementById('lidarPointSize');
         const rangeVal = document.getElementById('rangeVal');
         const sizeVal = document.getElementById('sizeVal');
-        
+
         let lidarRangeCutoff = parseFloat(rangeSlider.value);
         let pointSizeVal = parseFloat(sizeSlider.value);
 
@@ -601,18 +790,62 @@
 
         // 3D Three.js Pipeline Setup
         const container = document.getElementById('lidarWebGL');
-        
+
         // Scene, Camera, Renderer
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0a0c);
+        scene.background = null;
 
         const camera = new THREE.PerspectiveCamera(60, 1280 / 720, 0.1, 100);
-        // Default position: slightly elevated looking down at the origin
-        camera.position.set(0, 5, 8); 
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        // Load default settings from server or localStorage if available
+        const serverSettings = {{ server_lidar_settings| tojson | safe if server_lidar_settings else 'null' }};
+        const savedSettingsStr = localStorage.getItem('lidarSettings');
+        let initialSettings = null;
+        if (serverSettings) {
+            initialSettings = serverSettings;
+        } else if (savedSettingsStr) {
+            try {
+                initialSettings = JSON.parse(savedSettingsStr);
+            } catch (e) {
+                console.warn("Failed to parse saved settings from localStorage:", e);
+            }
+        }
+
+        if (initialSettings) {
+            try {
+                if (initialSettings.camera && initialSettings.camera.position) {
+                    camera.position.set(initialSettings.camera.position.x, initialSettings.camera.position.y, initialSettings.camera.position.z);
+                } else {
+                    camera.position.set(0, 5, 8);
+                }
+                if (initialSettings.camera && initialSettings.camera.zoom !== undefined) {
+                    camera.zoom = initialSettings.camera.zoom;
+                }
+                if (initialSettings.accumulate !== undefined) {
+                    document.getElementById('accumulateLidar').checked = initialSettings.accumulate;
+                }
+                if (initialSettings.cutoff !== undefined) {
+                    lidarRangeCutoff = initialSettings.cutoff;
+                    rangeSlider.value = lidarRangeCutoff;
+                    rangeVal.textContent = lidarRangeCutoff + 'm';
+                }
+                if (initialSettings.size !== undefined) {
+                    pointSizeVal = initialSettings.size;
+                    sizeSlider.value = pointSizeVal;
+                    sizeVal.textContent = pointSizeVal + 'px';
+                }
+            } catch (e) {
+                console.warn("Failed to apply initial settings:", e);
+                camera.position.set(0, 5, 8);
+            }
+        } else {
+            camera.position.set(0, 5, 8);
+        }
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(1280, 720);
         renderer.setPixelRatio(1); // Lock internal backing store resolution to exactly 1280x720
+        renderer.domElement.style.pointerEvents = 'auto';
         container.appendChild(renderer.domElement);
 
         let currentDogPitch = 0;
@@ -630,17 +863,24 @@
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.maxPolarAngle = Math.PI / 2 + 0.15; // Don't let users rotate below the ground line too much
-        controls.target.set(0, 0, 0);
+
+        if (initialSettings && initialSettings.controls && initialSettings.controls.target) {
+            controls.target.set(initialSettings.controls.target.x, initialSettings.controls.target.y, initialSettings.controls.target.z);
+        } else {
+            controls.target.set(0, 0, 0);
+        }
+        controls.update();
 
         // Grid helper representing ground plane
-        const gridHelper = new THREE.GridHelper(30, 30, 0x00ff66, 0x222226);
+        // const gridHelper = new THREE.GridHelper(30, 30, 0x00ff66, 0x222226);
+        const gridHelper = new THREE.GridHelper(30, 30, 0x444452, 0x222226);
         gridHelper.position.y = -0.5; // Sit slightly below origin (simulating dog ground height)
         scene.add(gridHelper);
 
         // Minimal coordinate helper at local origin
         const axesHelper = new THREE.AxesHelper(1);
         axesHelper.position.y = -0.49; // Slightly above grid helper to avoid Z-fighting
-        scene.add(axesHelper);
+        // scene.add(axesHelper);
 
         // Preallocate Point Cloud geometry
         const pointsGeometry = new THREE.BufferGeometry();
@@ -663,9 +903,10 @@
         // Animation Loop
         function animate() {
             requestAnimationFrame(animate);
-            
+
             // Align pointsObject rotation and translation to the dog's body frame
-            const alignToDog = document.getElementById('alignToDog').checked;
+            const alignToDogEl = document.getElementById('alignToDog');
+            const alignToDog = alignToDogEl ? alignToDogEl.checked : true;
             if (alignToDog && currentSlamPose) {
                 const pos = currentSlamPose.position;
                 const ori = currentSlamPose.orientation;
@@ -694,71 +935,16 @@
 
                 // Invert it to map points from global (odom) space to dog-local space
                 const invMatrix = new THREE.Matrix4().copy(dogMatrix).invert();
-                
+
                 pointsObject.matrix.copy(invMatrix);
                 pointsObject.matrixAutoUpdate = false;
             } else {
                 pointsObject.matrix.identity();
                 pointsObject.matrixAutoUpdate = false;
             }
-            
-            // Auto-frame: zoom camera to occupy approximately 80% of FOV
-            const autoFrame = document.getElementById('autoFrame').checked;
-            if (autoFrame) {
-                const positionsAttr = pointsGeometry.getAttribute('position');
-                if (positionsAttr && positionsAttr.count > 0) {
-                    const count = positionsAttr.count;
-                    const sampleStep = Math.max(1, Math.floor(count / 1000));
-                    let sumX = 0, sumY = 0, sumZ = 0;
-                    let sampledCount = 0;
-                    const distances = [];
 
-                    // 1. Compute center of the point cloud using sampled points
-                    for (let i = 0; i < count; i += sampleStep) {
-                        sumX += positionsAttr.getX(i);
-                        sumY += positionsAttr.getY(i);
-                        sumZ += positionsAttr.getZ(i);
-                        sampledCount++;
-                    }
-                    
-                    if (sampledCount > 0) {
-                        const localCenter = new THREE.Vector3(sumX / sampledCount, sumY / sampledCount, sumZ / sampledCount);
-                        
-                        // 2. Compute 90th percentile distance to ignore outliers
-                        for (let i = 0; i < count; i += sampleStep) {
-                            const dx = positionsAttr.getX(i) - localCenter.x;
-                            const dy = positionsAttr.getY(i) - localCenter.y;
-                            const dz = positionsAttr.getZ(i) - localCenter.z;
-                            distances.push(Math.sqrt(dx*dx + dy*dy + dz*dz));
-                        }
-                        distances.sort((a, b) => a - b);
-                        
-                        const pctIdx = Math.floor(distances.length * 0.90);
-                        const radius = pctIdx < distances.length ? Math.max(1.0, distances[pctIdx]) : 3.0;
 
-                        // Map center to world coordinates
-                        const center = localCenter.clone().applyMatrix4(pointsObject.matrix);
 
-                        // Compute vertical and horizontal FOVs
-                        const fovRad = THREE.MathUtils.degToRad(camera.fov);
-                        const hFovRad = 2 * Math.atan(Math.tan(fovRad / 2) * camera.aspect);
-
-                        // Calculate required distance to fit the horizontal FOV to 90% width
-                        const distHorizontal = radius / Math.sin(hFovRad / 2);
-                        const targetDistance = distHorizontal / 0.9;
-
-                        // Smoothly slide controls target and camera distance
-                        controls.target.lerp(center, 0.1);
-                        
-                        const dir = new THREE.Vector3().subVectors(camera.position, controls.target).normalize();
-                        const currentDist = camera.position.distanceTo(controls.target);
-                        const newDist = THREE.MathUtils.lerp(currentDist, targetDistance, 0.1);
-                        
-                        camera.position.copy(controls.target).addScaledVector(dir, newDist);
-                    }
-                }
-            }
-            
             controls.update();
             renderer.render(scene, camera);
         }
@@ -771,10 +957,10 @@
             const zMax = 0.8;
             let ratio = (z - zMin) / (zMax - zMin);
             ratio = Math.max(0, Math.min(1, ratio));
-            
+
             // Hue shifts: 240 (blue) -> 120 (green) -> 0 (red)
             const hue = (1.0 - ratio) * 240;
-            
+
             // Convert HSL directly to THREE.Color format
             const color = new THREE.Color();
             color.setHSL(hue / 360, 0.9, 0.55);
@@ -798,7 +984,7 @@
         socket.on('connect', () => {
             document.getElementById('connStatus').textContent = 'ONLINE';
             document.getElementById('connStatus').style.borderColor = 'rgba(255, 255, 255, 0.4)';
-            
+
             setInterval(() => {
                 pingStart = Date.now();
                 socket.emit('ping_latency');
@@ -823,7 +1009,7 @@
             // Extract Battery
             const power_v = lowstate.power_v || 0;
             document.getElementById('batVolt').textContent = `${power_v.toFixed(1)} V`;
-            
+
             let batPercent = ((power_v - 22.0) / (29.6 - 22.0)) * 100;
             batPercent = Math.max(0, Math.min(100, batPercent));
             document.getElementById('headerBattery').textContent = `${batPercent.toFixed(0)}%`;
@@ -859,14 +1045,14 @@
             // Velocity
             if (lowstate.velocity) {
                 const v = lowstate.velocity || [0, 0, 0];
-                const speed = Math.sqrt(v[0]*v[0] + v[1]*v[1]);
+                const speed = Math.sqrt(v[0] * v[0] + v[1] * v[1]);
                 document.getElementById('bodyVel').textContent = `${speed.toFixed(2)} m/s`;
             }
-            
+
             // Joint temperatures & Leg Joints detailed metrics extraction
             if (lowstate.motor_state) {
                 const motors = lowstate.motor_state;
-                
+
                 const avgTemp = motors.length > 0 ? motors.reduce((sum, m) => sum + (m.temperature || 0), 0) / motors.length : 0;
                 document.getElementById('jointTemp').textContent = `${avgTemp.toFixed(1)}°C`;
 
@@ -875,7 +1061,7 @@
                     const hip = motors[offset] || { q: 0, temperature: 0 };
                     const thigh = motors[offset + 1] || { q: 0, temperature: 0 };
                     const calf = motors[offset + 2] || { q: 0, temperature: 0 };
-                    
+
                     document.getElementById(`${legPrefix}_hip`).textContent = `${hip.q.toFixed(2)}/${hip.temperature || 0}°C`;
                     document.getElementById(`${legPrefix}_thigh`).textContent = `${thigh.q.toFixed(2)}/${thigh.temperature || 0}°C`;
                     document.getElementById(`${legPrefix}_calf`).textContent = `${calf.q.toFixed(2)}/${calf.temperature || 0}°C`;
@@ -906,7 +1092,7 @@
 
             for (let i = 0; i < points.length; i += sampleStep) {
                 const [x, y, z] = points[i];
-                const distance = Math.sqrt(x*x + y*y + z*z);
+                const distance = Math.sqrt(x * x + y * y + z * z);
                 if (distance > lidarRangeCutoff) continue;
 
                 // Coordinate Mapping from ROS standard frame to ThreeJS local frame
@@ -955,70 +1141,109 @@
 
         // Console logger
         const consoleLogs = document.getElementById('consoleLogs');
+        const chatScrollContainer = document.getElementById('chatScrollContainer');
         let welcomeRemoved = false;
+        let currentAssistantTurn = null;
+        let currentAssistantContentSpan = null;
 
         socket.on('log_data', (payload) => {
+            // Chat history only: speech input and generated responses, no
+            // visual annotations (vlm_query) or other session bookkeeping.
+            const logType = payload.type || 'raw';
+            if (logType !== 'user' && logType !== 'assistant' && logType !== 'assistant_chunk') {
+                return;
+            }
+
             if (!welcomeRemoved) {
                 consoleLogs.innerHTML = '';
                 welcomeRemoved = true;
             }
 
-            const timestamp = payload.timestamp ? payload.timestamp.substring(11, 19) : new Date().toLocaleTimeString();
-            const logType = payload.type || 'raw';
-            
-            const lineDiv = document.createElement('div');
-            lineDiv.className = `console-line line-${logType}`;
-            
-            const timeSpan = document.createElement('span');
-            timeSpan.className = 'line-timestamp';
-            timeSpan.textContent = `[${timestamp}]`;
-            lineDiv.appendChild(timeSpan);
+            const rawSpeaker = payload.speaker || (logType === 'user' ? 'USER' : 'SNAPPER');
+            const speakerName = rawSpeaker.toUpperCase();
+            const speakerPrefix = `[${speakerName}] `;
 
-            // Print styled log lines
-            if (logType === 'session_start') {
-                const msg = document.createElement('span');
-                msg.textContent = `[SESSION START]`;
-                lineDiv.appendChild(msg);
-            } else if (logType === 'session_end') {
-                const msg = document.createElement('span');
-                msg.textContent = `[SESSION END]`;
-                lineDiv.appendChild(msg);
-            } else if (logType === 'user') {
+            if (logType === 'user') {
+                // Reset assistant chunk tracking on user message
+                currentAssistantTurn = null;
+                currentAssistantContentSpan = null;
+
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'console-line line-user';
+
                 const prefix = document.createElement('span');
                 prefix.style.color = 'var(--text-muted)';
-                prefix.textContent = `[USER] `;
+                prefix.textContent = speakerPrefix;
+
                 const text = document.createElement('span');
                 text.textContent = payload.text || '';
+
                 lineDiv.appendChild(prefix);
                 lineDiv.appendChild(text);
+
+                consoleLogs.appendChild(lineDiv);
+            } else if (logType === 'assistant_chunk') {
+                const turnId = payload.turn !== undefined ? payload.turn : null;
+                const chunkText = payload.text || '';
+
+                // If chunk belongs to current assistant turn line, append to it
+                if (currentAssistantTurn !== null && currentAssistantTurn === turnId && currentAssistantContentSpan) {
+                    if (currentAssistantContentSpan.textContent && !currentAssistantContentSpan.textContent.endsWith(' ') && !chunkText.startsWith(' ')) {
+                        currentAssistantContentSpan.textContent += ' ' + chunkText;
+                    } else {
+                        currentAssistantContentSpan.textContent += chunkText;
+                    }
+                } else {
+                    // Create new assistant line for this chunk
+                    currentAssistantTurn = turnId;
+
+                    const lineDiv = document.createElement('div');
+                    lineDiv.className = 'console-line line-assistant';
+
+                    const prefix = document.createElement('span');
+                    prefix.style.color = 'var(--text-muted)';
+                    prefix.textContent = speakerPrefix;
+
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = chunkText;
+                    currentAssistantContentSpan = textSpan;
+
+                    lineDiv.appendChild(prefix);
+                    lineDiv.appendChild(textSpan);
+
+                    consoleLogs.appendChild(lineDiv);
+                }
             } else if (logType === 'assistant') {
-                const prefix = document.createElement('span');
-                prefix.style.color = 'var(--text-muted)';
-                prefix.textContent = `[GO2] `;
-                const text = document.createElement('span');
-                text.textContent = payload.text || '';
-                lineDiv.appendChild(prefix);
-                lineDiv.appendChild(text);
-            } else if (logType === 'special_command') {
-                const msg = document.createElement('span');
-                msg.textContent = `[COMMAND] ${payload.command} - "${payload.text}"`;
-                lineDiv.appendChild(msg);
-            } else if (logType === 'scene_switch') {
-                const msg = document.createElement('span');
-                msg.textContent = `[SCENE] ${payload.scene || payload.name || 'default'}`;
-                lineDiv.appendChild(msg);
-            } else if (payload.raw) {
-                const msg = document.createElement('span');
-                msg.textContent = payload.raw;
-                lineDiv.appendChild(msg);
-            } else {
-                const msg = document.createElement('span');
-                msg.textContent = JSON.stringify(payload);
-                lineDiv.appendChild(msg);
+                const turnId = payload.turn !== undefined ? payload.turn : null;
+                const fullText = payload.text || '';
+
+                // If we were progressively updating this turn, replace with complete cleaned text
+                if (currentAssistantTurn !== null && currentAssistantTurn === turnId && currentAssistantContentSpan) {
+                    currentAssistantContentSpan.textContent = fullText;
+                } else {
+                    // Otherwise create line for non-chunked assistant response (e.g. greeting or tail log)
+                    const lineDiv = document.createElement('div');
+                    lineDiv.className = 'console-line line-assistant';
+
+                    const prefix = document.createElement('span');
+                    prefix.style.color = 'var(--text-muted)';
+                    prefix.textContent = speakerPrefix;
+
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = fullText;
+
+                    lineDiv.appendChild(prefix);
+                    lineDiv.appendChild(textSpan);
+
+                    consoleLogs.appendChild(lineDiv);
+                }
+
+                // Reset assistant tracking after final response is logged
+                currentAssistantTurn = null;
+                currentAssistantContentSpan = null;
             }
 
-            consoleLogs.appendChild(lineDiv);
-            consoleLogs.scrollTop = consoleLogs.scrollHeight;
+            chatScrollContainer.scrollTop = chatScrollContainer.scrollHeight;
 
             if (consoleLogs.childElementCount > 200) {
                 consoleLogs.removeChild(consoleLogs.firstChild);
@@ -1028,7 +1253,7 @@
         // Toggle Log/Chat Minimize/Expand
         const toggleChatBtn = document.getElementById('toggleChatBtn');
         const logPanel = document.getElementById('logPanel');
-        
+
         toggleChatBtn.addEventListener('click', () => {
             const isMinimized = logPanel.classList.toggle('minimized');
             if (isMinimized) {
@@ -1049,6 +1274,153 @@
                 body: JSON.stringify({ enabled: yoloDetectCheckbox.checked })
             });
         });
+
+        // Toggle Segmented Recording
+        const recordBtn = document.getElementById('recordBtn');
+        const recordText = document.getElementById('recordText');
+
+        function updateRecordUI(isRecording) {
+            if (isRecording) {
+                recordBtn.classList.add('recording');
+                recordText.textContent = 'RECORDING';
+            } else {
+                recordBtn.classList.remove('recording');
+                recordText.textContent = 'REC';
+            }
+        }
+
+        // Fetch initial status on load
+        fetch('/get_record_status')
+            .then(res => res.json())
+            .then(data => {
+                updateRecordUI(data.is_recording);
+            })
+            .catch(err => console.error("Error fetching record status:", err));
+
+        // Click listener for Record button
+        recordBtn.addEventListener('click', () => {
+            fetch('/toggle_record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                updateRecordUI(data.is_recording);
+            })
+            .catch(err => console.error("Error toggling record:", err));
+        });
+
+
+
+        // Toggle LiDAR Footer Minimize/Expand
+        const lidarFooterEl = document.getElementById('lidarFooter');
+        lidarFooterEl.addEventListener('click', (e) => {
+            if (e.target.closest('.ui-checkbox') || e.target.closest('.ui-slider') || e.target.closest('.ui-button') || e.target.closest('.ui-record-btn') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
+                return;
+            }
+            lidarFooterEl.classList.toggle('minimized');
+            // Trigger WebGL scene update recalculation
+            setTimeout(onWindowResize, 350);
+        });
+
+        // Toggle canvas pointer-events on Interact Map checkbox state
+        const interactMapCheckbox = document.getElementById('interactMap');
+        const canvasElement = renderer.domElement;
+        interactMapCheckbox.addEventListener('change', () => {
+            if (interactMapCheckbox.checked) {
+                canvasElement.style.pointerEvents = 'auto';
+            } else {
+                canvasElement.style.pointerEvents = 'none';
+            }
+        });
+
+        // Save LiDAR Settings (Download & LocalStorage)
+        document.getElementById('saveLidarSettings').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const settings = {
+                camera: {
+                    position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+                    rotation: { x: camera.rotation.x, y: camera.rotation.y, z: camera.rotation.z },
+                    zoom: camera.zoom
+                },
+                controls: {
+                    target: { x: controls.target.x, y: controls.target.y, z: controls.target.z }
+                },
+                accumulate: document.getElementById('accumulateLidar').checked,
+                cutoff: lidarRangeCutoff,
+                size: pointSizeVal
+            };
+
+            // Save to localStorage as the default for future page loads
+            localStorage.setItem('lidarSettings', JSON.stringify(settings));
+
+            // Trigger JSON download
+            const blob = new Blob([JSON.stringify(settings, null, 4)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'lidar_settings.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Import LiDAR Settings
+        document.getElementById('importLidarSettingsBtn').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('importLidarSettingsFile').click();
+        });
+
+        document.getElementById('importLidarSettingsFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (evt) {
+                try {
+                    const settings = JSON.parse(evt.target.result);
+                    if (settings.camera && settings.camera.position) {
+                        camera.position.set(settings.camera.position.x, settings.camera.position.y, settings.camera.position.z);
+                    }
+                    if (settings.camera && settings.camera.zoom !== undefined) {
+                        camera.zoom = settings.camera.zoom;
+                        camera.updateProjectionMatrix();
+                    }
+                    if (settings.controls && settings.controls.target) {
+                        controls.target.set(settings.controls.target.x, settings.controls.target.y, settings.controls.target.z);
+                    }
+                    controls.update();
+
+                    if (settings.accumulate !== undefined) {
+                        document.getElementById('accumulateLidar').checked = settings.accumulate;
+                    }
+                    if (settings.cutoff !== undefined) {
+                        lidarRangeCutoff = settings.cutoff;
+                        rangeSlider.value = lidarRangeCutoff;
+                        rangeVal.textContent = lidarRangeCutoff + 'm';
+                    }
+                    if (settings.size !== undefined) {
+                        pointSizeVal = settings.size;
+                        sizeSlider.value = pointSizeVal;
+                        sizeVal.textContent = pointSizeVal + 'px';
+                        if (pointsMaterial) {
+                            pointsMaterial.size = pointSizeVal;
+                        }
+                    }
+
+                    // Also save to localStorage as the new default
+                    localStorage.setItem('lidarSettings', JSON.stringify(settings));
+                    console.log("LiDAR settings imported and saved to localStorage.");
+                } catch (err) {
+                    alert("Failed to parse settings JSON: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = ''; // Clear value
+        });
     </script>
 </body>
+
 </html>
