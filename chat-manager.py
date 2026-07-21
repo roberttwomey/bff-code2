@@ -78,6 +78,8 @@ from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Iterable, List
+import shutil
+import subprocess
 import wave
 
 import numpy as np
