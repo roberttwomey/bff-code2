@@ -142,9 +142,10 @@
             height: 100%;
             overflow: hidden;
             min-width: 0;
-            background: rgba(0, 0, 0, 0.45) !important;
-            backdrop-filter: blur(8px) !important;
-            -webkit-backdrop-filter: blur(8px) !important;
+            /* background: rgba(0, 0, 0, 0.45) !important; */
+            background: rgba(0, 0, 0, 1) !important;
+            /* backdrop-filter: blur(8px) !important; */
+            /* -webkit-backdrop-filter: blur(8px) !important; */
             border-right: 1px solid var(--panel-border);
             z-index: 100;
         }
@@ -472,25 +473,37 @@
             background: rgba(255, 255, 255, 0.05);
             transition: all 0.2s ease;
         }
+
         .ui-record-btn:hover {
             background: rgba(255, 255, 255, 0.1);
             border-color: rgba(255, 255, 255, 0.4);
             color: #ffffff;
         }
+
         .ui-record-btn.recording {
             border-color: rgba(255, 59, 48, 0.6);
             background: rgba(255, 59, 48, 0.1);
             color: #ff3b30;
         }
+
         .ui-record-btn.recording .record-dot {
             background-color: #ff3b30 !important;
             box-shadow: 0 0 8px #ff3b30;
             animation: pulse 1.5s infinite;
         }
+
         @keyframes pulse {
-            0% { opacity: 0.6; }
-            50% { opacity: 1; }
-            100% { opacity: 0.6; }
+            0% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.6;
+            }
         }
 
         .ui-button {
@@ -727,7 +740,8 @@
                         </div>
                         <div class="lidar-footer-content">
                             <div class="ui-record-btn" id="recordBtn">
-                                <span class="record-dot" style="width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.4); display: inline-block; transition: all 0.3s ease;"></span>
+                                <span class="record-dot"
+                                    style="width: 8px; height: 8px; border-radius: 50%; background-color: rgba(255,255,255,0.4); display: inline-block; transition: all 0.3s ease;"></span>
                                 <span id="recordText">REC</span>
                             </div>
                             <div class="ui-checkbox">
@@ -1304,11 +1318,11 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             })
-            .then(res => res.json())
-            .then(data => {
-                updateRecordUI(data.is_recording);
-            })
-            .catch(err => console.error("Error toggling record:", err));
+                .then(res => res.json())
+                .then(data => {
+                    updateRecordUI(data.is_recording);
+                })
+                .catch(err => console.error("Error toggling record:", err));
         });
 
 
