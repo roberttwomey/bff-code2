@@ -2076,6 +2076,7 @@ class TTSWorker:
             try:
                 # print(f"[TTS] Synthesizing: {text[:30]}...", file=sys.stderr)
                 stream = self.voice.synthesize(text)
+                is_first_chunk = True
                 for chunk in stream:
                     if self.stop_event.is_set():
                         break
@@ -2107,7 +2108,10 @@ class TTSWorker:
                     if audio_array is None:
                          print(f"TTS Warning: Could not extract audio from {type(chunk)}: {dir(chunk)}", file=sys.stderr)
                          continue
-                    self.audio_queue.put(audio_array)
+                    
+                    text_label = text if is_first_chunk else None
+                    self.audio_queue.put((text_label, audio_array))
+                    is_first_chunk = False
             except Exception as e:
                 print(f"TTS Error: {e}", file=sys.stderr)
         
@@ -2115,13 +2119,14 @@ class TTSWorker:
 
 
 def play_audio_stream(
-    audio_queue: queue.Queue[np.ndarray | None],
+    audio_queue: queue.Queue[tuple[str | None, np.ndarray] | np.ndarray | None],
     sample_rate: int,
     interrupt_event: threading.Event,
     interruptable: bool = True,
     save_path: Path | None = None,
     output_device_indices: list[str] | None = None,
     output_sample_rate: int | None = None,
+    on_chunk_playback: Callable[[str], None] | None = None,
 ) -> None:
     global is_assistant_speaking, last_assistant_speech_time
     is_assistant_speaking = True
@@ -2155,13 +2160,24 @@ def play_audio_stream(
                 break
 
             try:
-                chunk = audio_queue.get(timeout=0.1)
+                item = audio_queue.get(timeout=0.1)
             except queue.Empty:
                 continue
 
-            if chunk is None:
+            if item is None:
                 # End of stream
                 break
+
+            if isinstance(item, tuple):
+                text_label, chunk = item
+            else:
+                text_label, chunk = None, item
+
+            if text_label and on_chunk_playback:
+                try:
+                    on_chunk_playback(text_label)
+                except Exception as cb_err:
+                    print(f"on_chunk_playback callback error: {cb_err}", file=sys.stderr)
 
             # Process chunk for playing
             play_chunk = chunk.copy()
@@ -3582,6 +3598,17 @@ def run_conversation(config: ConversationConfig) -> None:
             
             response_audio_path = session_dir / f"turn-{turn:03d}-response.wav"
 
+            def on_chunk_playback(chunk_text: str):
+                append_log_line(
+                    log_file,
+                    {
+                        "type": "assistant_chunk",
+                        "turn": turn,
+                        "text": chunk_text,
+                        "speaker": current_speaker,
+                    },
+                )
+
             playback_thread = threading.Thread(
                 target=play_audio_stream,
                 args=(
@@ -3593,6 +3620,7 @@ def run_conversation(config: ConversationConfig) -> None:
                     config.output_device_indices,
                     config.output_sample_rate,
                 ),
+                kwargs={"on_chunk_playback": on_chunk_playback},
                 daemon=True
             )
             current_playback_thread = playback_thread
@@ -3638,15 +3666,6 @@ def run_conversation(config: ConversationConfig) -> None:
 
                 if cleaned_sentence and not _is_punctuation_only(cleaned_sentence):
                     tts_worker.put_text(cleaned_sentence)
-                    append_log_line(
-                        log_file,
-                        {
-                            "type": "assistant_chunk",
-                            "turn": turn,
-                            "text": cleaned_sentence,
-                            "speaker": current_speaker,
-                        },
-                    )
                 
             tts_worker.put_text(None) # End of input
             print() # Newline after response
