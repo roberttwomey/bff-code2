@@ -2150,6 +2150,27 @@ def play_audio(
     output_sample_rate: int | None = None,
 ) -> bool:
     try:
+        if is_pulseaudio_available() and shutil.which("paplay"):
+            cmd = ["paplay"]
+            try:
+                sinks = list_pulse_sinks()
+                usb_sinks = [s for s in sinks if "usb" in s.lower()]
+                if usb_sinks:
+                    cmd.append(f"--device={usb_sinks[0]}")
+            except Exception:
+                pass
+            cmd.append(str(audio_path))
+            
+            interrupt_event.clear()
+            proc = subprocess.Popen(cmd)
+            while proc.poll() is None:
+                if interruptable and interrupt_event.is_set():
+                    proc.terminate()
+                    return False
+                time.sleep(0.05)
+            return proc.returncode == 0
+
+        # Sounddevice fallback for non-PulseAudio / macOS
         data, samplerate = sf.read(audio_path, dtype="float32")
         
         # Resample to the active stream rate (e.g. 16000Hz or native 48000Hz)
