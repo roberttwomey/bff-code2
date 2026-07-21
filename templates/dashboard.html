@@ -142,10 +142,11 @@
             height: 100%;
             overflow: hidden;
             min-width: 0;
-            background: transparent !important;
-            backdrop-filter: none !important;
+            background: rgba(0, 0, 0, 0.45) !important;
+            backdrop-filter: blur(8px) !important;
+            -webkit-backdrop-filter: blur(8px) !important;
             border-right: 1px solid var(--panel-border);
-            z-index: 40;
+            z-index: 100;
         }
 
         .side-column-right {
