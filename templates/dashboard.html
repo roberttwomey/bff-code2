@@ -608,6 +608,8 @@
                                 style="color: #ffffff; font-weight: 400;">snapper.local</span></div>
                         <div><span style="color: var(--text-muted);">CONNECTION:</span> <span id="connStatus"
                                 style="color: #ffffff; font-weight: 400;">ONLINE</span></div>
+                        <div><span style="color: var(--text-muted);">WEB AUDIO:</span> <span id="webAudioStatus"
+                                style="color: #00ff66; cursor: pointer; font-weight: 400;">ACTIVE</span></div>
                     </div>
 
                     <!-- General metrics block -->
@@ -1014,6 +1016,114 @@
         socket.on('disconnect', () => {
             document.getElementById('connStatus').textContent = 'OFFLINE';
             document.getElementById('connStatus').style.borderColor = 'rgba(255, 0, 0, 0.4)';
+        });
+
+        // Web Audio API Realtime PCM Streaming Receiver
+        let webAudioCtx = null;
+        let audioNextPlayTime = 0;
+        let activeAudioSources = [];
+        let isAudioMuted = false;
+
+        function initAudioContext() {
+            if (!webAudioCtx) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    webAudioCtx = new AudioCtx();
+                }
+            }
+            if (webAudioCtx && webAudioCtx.state === 'suspended') {
+                webAudioCtx.resume();
+            }
+        }
+
+        function stopAllWebAudio() {
+            activeAudioSources.forEach(src => {
+                try { src.stop(); } catch(e) {}
+            });
+            activeAudioSources = [];
+            if (webAudioCtx) {
+                audioNextPlayTime = webAudioCtx.currentTime;
+            }
+        }
+
+        document.addEventListener('click', () => {
+            initAudioContext();
+        });
+
+        const webAudioStatusEl = document.getElementById('webAudioStatus');
+        if (webAudioStatusEl) {
+            webAudioStatusEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                isAudioMuted = !isAudioMuted;
+                if (isAudioMuted) {
+                    webAudioStatusEl.textContent = 'MUTED';
+                    webAudioStatusEl.style.color = '#ff4444';
+                    stopAllWebAudio();
+                } else {
+                    webAudioStatusEl.textContent = 'ACTIVE';
+                    webAudioStatusEl.style.color = '#00ff66';
+                    initAudioContext();
+                }
+            });
+        }
+
+        socket.on('audio_start', (payload) => {
+            initAudioContext();
+            if (webAudioCtx) {
+                audioNextPlayTime = webAudioCtx.currentTime;
+            }
+            stopAllWebAudio();
+        });
+
+        socket.on('audio_chunk', (payload) => {
+            if (isAudioMuted || !payload.data) return;
+            initAudioContext();
+            if (!webAudioCtx) return;
+
+            try {
+                const sampleRate = payload.sample_rate || 22050;
+                const binaryStr = atob(payload.data);
+                const len = binaryStr.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                const int16Array = new Int16Array(bytes.buffer);
+                const float32Array = new Float32Array(int16Array.length);
+                for (let i = 0; i < int16Array.length; i++) {
+                    float32Array[i] = int16Array[i] / 32768.0;
+                }
+
+                const buffer = webAudioCtx.createBuffer(1, float32Array.length, sampleRate);
+                buffer.getChannelData(0).set(float32Array);
+
+                const source = webAudioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(webAudioCtx.destination);
+
+                const now = webAudioCtx.currentTime;
+                if (audioNextPlayTime < now) {
+                    audioNextPlayTime = now;
+                }
+                source.start(audioNextPlayTime);
+                audioNextPlayTime += buffer.duration;
+                activeAudioSources.push(source);
+
+                source.onended = () => {
+                    const idx = activeAudioSources.indexOf(source);
+                    if (idx !== -1) activeAudioSources.splice(idx, 1);
+                };
+            } catch (e) {
+                console.error("[WebAudio] Error processing audio chunk:", e);
+            }
+        });
+
+        socket.on('audio_interrupt', () => {
+            stopAllWebAudio();
+        });
+
+        socket.on('audio_end', () => {
+            // Speech synthesis complete
         });
 
         // Telemetry Data Relayer

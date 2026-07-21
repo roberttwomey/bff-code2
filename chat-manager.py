@@ -62,6 +62,7 @@ Environment variables:
 from __future__ import annotations
 
 import argparse
+import base64
 import collections
 import difflib
 import json
@@ -74,6 +75,7 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.request
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path
@@ -2118,6 +2120,62 @@ class TTSWorker:
         self.audio_queue.put(None) # End of audio stream
 
 
+def send_dashboard_audio_start(sample_rate: int) -> None:
+    """Notify dashboard server that speech audio streaming is starting."""
+    try:
+        dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
+        url = f"http://127.0.0.1:{dashboard_port}/audio_start"
+        payload = json.dumps({"sample_rate": sample_rate}).encode("utf-8")
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=0.5):
+            pass
+    except Exception:
+        pass
+
+
+def send_dashboard_audio_chunk(chunk: np.ndarray, sample_rate: int) -> None:
+    """Send a PCM audio chunk to dashboard server for real-time Web Audio playback."""
+    try:
+        if chunk.ndim > 1:
+            chunk = chunk.flatten()
+        clipped = np.clip(chunk, -1.0, 1.0)
+        int16_pcm = (clipped * 32767).astype(np.int16)
+        b64_data = base64.b64encode(int16_pcm.tobytes()).decode("ascii")
+
+        dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
+        url = f"http://127.0.0.1:{dashboard_port}/audio_chunk"
+        payload = json.dumps({"data": b64_data, "sample_rate": sample_rate}).encode("utf-8")
+        req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=0.5):
+            pass
+    except Exception:
+        pass
+
+
+def send_dashboard_audio_end() -> None:
+    """Notify dashboard server that speech audio streaming has completed."""
+    try:
+        dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
+        url = f"http://127.0.0.1:{dashboard_port}/audio_end"
+        req = urllib.request.Request(url, data=b"{}", headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=0.5):
+            pass
+    except Exception:
+        pass
+
+
+def send_dashboard_audio_interrupt() -> None:
+    """Notify dashboard server that speech audio playback was interrupted."""
+    try:
+        dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
+        url = f"http://127.0.0.1:{dashboard_port}/audio_interrupt"
+        req = urllib.request.Request(url, data=b"{}", headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=0.5):
+            pass
+    except Exception:
+        pass
+
+
 def play_audio_stream(
     audio_queue: queue.Queue[tuple[str | None, np.ndarray] | np.ndarray | None],
     sample_rate: int,
@@ -2131,6 +2189,7 @@ def play_audio_stream(
     global is_assistant_speaking, last_assistant_speech_time
     is_assistant_speaking = True
     output_stream = None
+    was_interrupted = False
     try:
         wav_file = None
         if save_path:
@@ -2140,6 +2199,7 @@ def play_audio_stream(
             wav_file.setframerate(sample_rate)
 
         target_rate = CURRENT_STREAM_SAMPLERATE
+        send_dashboard_audio_start(target_rate)
 
         try:
             dev_idx = output_device_indices[0] if output_device_indices else None
@@ -2153,10 +2213,15 @@ def play_audio_stream(
         except Exception as stream_err:
             print(f"[Audio] Warning: Could not open dedicated output stream: {stream_err}", file=sys.stderr)
             output_stream = None
-        
+
+        # Slicing chunk into 50-100ms blocks (~80ms) for tight hardware/web audio sync
+        chunk_size_samples = max(256, int(target_rate * 0.08))
+
         while True:
             if interruptable and interrupt_event.is_set():
+                was_interrupted = True
                 unified_audio.clear()
+                send_dashboard_audio_interrupt()
                 break
 
             try:
@@ -2184,23 +2249,43 @@ def play_audio_stream(
             if sample_rate != target_rate:
                 play_chunk = resample_audio(play_chunk, sample_rate, target_rate)
 
-            # Play chunk through dedicated OutputStream or fallback to unified_audio
-            if output_stream is not None:
-                output_stream.write(play_chunk.astype(np.float32))
-            else:
-                unified_audio.play_chunk(play_chunk)
-
             # Write original chunk to wav file if needed
             if wav_file:
-                if chunk.ndim == 1:
-                    chunk = chunk[:, np.newaxis]
-                clipped = np.clip(chunk, -1.0, 1.0)
+                w_chunk = play_chunk
+                if w_chunk.ndim == 1:
+                    w_chunk = w_chunk[:, np.newaxis]
+                clipped = np.clip(w_chunk, -1.0, 1.0)
                 int16_data = (clipped * 32767).astype(np.int16)
                 wav_file.writeframes(int16_data.tobytes())
 
+            # Sub-chunk streaming in ~80ms blocks to align USB hardware & Web Audio clocks
+            if play_chunk.ndim > 1:
+                play_chunk = play_chunk.flatten()
+
+            for start_i in range(0, len(play_chunk), chunk_size_samples):
+                if interruptable and interrupt_event.is_set():
+                    was_interrupted = True
+                    unified_audio.clear()
+                    send_dashboard_audio_interrupt()
+                    break
+
+                sub_chunk = play_chunk[start_i : start_i + chunk_size_samples]
+
+                # 1. Output to local audio device
+                if output_stream is not None:
+                    output_stream.write(sub_chunk.astype(np.float32))
+                else:
+                    unified_audio.play_chunk(sub_chunk)
+
+                # 2. Relays PCM to web dashboard in sync
+                send_dashboard_audio_chunk(sub_chunk, target_rate)
+
+            if was_interrupted:
+                break
+
         if wav_file:
             wav_file.close()
-                
+
     except Exception as e:
         print(f"Playback Error: {e}", file=sys.stderr)
     finally:
@@ -2210,6 +2295,10 @@ def play_audio_stream(
                 output_stream.close()
             except Exception:
                 pass
+        if was_interrupted:
+            send_dashboard_audio_interrupt()
+        else:
+            send_dashboard_audio_end()
         is_assistant_speaking = False
         last_assistant_speech_time = time.time()
 
@@ -2223,7 +2312,23 @@ def play_audio(
 ) -> bool:
     global is_assistant_speaking, last_assistant_speech_time
     is_assistant_speaking = True
+    was_interrupted = False
     try:
+        data, samplerate = sf.read(audio_path, dtype="float32")
+
+        target_rate = CURRENT_STREAM_SAMPLERATE
+        if samplerate != target_rate:
+            data = resample_audio(data, samplerate, target_rate)
+            samplerate = target_rate
+
+        if data.ndim > 1:
+            data = data.mean(axis=1) # mix down to mono
+
+        send_dashboard_audio_start(samplerate)
+        interrupt_event.clear()
+
+        chunk_size = max(256, int(samplerate * 0.08))
+
         if is_pulseaudio_available() and shutil.which("paplay"):
             cmd = ["paplay"]
             try:
@@ -2234,48 +2339,45 @@ def play_audio(
             except Exception:
                 pass
             cmd.append(str(audio_path))
-            
-            interrupt_event.clear()
+
             proc = subprocess.Popen(cmd)
-            while proc.poll() is None:
+            # Send chunks to dashboard in background while paplay plays locally
+            for i in range(0, len(data), chunk_size):
                 if interruptable and interrupt_event.is_set():
                     proc.terminate()
+                    was_interrupted = True
+                    send_dashboard_audio_interrupt()
                     return False
-                time.sleep(0.05)
+                sub_chunk = data[i : i + chunk_size]
+                send_dashboard_audio_chunk(sub_chunk, samplerate)
+                time.sleep(len(sub_chunk) / float(samplerate))
+            proc.wait()
             return proc.returncode == 0
-
-        # Sounddevice fallback for non-PulseAudio / macOS
-        data, samplerate = sf.read(audio_path, dtype="float32")
-        
-        # Resample to the active stream rate (e.g. 16000Hz or native 48000Hz)
-        target_rate = CURRENT_STREAM_SAMPLERATE
-        if samplerate != target_rate:
-            data = resample_audio(data, samplerate, target_rate)
-            samplerate = target_rate
-            
-        if data.ndim > 1:
-            data = data.mean(axis=1) # mix down to mono
-            
-        interrupt_event.clear()
-        
-        stream = sd.OutputStream(
-            samplerate=samplerate,
-            channels=1,
-            dtype="float32",
-            device=output_device_indices[0] if output_device_indices else None,
-        )
-        with stream:
-            block_size = 1024
-            for i in range(0, len(data), block_size):
-                if interruptable and interrupt_event.is_set():
-                    return False
-                chunk = data[i : i + block_size]
-                stream.write(chunk)
-        return True
+        else:
+            stream = sd.OutputStream(
+                samplerate=samplerate,
+                channels=1,
+                dtype="float32",
+                device=output_device_indices[0] if output_device_indices else None,
+            )
+            with stream:
+                for i in range(0, len(data), chunk_size):
+                    if interruptable and interrupt_event.is_set():
+                        was_interrupted = True
+                        send_dashboard_audio_interrupt()
+                        return False
+                    sub_chunk = data[i : i + chunk_size]
+                    stream.write(sub_chunk)
+                    send_dashboard_audio_chunk(sub_chunk, samplerate)
+            return True
     except Exception as e:
         print(f"Playback Error: {e}", file=sys.stderr)
         return False
     finally:
+        if was_interrupted:
+            send_dashboard_audio_interrupt()
+        else:
+            send_dashboard_audio_end()
         is_assistant_speaking = False
         last_assistant_speech_time = time.time()
 
@@ -3029,6 +3131,7 @@ def run_conversation(config: ConversationConfig) -> None:
                 current_tts_worker.pause()
                 current_tts_worker.flush()  # Flush queued audio chunks
             playback_interrupt.set()
+            send_dashboard_audio_interrupt()
             # Also abort current LLM generation if in progress
             if current_abort_event is not None:
                 current_abort_event.set()
