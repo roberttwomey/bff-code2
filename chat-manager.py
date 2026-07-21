@@ -2125,6 +2125,7 @@ def play_audio_stream(
 ) -> None:
     global is_assistant_speaking, last_assistant_speech_time
     is_assistant_speaking = True
+    output_stream = None
     try:
         wav_file = None
         if save_path:
@@ -2134,6 +2135,19 @@ def play_audio_stream(
             wav_file.setframerate(sample_rate)
 
         target_rate = CURRENT_STREAM_SAMPLERATE
+
+        try:
+            dev_idx = output_device_indices[0] if output_device_indices else None
+            output_stream = sd.OutputStream(
+                samplerate=target_rate,
+                channels=1,
+                dtype="float32",
+                device=dev_idx,
+            )
+            output_stream.start()
+        except Exception as stream_err:
+            print(f"[Audio] Warning: Could not open dedicated output stream: {stream_err}", file=sys.stderr)
+            output_stream = None
         
         while True:
             if interruptable and interrupt_event.is_set():
@@ -2154,8 +2168,11 @@ def play_audio_stream(
             if sample_rate != target_rate:
                 play_chunk = resample_audio(play_chunk, sample_rate, target_rate)
 
-            # Write chunk to unified audio system
-            unified_audio.play_chunk(play_chunk)
+            # Play chunk through dedicated OutputStream or fallback to unified_audio
+            if output_stream is not None:
+                output_stream.write(play_chunk.astype(np.float32))
+            else:
+                unified_audio.play_chunk(play_chunk)
 
             # Write original chunk to wav file if needed
             if wav_file:
@@ -2171,6 +2188,12 @@ def play_audio_stream(
     except Exception as e:
         print(f"Playback Error: {e}", file=sys.stderr)
     finally:
+        if output_stream is not None:
+            try:
+                output_stream.stop()
+                output_stream.close()
+            except Exception:
+                pass
         is_assistant_speaking = False
         last_assistant_speech_time = time.time()
 
