@@ -236,7 +236,6 @@ DEFAULT_PLAYBACK_SPEED = float(os.environ.get("BFF_PLAYBACK_SPEED", "1.0"))
 DEFAULT_INPUT_DEVICE_KEYWORD = os.environ.get(
     "BFF_INPUT_DEVICE_KEYWORD", "Wireless Mic Rx"
 )
-DEFAULT_BARGE_IN_MIN_RMS = float(os.environ.get("BFF_BARGE_IN_MIN_RMS", "0.05"))
 DEFAULT_ACTIVATION_THRESHOLD = float(os.environ.get("BFF_ACTIVATION_THRESHOLD", "0.03"))
 DEFAULT_SILENCE_THRESHOLD = float(os.environ.get("BFF_SILENCE_THRESHOLD", "0.015"))
 DEFAULT_SILENCE_DURATION = float(os.environ.get("BFF_SILENCE_DURATION", "0.8"))
@@ -324,7 +323,6 @@ class ConversationConfig:
     piper_length_scale: float | None = None
     piper_noise_scale: float | None = None
     piper_noise_w: float | None = None
-    barge_in_min_rms: float = DEFAULT_BARGE_IN_MIN_RMS
     activation_threshold: float = DEFAULT_ACTIVATION_THRESHOLD
     silence_threshold: float = DEFAULT_SILENCE_THRESHOLD
     silence_duration: float = DEFAULT_SILENCE_DURATION

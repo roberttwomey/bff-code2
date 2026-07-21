@@ -357,7 +357,7 @@
             right: 0;
             z-index: 10;
             background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(10px);
+            /* backdrop-filter: blur(10px); */
             border-top: 1px solid var(--panel-border);
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -403,7 +403,7 @@
         .lidar-footer.minimized {
             height: 24px;
             border-top: 1px solid rgba(255, 255, 255, 0.05);
-            background: rgba(0, 0, 0, 0.65);
+            background: rgba(0, 0, 0, 0.15);
         }
 
         .lidar-footer.minimized .lidar-footer-content {
@@ -718,7 +718,7 @@
                         </div>
                         <div class="console-container" id="consoleLogs"
                             style="width: 100%; height: auto !important; padding: 0 !important; background: transparent !important; overflow-y: visible !important; font-size: 0.75rem; line-height: 1.6; display: flex; flex-direction: column; gap: 4px;">
-                            <div class="console-welcome">> listening for active session logs...</div>
+                            <div class="console-welcome">...</div>
                         </div>
                     </div>
 
@@ -736,9 +736,8 @@
                     <div id="lidarWebGL"></div>
                     <div class="lidar-footer minimized" id="lidarFooter">
                         <div class="lidar-footer-handle">
-                            <span class="footer-title">LiDAR Controls</span>
-                            <span class="footer-hint">Click to toggle controls | Drag to rotate/pan | Scroll to
-                                zoom</span>
+                            <span class="footer-title">Controls</span>
+                            <span class="footer-hint"> +++ </span>
                         </div>
                         <div class="lidar-footer-content">
                             <div class="ui-record-btn" id="recordBtn">
@@ -1056,7 +1055,7 @@
 
         function stopAllWebAudio() {
             activeAudioSources.forEach(src => {
-                try { src.stop(); } catch(e) {}
+                try { src.stop(); } catch (e) { }
             });
             activeAudioSources = [];
             if (webAudioCtx) {
