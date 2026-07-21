@@ -1,0 +1,30 @@
+# Environment / secrets
+.env
+.env-*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Model weights (fetched per-machine, not versioned)
+*.pt
+*.onnx
+*.onnx.json
+
+# Session captures and logs. `captures` is a per-machine symlink; the real
+# location comes from BFF_LOG_ROOT.
+captures
+logs/
+*.log
+
+# Runtime state written by chat-manager / dashboard_server
+headset_state.json
+lidar_settings.json
+snapshot.jpg
+
+# macOS
+.DS_Store
