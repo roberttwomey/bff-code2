@@ -207,7 +207,7 @@ DEFAULT_WHISPER_MODEL = os.environ.get("BFF_WHISPER_MODEL", "tiny.en")
 DEFAULT_SAMPLE_RATE = int(os.environ.get("BFF_SAMPLE_RATE", "16000"))
 DEFAULT_PLAYBACK_SPEED = float(os.environ.get("BFF_PLAYBACK_SPEED", "1.0"))
 DEFAULT_INPUT_DEVICE_KEYWORD = os.environ.get(
-    "BFF_INPUT_DEVICE_KEYWORD", "OpenRun Pro 2 by Shokz"
+    "BFF_INPUT_DEVICE_KEYWORD", "Wireless Mic Rx"
 )
 DEFAULT_ACTIVATION_THRESHOLD = float(os.environ.get("BFF_ACTIVATION_THRESHOLD", "0.03"))
 DEFAULT_SILENCE_THRESHOLD = float(os.environ.get("BFF_SILENCE_THRESHOLD", "0.015"))
@@ -1135,11 +1135,14 @@ def ensure_headset_connected() -> None:
 
 
 def find_input_device(keyword: str, min_channels: int = 1) -> int | None:
-    keyword_lower = keyword.lower()
+    if not keyword:
+        return None
+    keywords = [k.strip().lower() for k in keyword.replace("|", ",").split(",") if k.strip()]
     for idx, device in enumerate(sd.query_devices()):
-        name = device.get("name", "")
-        if keyword_lower in name.lower() and device.get("max_input_channels", 0) >= min_channels:
-            return idx
+        name = device.get("name", "").lower()
+        if device.get("max_input_channels", 0) >= min_channels:
+            if any(kw in name for kw in keywords):
+                return idx
     return None
 
 
@@ -2393,12 +2396,41 @@ class VLMBackgroundWorker:
         cv2.imwrite(str(image_path), frame)
         print(f"[VLM Worker] Scene changed - snapshot saved to {image_path}", file=sys.stderr)
 
+        # Fetch latest YOLO detections from local dashboard server if available
+        yolo_summary = ""
+        try:
+            import urllib.request
+            dashboard_port = getattr(self.config, "dashboard_port", 8080)
+            det_url = f"http://127.0.0.1:{dashboard_port}/detections"
+            with urllib.request.urlopen(det_url, timeout=0.5) as resp:
+                det_json = json.loads(resp.read().decode("utf-8"))
+                dets = det_json.get("detections", [])
+                if dets:
+                    classes = [
+                        d["class"] for d in dets 
+                        if isinstance(d, dict) and d.get("class") and d.get("confidence", 0.0) >= 0.3
+                    ]
+                    if classes:
+                        unique_classes = list(dict.fromkeys(classes))
+                        yolo_summary = ", ".join(unique_classes)
+        except Exception:
+            pass
+
         # Query Ollama VLM
         model_name = self.config.vlm_model
         prompt = (
-            "Describe the scene: setting, objects present, "
-            "lighting, and any people and what they are doing."
+            "You are the visual processing unit for the SNAPPER robot dog. Analyze the input image and output a dense, flat list of semantic tags, objects, spatial layout, and environmental context.\n\n"
+            "Strict constraints:\n"
+            "1. No conversational filler, intro, or outro text.\n"
+            "2. No markdown formatting, bullet points, or line breaks.\n"
+            "3. Output a single, continuous paragraph of comma-separated descriptions.\n"
+            "4. Prioritize: Exact object names, spatial relationships (e.g., 'chair left of table'), room type, lighting conditions, and human presence/actions.\n\n"
+            "Example Format:\n"
+            "[room type], [primary lighting], [object 1 with location], [object 2], [detected person with posture/action]"
         )
+        if yolo_summary:
+            prompt += f"\n\nHigh-confidence bounding-box objects detected: {yolo_summary}"
+            print(f"[VLM Worker] Incorporating YOLO hints: {yolo_summary}", file=sys.stderr)
 
         try:
             client = ollama.Client()
@@ -2414,6 +2446,7 @@ class VLMBackgroundWorker:
                 ],
                 stream=True,
                 keep_alive=-1,
+                think=False,
                 options={
                     "num_predict": DEFAULT_VLM_NUM_PREDICT,
                     "num_ctx": DEFAULT_VLM_NUM_CTX,
@@ -2432,12 +2465,14 @@ class VLMBackgroundWorker:
 
                 content = ""
                 if isinstance(chunk, dict):
-                    content = chunk.get("message", {}).get("content", "")
+                    msg = chunk.get("message", {})
+                    content = msg.get("content", "") or msg.get("thinking", "")
                 else:
                     msg = getattr(chunk, "message", None)
                     if msg:
-                        content = getattr(msg, "content", "")
-                description_chunks.append(content)
+                        content = getattr(msg, "content", "") or getattr(msg, "thinking", "")
+                if content:
+                    description_chunks.append(content)
 
             query_duration = time.perf_counter() - query_start
             description = "".join(description_chunks).strip()
@@ -2697,14 +2732,28 @@ def run_conversation(config: ConversationConfig) -> None:
         vlm_worker.start()
 
 
-    # Ensure Bluetooth headset is connected
-    ensure_headset_connected()
+    # Check if a matching input device (e.g. USB DJI Mic Mini / Wireless Mic Rx) is already present
+    usb_input_index = None
+    if config.input_device_keyword:
+        usb_input_index = find_input_device(config.input_device_keyword)
+
+    if usb_input_index is not None:
+        dev_info = sd.query_devices(usb_input_index)
+        print(
+            f"[Audio] Found matching USB input device #{usb_input_index}: '{dev_info['name']}'. Skipping Bluetooth scan.",
+            file=sys.stderr,
+        )
+        config.input_device_index = usb_input_index
+    else:
+        # Fall back to Bluetooth headset connection if no USB input match was found
+        ensure_headset_connected()
+
     # Pick up headset state in case it was updated during connect
     LAST_HEADSET_MAC, LAST_HEADSET_NAME = load_headset_state()
     # Apply input source capture volume if configured
     if config.pulse_source_volume:
         set_pulse_source_volume(config.pulse_source_volume)
-    # Log audio devices after Bluetooth connect/reload
+    # Log audio devices after device scan/connect
     log_audio_devices()
     # Update the input/output device keywords if we have a saved headset name
     if LAST_HEADSET_NAME and not config.input_device_keyword:
