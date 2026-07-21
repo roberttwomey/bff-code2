@@ -156,6 +156,7 @@ latest_scene_description = ""
 last_vlm_query_time = 0.0
 is_dialogue_active = False
 last_interaction_time = time.time()
+CURRENT_STREAM_SAMPLERATE = 16000
 
 # --- Global Body State ---
 body_state_lock = threading.Lock()
@@ -1527,8 +1528,31 @@ def phrase_stream(
         on_voice_activity: Callback called immediately when voice activity is detected
     """
 
-    channels = 1
-    block_size = max(1, int(config.sample_rate * config.block_duration))
+    stream_samplerate = config.sample_rate
+    input_channels = 1
+    if config.input_device_index is not None:
+        try:
+            dev_info = sd.query_devices(config.input_device_index)
+            input_channels = max(1, min(int(dev_info.get("max_input_channels", 1)), 2))
+            sd.check_input_settings(device=config.input_device_index, samplerate=config.sample_rate)
+        except Exception:
+            dev_info = sd.query_devices(config.input_device_index)
+            native_sr = int(dev_info.get("default_samplerate", 48000))
+            try:
+                sd.check_input_settings(device=config.input_device_index, samplerate=native_sr)
+                stream_samplerate = native_sr
+                print(
+                    f"[Audio] Input device #{config.input_device_index} ('{dev_info['name']}') "
+                    f"does not support {config.sample_rate}Hz; recording at native {stream_samplerate}Hz and resampling to {config.sample_rate}Hz.",
+                    file=sys.stderr,
+                )
+            except Exception as sr_err:
+                print(f"[Audio] Input device sample rate check warning: {sr_err}", file=sys.stderr)
+
+    global CURRENT_STREAM_SAMPLERATE
+    CURRENT_STREAM_SAMPLERATE = stream_samplerate
+
+    block_size = max(1, int(stream_samplerate * config.block_duration))
     silence_blocks_required = max(1, int(config.silence_duration / config.block_duration))
     max_blocks = max(1, int(config.max_record_seconds / config.block_duration))
     min_blocks = max(1, int(config.min_phrase_seconds / config.block_duration))
@@ -1557,8 +1581,8 @@ def phrase_stream(
 
     print("Listening continuously… (Ctrl+C to exit)")
     with sd.Stream(
-        samplerate=config.sample_rate,
-        channels=(channels, 1),
+        samplerate=stream_samplerate,
+        channels=(input_channels, 1),
         dtype="float32",
         blocksize=block_size,
         callback=audio_callback,
@@ -1576,9 +1600,19 @@ def phrase_stream(
             if stop_event and stop_event.is_set():
                 break
             try:
-                block = q.get(timeout=0.1)
+                raw_block = q.get(timeout=0.1)
             except queue.Empty:
                 continue
+
+            # Mix multi-channel input to mono if needed
+            if raw_block.ndim > 1:
+                raw_block = raw_block.mean(axis=1)
+
+            # Resample hardware stream rate down to 16kHz for VAD and STT
+            if stream_samplerate != config.sample_rate:
+                block = resample_audio(raw_block, stream_samplerate, config.sample_rate)
+            else:
+                block = raw_block
             block_counter += 1 if recording else 0
             amp = rms_amplitude(block)
 
@@ -2108,8 +2142,8 @@ def play_audio(
     try:
         data, samplerate = sf.read(audio_path, dtype="float32")
         
-        # Always resample to 16000Hz (the bidirectional stream rate)
-        target_rate = 16000
+        # Resample to the active stream rate (e.g. 16000Hz or native 48000Hz)
+        target_rate = CURRENT_STREAM_SAMPLERATE
         if samplerate != target_rate:
             data = resample_audio(data, samplerate, target_rate)
             samplerate = target_rate
