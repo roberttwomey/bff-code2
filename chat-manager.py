@@ -1262,7 +1262,8 @@ def auto_detect_pulse_sinks(
 
     for sink in sinks:
         sink_lower = sink.lower()
-        if usb_keyword and usb_keyword.lower() in sink_lower:
+        kw = (usb_keyword or "usb").lower()
+        if kw in sink_lower or "usb" in sink_lower:
             usb_matches.append(sink)
         if bt_keyword and bt_keyword.lower() in sink_lower:
             bt_matches.append(sink)
@@ -1324,11 +1325,20 @@ def resolve_output_devices(config: ConversationConfig) -> list[str]:
             pulse_sinks = auto_detect_pulse_sinks(
                 config.output_usb_keyword, config.output_bt_keyword
             )
-        combined_sink = ensure_pulse_combined_sink(
-            pulse_sinks, config.pulse_combined_sink_name
-        )
-        if combined_sink:
-            set_default_pulse_sink(combined_sink)
+        if pulse_sinks:
+            if len(pulse_sinks) == 1:
+                target_sink = pulse_sinks[0]
+            else:
+                target_sink = ensure_pulse_combined_sink(
+                    pulse_sinks, config.pulse_combined_sink_name
+                ) or pulse_sinks[0]
+
+            if target_sink:
+                set_default_pulse_sink(target_sink)
+                subprocess.run(["pactl", "set-sink-mute", target_sink, "0"], capture_output=True, check=False)
+                subprocess.run(["pactl", "set-sink-volume", target_sink, "80%"], capture_output=True, check=False)
+                print(f"[Audio] Set default PulseAudio output sink to: '{target_sink}'", file=sys.stderr)
+
         output_indices.append(config.pulse_device_name)
         return output_indices
 
