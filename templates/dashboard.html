@@ -1020,15 +1020,33 @@
 
         // Web Audio API Realtime PCM Streaming Receiver
         let webAudioCtx = null;
+        let webAudioGain = null;
         let audioNextPlayTime = 0;
         let activeAudioSources = [];
         let isAudioMuted = false;
+        let warnedRateMismatch = false;
+
+        // How far ahead of the context clock chunks are scheduled. TARGET is the
+        // steady-state lead (jitter absorption); if the schedule ever runs further than
+        // MAX ahead — the relay worker lagging then delivering a burst — playback would
+        // sit that far behind the Python audio forever, since nothing pulls it back.
+        // Resyncing to TARGET caps worst-case lag at MAX instead of letting it ratchet.
+        const AUDIO_TARGET_LEAD = 0.12;
+        const AUDIO_MAX_LEAD = 0.40;
 
         function initAudioContext() {
             if (!webAudioCtx) {
                 const AudioCtx = window.AudioContext || window.webkitAudioContext;
                 if (AudioCtx) {
-                    webAudioCtx = new AudioCtx();
+                    // Leave the rate unpinned so the context adopts the output device's
+                    // native rate — the same rate chat-manager now runs its stream at.
+                    // Matching rates means no per-buffer resampling here and no hardware
+                    // rate renegotiation between us and the Python process.
+                    webAudioCtx = new AudioCtx({ latencyHint: 'playback' });
+                    webAudioGain = webAudioCtx.createGain();
+                    webAudioGain.gain.value = isAudioMuted ? 0 : 1;
+                    webAudioGain.connect(webAudioCtx.destination);
+                    console.log('[WebAudio] context rate', webAudioCtx.sampleRate);
                 }
             }
             if (webAudioCtx && webAudioCtx.state === 'suspended') {
@@ -1055,33 +1073,41 @@
             webAudioStatusEl.addEventListener('click', (e) => {
                 e.stopPropagation();
                 isAudioMuted = !isAudioMuted;
-                if (isAudioMuted) {
-                    webAudioStatusEl.textContent = 'MUTED';
-                    webAudioStatusEl.style.color = '#ff4444';
-                    stopAllWebAudio();
-                } else {
-                    webAudioStatusEl.textContent = 'ACTIVE';
-                    webAudioStatusEl.style.color = '#00ff66';
-                    initAudioContext();
+                initAudioContext();
+                // Mute by ducking the master gain, never by dropping chunks or resetting
+                // the schedule. The timeline keeps running underneath, so unmuting lands
+                // exactly where the stream actually is rather than wherever the next
+                // chunk happens to arrive. The short ramp avoids a click on the step.
+                if (webAudioGain) {
+                    webAudioGain.gain.setTargetAtTime(
+                        isAudioMuted ? 0 : 1, webAudioCtx.currentTime, 0.015);
                 }
+                webAudioStatusEl.textContent = isAudioMuted ? 'MUTED' : 'ACTIVE';
+                webAudioStatusEl.style.color = isAudioMuted ? '#ff4444' : '#00ff66';
             });
         }
 
         socket.on('audio_start', (payload) => {
             initAudioContext();
-            if (webAudioCtx) {
-                audioNextPlayTime = webAudioCtx.currentTime;
-            }
             stopAllWebAudio();
+            if (webAudioCtx) {
+                audioNextPlayTime = webAudioCtx.currentTime + AUDIO_TARGET_LEAD;
+            }
         });
 
         socket.on('audio_chunk', (payload) => {
-            if (isAudioMuted || !payload.data) return;
+            if (!payload.data) return;
             initAudioContext();
             if (!webAudioCtx) return;
 
             try {
                 const sampleRate = payload.sample_rate || 22050;
+                if (sampleRate !== webAudioCtx.sampleRate && !warnedRateMismatch) {
+                    warnedRateMismatch = true;
+                    console.warn('[WebAudio] rate mismatch: stream', sampleRate,
+                        'vs context', webAudioCtx.sampleRate,
+                        '- every chunk is being resampled in isolation, expect seam clicks.');
+                }
                 const binaryStr = atob(payload.data);
                 const len = binaryStr.length;
                 const bytes = new Uint8Array(len);
@@ -1099,11 +1125,18 @@
 
                 const source = webAudioCtx.createBufferSource();
                 source.buffer = buffer;
-                source.connect(webAudioCtx.destination);
+                source.connect(webAudioGain || webAudioCtx.destination);
 
                 const now = webAudioCtx.currentTime;
-                if (audioNextPlayTime < now) {
-                    audioNextPlayTime = now;
+                if (audioNextPlayTime < now + 0.005) {
+                    // Behind the clock: starved, or the first chunk of an utterance.
+                    audioNextPlayTime = now + AUDIO_TARGET_LEAD;
+                } else if (audioNextPlayTime > now + AUDIO_MAX_LEAD) {
+                    // Too far ahead: a delivery burst ratcheted the schedule forward and
+                    // playback would trail the Python audio by this much indefinitely.
+                    console.warn('[WebAudio] resync, lead was',
+                        (audioNextPlayTime - now).toFixed(3), 's');
+                    audioNextPlayTime = now + AUDIO_TARGET_LEAD;
                 }
                 source.start(audioNextPlayTime);
                 audioNextPlayTime += buffer.duration;
