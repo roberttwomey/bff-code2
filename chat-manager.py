@@ -2116,7 +2116,7 @@ def play_audio_stream(
             wav_file.setsampwidth(2) # 16-bit PCM
             wav_file.setframerate(sample_rate)
 
-        target_rate = 16000
+        target_rate = CURRENT_STREAM_SAMPLERATE
         
         while True:
             if interruptable and interrupt_event.is_set():
