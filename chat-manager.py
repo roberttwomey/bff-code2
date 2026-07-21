@@ -159,6 +159,8 @@ last_vlm_query_time = 0.0
 is_dialogue_active = False
 last_interaction_time = time.time()
 CURRENT_STREAM_SAMPLERATE = 16000
+is_assistant_speaking = False
+last_assistant_speech_time = 0.0
 
 # --- Global Body State ---
 body_state_lock = threading.Lock()
@@ -1582,10 +1584,12 @@ def phrase_stream(
     q: queue.Queue[np.ndarray] = queue.Queue()
 
     def audio_callback(indata, outdata, frames, time_info, status):
-        # if status:
-        #     print(f"[vad] {status}", file=sys.stderr)
-        q.put(indata.copy())
-        unified_audio.fill_output(outdata, frames)
+        now = time.time()
+        mute_mic = is_assistant_speaking or (now - last_assistant_speech_time < 0.4)
+        if not mute_mic or config.interruptable:
+            q.put(indata.copy())
+        if outdata is not None:
+            unified_audio.fill_output(outdata, frames)
 
     vad: SileroSpeechDetector | None = None
     if config.vad_backend == "silero":
@@ -1602,17 +1606,29 @@ def phrase_stream(
     vad_end_threshold = max(0.15, config.vad_threshold - 0.15)
 
     print("Listening continuously… (Ctrl+C to exit)")
-    with sd.Stream(
-        samplerate=stream_samplerate,
-        channels=(input_channels, 1),
-        dtype="float32",
-        blocksize=block_size,
-        callback=audio_callback,
-        device=(
-            config.input_device_index,
-            config.output_device_indices[0] if config.output_device_indices else None
-        ),
-    ):
+    if is_pulseaudio_available():
+        stream_ctx = sd.InputStream(
+            samplerate=stream_samplerate,
+            channels=input_channels,
+            dtype="float32",
+            blocksize=block_size,
+            callback=lambda indata, frames, time_info, status: audio_callback(indata, None, frames, time_info, status),
+            device=config.input_device_index,
+        )
+    else:
+        stream_ctx = sd.Stream(
+            samplerate=stream_samplerate,
+            channels=(input_channels, 1),
+            dtype="float32",
+            blocksize=block_size,
+            callback=audio_callback,
+            device=(
+                config.input_device_index,
+                config.output_device_indices[0] if config.output_device_indices else None
+            ),
+        )
+
+    with stream_ctx:
         recording = False
         silence_blocks = 0
         collected: List[np.ndarray] = []
@@ -2091,7 +2107,6 @@ class TTSWorker:
                     if audio_array is None:
                          print(f"TTS Warning: Could not extract audio from {type(chunk)}: {dir(chunk)}", file=sys.stderr)
                          continue
-
                     self.audio_queue.put(audio_array)
             except Exception as e:
                 print(f"TTS Error: {e}", file=sys.stderr)
@@ -2108,6 +2123,8 @@ def play_audio_stream(
     output_device_indices: list[str] | None = None,
     output_sample_rate: int | None = None,
 ) -> None:
+    global is_assistant_speaking, last_assistant_speech_time
+    is_assistant_speaking = True
     try:
         wav_file = None
         if save_path:
@@ -2153,6 +2170,9 @@ def play_audio_stream(
                 
     except Exception as e:
         print(f"Playback Error: {e}", file=sys.stderr)
+    finally:
+        is_assistant_speaking = False
+        last_assistant_speech_time = time.time()
 
 
 def play_audio(
@@ -2162,6 +2182,8 @@ def play_audio(
     output_device_indices: list[str] | None = None,
     output_sample_rate: int | None = None,
 ) -> bool:
+    global is_assistant_speaking, last_assistant_speech_time
+    is_assistant_speaking = True
     try:
         if is_pulseaudio_available() and shutil.which("paplay"):
             cmd = ["paplay"]
@@ -2197,21 +2219,26 @@ def play_audio(
             
         interrupt_event.clear()
         
-        # Clear any active playback and queue the new sound
-        unified_audio.clear()
-        unified_audio.play_chunk(data)
-        
-        # Wait until playback is finished or interrupted
-        while unified_audio.is_playing:
-            if interruptable and interrupt_event.is_set():
-                unified_audio.clear()
-                return False
-            time.sleep(0.05)
-            
+        stream = sd.OutputStream(
+            samplerate=samplerate,
+            channels=1,
+            dtype="float32",
+            device=output_device_indices[0] if output_device_indices else None,
+        )
+        with stream:
+            block_size = 1024
+            for i in range(0, len(data), block_size):
+                if interruptable and interrupt_event.is_set():
+                    return False
+                chunk = data[i : i + block_size]
+                stream.write(chunk)
         return True
     except Exception as e:
         print(f"Playback Error: {e}", file=sys.stderr)
         return False
+    finally:
+        is_assistant_speaking = False
+        last_assistant_speech_time = time.time()
 
 
 def is_lets_stop_command(text: str) -> bool:
