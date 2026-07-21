@@ -1142,19 +1142,10 @@ def find_input_device(keyword: str, min_channels: int = 1) -> int | None:
         return None
     keywords = [k.strip().lower() for k in keyword.replace("|", ",").split(",") if k.strip()]
     
-    # 1. First pass: check for explicit keyword matches
     for idx, device in enumerate(sd.query_devices()):
         name = device.get("name", "").lower()
         if device.get("max_input_channels", 0) >= min_channels:
             if any(kw in name for kw in keywords):
-                return idx
-
-    # 2. Second pass: fallback auto-detect any USB input microphone
-    for idx, device in enumerate(sd.query_devices()):
-        name = device.get("name", "").lower()
-        if device.get("max_input_channels", 0) >= min_channels:
-            if "usb" in name:
-                print(f"[Audio] Auto-detected USB input device #{idx}: '{device.get('name')}'", file=sys.stderr)
                 return idx
 
     return None
