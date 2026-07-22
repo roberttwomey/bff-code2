@@ -29,5 +29,6 @@ snapshot.jpg
 # macOS
 .DS_Store
 
-# Personal alternate performance scripts, kept local
-performance-script.json-0*
+# Performance scripts are per-machine and edited per show, kept local.
+# chat-manager.py falls back to the default scene when there is no script.
+performance-script.json*
