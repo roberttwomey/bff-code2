@@ -41,6 +41,7 @@ Environment variables:
     BFF_WHISPER_DEVICE      override Whisper device, e.g. cpu or cuda (default: cuda if available)
     BFF_PIPER_VOICE         override Piper voice path if --piper-voice not provided
     BFF_PLAYBACK_SPEED      override playback speed multiplier (default: 1.0)
+    BFF_PLAYBACK_TAIL_SILENCE seconds of silence appended after the last speech chunk so the sink can't clip it (default: 0.1)
     BFF_INTERRUPTABLE       override interruptable behavior (default: true)
     BFF_FLUSH_ON_INTERRUPT  override audio queue flushing on user interruption (default: false)
     BFF_LOG_ROOT            override session history root (default: ./captures)
@@ -241,6 +242,9 @@ DEFAULT_VLM_MODEL = os.environ.get("BFF_VLM_MODEL", "moondream")
 DEFAULT_WHISPER_MODEL = os.environ.get("BFF_WHISPER_MODEL", "tiny.en")
 DEFAULT_SAMPLE_RATE = int(os.environ.get("BFF_SAMPLE_RATE", "16000"))
 DEFAULT_PLAYBACK_SPEED = float(os.environ.get("BFF_PLAYBACK_SPEED", "1.0"))
+# Silence appended after the last synthesized chunk so the release of the final
+# word survives whatever the sink discards when the stream is torn down.
+PLAYBACK_TAIL_SILENCE = float(os.environ.get("BFF_PLAYBACK_TAIL_SILENCE", "0.1"))
 DEFAULT_INPUT_DEVICE_KEYWORD = os.environ.get(
     "BFF_INPUT_DEVICE_KEYWORD", "Wireless Mic Rx"
 )
@@ -2523,6 +2527,70 @@ def send_dashboard_audio_interrupt() -> None:
     dashboard_audio_relay.interrupt_stream()
 
 
+def drain_playback_tail(
+    output_stream: Any | None,
+    target_rate: int,
+    frames_written: int = 0,
+    stream_started_at: float | None = None,
+    interrupt_event: threading.Event | None = None,
+) -> None:
+    """Let the last word finish before the caller tears the stream down.
+
+    Writing the final chunk only hands it to the sink. sounddevice documents
+    stop() as waiting for pending buffers, but it does not on the Jetson's
+    ALSA->PulseAudio sink: measured there, stop() returned with 0.41 s of a
+    1.5 s tone still unplayed, which is exactly the clipped tail. The stream's
+    reported latency (0.035 s) understates the server-side buffer by an order
+    of magnitude and is useless for sizing the wait, so derive what is still in
+    flight from how much audio has been written against how long the stream has
+    been open. On the unified_audio path nothing waits for the callback to drain
+    the deque at all, so wait on the queue itself there.
+
+    Also keeps the caller's `last_assistant_speech_time` honest - barge-in echo
+    gating measures from when sound stopped, not from when the last chunk was
+    queued. Returns early on interrupt: a barge-in *wants* the tail cut."""
+    pad_frames = int(target_rate * PLAYBACK_TAIL_SILENCE)
+    silence = np.zeros(max(pad_frames, 0), dtype=np.float32)
+
+    if output_stream is not None:
+        # A short pad first, so anything the sink drops at teardown (a partial
+        # final period) is silence rather than the release of the last word.
+        if pad_frames > 0:
+            try:
+                output_stream.write(silence)
+                frames_written += pad_frames
+            except Exception:
+                pass
+        if stream_started_at is None:
+            return
+        pending = frames_written / float(target_rate) - (time.time() - stream_started_at)
+        deadline = time.time() + min(max(pending, 0.0), 5.0)
+        while time.time() < deadline:
+            if interrupt_event is not None and interrupt_event.is_set():
+                return
+            time.sleep(0.02)
+        return
+
+    if pad_frames > 0:
+        unified_audio.play_chunk(silence)
+    deadline = time.time() + PLAYBACK_TAIL_SILENCE + 2.0
+    pending = unified_audio.queued_frames()
+    last_progress = time.time()
+    while pending > 0 and time.time() < deadline:
+        if interrupt_event is not None and interrupt_event.is_set():
+            return
+        time.sleep(0.02)
+        remaining = unified_audio.queued_frames()
+        if remaining < pending:
+            last_progress = time.time()
+        elif time.time() - last_progress > 0.5:
+            # Nobody is draining the deque - the duplex callback only exists on
+            # the CoreAudio path, so if the dedicated stream failed to open on a
+            # PulseAudio host there is no consumer. Don't stall every turn.
+            return
+        pending = remaining
+
+
 def play_audio_stream(
     audio_queue: queue.Queue[tuple[str | None, np.ndarray] | np.ndarray | None],
     sample_rate: int,
@@ -2547,6 +2615,9 @@ def play_audio_stream(
 
         target_rate = CURRENT_STREAM_SAMPLERATE
         send_dashboard_audio_start(target_rate)
+        # Written-vs-elapsed bookkeeping for drain_playback_tail.
+        stream_started_at: float | None = None
+        frames_written = 0
 
         # On the PulseAudio path phrase_stream opens an input-only InputStream, so
         # nothing else owns the output device and we need our own stream. On the
@@ -2564,6 +2635,7 @@ def play_audio_stream(
                     latency="high",
                 )
                 output_stream.start()
+                stream_started_at = time.time()
             except Exception as stream_err:
                 print(f"[Audio] Warning: Could not open dedicated output stream: {stream_err}", file=sys.stderr)
                 output_stream = None
@@ -2636,6 +2708,7 @@ def play_audio_stream(
                 # 2. Output to local audio device
                 if output_stream is not None:
                     output_stream.write(sub_chunk.astype(np.float32))
+                    frames_written += len(sub_chunk)
                 else:
                     unified_audio.play_chunk(sub_chunk)
                     while unified_audio.queued_frames() > max_backlog_frames:
@@ -2645,6 +2718,15 @@ def play_audio_stream(
 
             if was_interrupted:
                 break
+
+        if not was_interrupted:
+            drain_playback_tail(
+                output_stream,
+                target_rate,
+                frames_written=frames_written,
+                stream_started_at=stream_started_at,
+                interrupt_event=interrupt_event if interruptable else None,
+            )
 
         if wav_file:
             wav_file.close()
@@ -2724,6 +2806,8 @@ def play_audio(
                 device=output_device_indices[0] if output_device_indices else None,
             )
             with stream:
+                stream_started_at = time.time()
+                frames_written = 0
                 for i in range(0, len(data), chunk_size):
                     if interruptable and interrupt_event.is_set():
                         was_interrupted = True
@@ -2732,6 +2816,13 @@ def play_audio(
                     sub_chunk = data[i : i + chunk_size]
                     send_dashboard_audio_chunk(sub_chunk, samplerate)
                     stream.write(sub_chunk)
+                    frames_written += len(sub_chunk)
+                drain_playback_tail(
+                    stream,
+                    samplerate,
+                    frames_written=frames_written,
+                    stream_started_at=stream_started_at,
+                )
             return True
     except Exception as e:
         print(f"Playback Error: {e}", file=sys.stderr)
