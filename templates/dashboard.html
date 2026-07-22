@@ -637,6 +637,8 @@
                                 style="color: #ffffff; font-weight: 400;">-- V</span></div>
                         <div><span style="color: var(--text-muted);">VELOCITY:</span> <span id="bodyVel"
                                 style="color: #ffffff; font-weight: 400;">-- m/s</span></div>
+                        <div><span style="color: var(--text-muted);">BODY HEIGHT:</span> <span id="bodyHeight"
+                                style="color: #ffffff; font-weight: 400;">-- m</span></div>
                         <div><span style="color: var(--text-muted);">IMU PITCH:</span> <span id="imuPitch"
                                 style="color: #ffffff; font-weight: 400;">--°</span></div>
                         <div><span style="color: var(--text-muted);">IMU ROLL:</span> <span id="imuRoll"
@@ -1217,13 +1219,20 @@
                 const v = lowstate.sport_state.velocity;
                 const speed = Math.sqrt(v[0] * v[0] + v[1] * v[1]);
                 document.getElementById('bodyVel').textContent = `${speed.toFixed(2)} m/s`;
+                const bodyHeight = lowstate.sport_state.body_height;
+                if (typeof bodyHeight === 'number') {
+                    document.getElementById('bodyHeight').textContent = `${bodyHeight.toFixed(2)} m`;
+                }
             }
 
             // Joint temperatures & Leg Joints detailed metrics extraction
             if (lowstate.motor_state) {
                 const motors = lowstate.motor_state;
 
-                const avgTemp = motors.length > 0 ? motors.reduce((sum, m) => sum + (m.temperature || 0), 0) / motors.length : 0;
+                // Only the first 12 entries are real motors - motor_state pads
+                // out to 20, and the zeroed placeholders would drag the mean down.
+                const realMotors = motors.slice(0, 12);
+                const avgTemp = realMotors.length > 0 ? realMotors.reduce((sum, m) => sum + (m.temperature || 0), 0) / realMotors.length : 0;
                 document.getElementById('jointTemp').textContent = `${avgTemp.toFixed(1)}°C`;
 
                 // Update Joint States on Leg cards (FL, FR, RL, RR)

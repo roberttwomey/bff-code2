@@ -171,6 +171,11 @@ last_assistant_speech_time = 0.0
 body_state_lock = threading.Lock()
 latest_body_state = ""
 
+# Motor order as the SDK reports it: three joints per leg, front-right first.
+# motor_state pads out to 20 entries; only these first 12 are real motors.
+LEG_NAMES = ("FR", "FL", "RR", "RL")
+JOINT_NAMES = tuple(f"{leg}_{joint}" for leg in LEG_NAMES for joint in ("hip", "thigh", "calf"))
+
 from piper import PiperVoice
 try:  # Optional type that some versions expose
     from piper import AudioChunk  # type: ignore
@@ -2662,11 +2667,12 @@ class VLMBackgroundWorker:
 
     def _fetch_body_state(self):
         """Poll the dashboard's /lowstate endpoint and cache a compact summary
-        (battery, velocity, tilt) for injection into the LLM prompt. Foot
-        contact is deliberately excluded - it doesn't return valid data on
-        the Go2 Pro. LowState_ has no velocity field on this hardware either,
-        so velocity comes from the sportmodestate subscription injected as
-        sport_state, falling back to slam_pose position deltas when absent."""
+        (battery, velocity, stance height, tilt, joint warmth and angles) for
+        injection into the LLM prompt. Foot contact is deliberately excluded -
+        it doesn't return valid data on the Go2 Pro. LowState_ has no velocity
+        field on this hardware either, so velocity and body height come from
+        the sportmodestate subscription injected as sport_state, falling back
+        to slam_pose position deltas when absent."""
         global latest_body_state
         dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
         url = f"http://localhost:{dashboard_port}/lowstate"
@@ -2715,9 +2721,39 @@ class VLMBackgroundWorker:
                     self._last_slam_position = position
                     self._last_slam_time = sample_time
 
+            # Stance height, also from the sport controller (~0.08 m sitting,
+            # ~0.32 m standing).
+            body_height = (data.get("sport_state") or {}).get("body_height")
+            height_part = f", body height {body_height:.2f} m" if body_height else ""
+
+            # Joint warmth and rotation. motor_state pads out to 20 entries;
+            # only the first 12 are real motors, and averaging over the padding
+            # would drag the mean down by the 8 zeroed placeholders.
+            joint_part = ""
+            motors = (data.get("motor_state") or [])[:12]
+            if len(motors) == 12:
+                temps = [m.get("temperature", 0) for m in motors]
+                hottest = max(range(12), key=lambda i: temps[i])
+                coolest = min(range(12), key=lambda i: temps[i])
+                angles = []
+                for leg_index, leg in enumerate(LEG_NAMES):
+                    hip, thigh, calf = (
+                        math.degrees(motors[leg_index * 3 + joint].get("q", 0.0))
+                        for joint in range(3)
+                    )
+                    angles.append(f"{leg} {hip:.0f}/{thigh:.0f}/{calf:.0f}")
+                joint_part = (
+                    f", joints {sum(temps) / 12:.0f}°C average"
+                    f" (warmest {JOINT_NAMES[hottest]} {temps[hottest]}°C,"
+                    f" coolest {JOINT_NAMES[coolest]} {temps[coolest]}°C)"
+                    f", joint angles in degrees hip/thigh/calf {', '.join(angles)}"
+                )
+
             summary = (
-                f"battery {battery_pct:.0f}%, velocity {speed:.2f} m/s, "
+                f"battery {battery_pct:.0f}%, velocity {speed:.2f} m/s"
+                f"{height_part}, "
                 f"tilt pitch {pitch_deg:+.1f}° roll {roll_deg:+.1f}°"
+                f"{joint_part}"
             )
             with body_state_lock:
                 latest_body_state = summary
