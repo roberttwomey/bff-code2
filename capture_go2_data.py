@@ -108,7 +108,8 @@ class Go2DataCapturer:
         self.sport_state = {
             "velocity": [0.0, 0.0, 0.0],
             "yaw_speed": 0.0,
-            "body_height": 0.0
+            "body_height": 0.0,
+            "imu_temperature": 0.0
         }
 
         # Queues and control
@@ -566,10 +567,14 @@ class Go2DataCapturer:
                     data_field = message.get("data", {})
                     vel = data_field.get("velocity")
                     if vel:
+                        # imu_state.temperature rides along here and nowhere
+                        # else - the lowstate bridge sends rpy only.
+                        imu = data_field.get("imu_state") or {}
                         self.sport_state = {
                             "velocity": [float(v) for v in vel],
                             "yaw_speed": float(data_field.get("yaw_speed", 0.0)),
-                            "body_height": float(data_field.get("body_height", 0.0))
+                            "body_height": float(data_field.get("body_height", 0.0)),
+                            "imu_temperature": float(imu.get("temperature", 0.0))
                         }
                 except Exception as e:
                     logging.error(f"Error in sportmode callback: {e}")

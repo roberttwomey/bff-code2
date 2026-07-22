@@ -2965,12 +2965,14 @@ class VLMBackgroundWorker:
 
     def _fetch_body_state(self):
         """Poll the dashboard's /lowstate endpoint and cache a compact summary
-        (battery, velocity, stance height, tilt, joint warmth and angles) for
-        injection into the LLM prompt. Foot contact is deliberately excluded -
-        it doesn't return valid data on the Go2 Pro. LowState_ has no velocity
-        field on this hardware either, so velocity and body height come from
-        the sportmodestate subscription injected as sport_state, falling back
-        to slam_pose position deltas when absent."""
+        for injection into the LLM prompt: charge, stance, movement, and the
+        thermal gradient from battery to IMU. Deliberately narrow - this is
+        what the robot should be able to feel and talk about, not everything
+        the payload carries. Foot contact is excluded because it returns
+        nothing valid on the Go2 Pro. LowState_ has no velocity field on this
+        hardware either, so velocity, stance height and IMU temperature come
+        from the sportmodestate subscription injected as sport_state, falling
+        back to slam_pose position deltas for speed when absent."""
         global latest_body_state
         dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
         url = f"http://localhost:{dashboard_port}/lowstate"
@@ -2993,19 +2995,6 @@ class VLMBackgroundWorker:
                 # available. Overstates a lithium pack badly - it reads ~97%
                 # at an actual 55% - so it really is a last resort.
                 battery_pct = max(0.0, min(100.0, ((power_v - 22.0) / (29.6 - 22.0)) * 100))
-
-            # What the body is currently burning. bms current is in mA, and
-            # goes positive while charging.
-            power_part = ""
-            current_ma = bms.get("current")
-            if current_ma is not None and power_v:
-                watts = abs(current_ma) / 1000.0 * power_v
-                verb = "charging at" if current_ma > 0 else "drawing"
-                power_part = f" ({verb} {watts:.0f} W)"
-
-            rpy = (data.get("imu_state") or {}).get("rpy") or [0.0, 0.0, 0.0]
-            pitch_deg = math.degrees(rpy[0])
-            roll_deg = math.degrees(rpy[1])
 
             # Body-frame velocity straight from the sport controller's state
             # estimator - no SLAM jumps, so no spike guard needed.
@@ -3031,40 +3020,45 @@ class VLMBackgroundWorker:
                     self._last_slam_position = position
                     self._last_slam_time = sample_time
 
-            # Stance height, also from the sport controller (~0.08 m sitting,
-            # ~0.32 m standing).
-            body_height = (data.get("sport_state") or {}).get("body_height")
-            height_part = f", body height {body_height:.2f} m" if body_height else ""
+            sport_state = data.get("sport_state") or {}
 
-            # Joint warmth and rotation. motor_state pads out to 20 entries;
-            # only the first 12 are real motors, and averaging over the padding
-            # would drag the mean down by the 8 zeroed placeholders.
-            joint_part = ""
+            # Posture and movement as words, with the number only where it
+            # carries information. A bare "0.00 m/s" invites the model to
+            # narrate zeros; "still" is what the body actually feels.
+            stance = "standing" if (sport_state.get("body_height") or 0.0) > 0.2 else "lying down"
+            motion = "still" if speed < 0.05 else f"moving at {speed:.2f} m/s"
+
+            # Thermal gradient across the whole frame, sorted coolest to
+            # hottest so the ordering *is* the gradient - if load ever pushes a
+            # joint past the chassis, the sentence reorders itself rather than
+            # asserting a fixed story. motor_state pads out to 20 entries; only
+            # the first 12 are real motors.
+            readings = []
+            bq_ntc = bms.get("bq_ntc") or []
+            if bq_ntc:
+                # Hottest of the two pack thermistors - heat matters where it peaks.
+                readings.append((float(max(bq_ntc)), "battery pack"))
             motors = (data.get("motor_state") or [])[:12]
             if len(motors) == 12:
                 temps = [m.get("temperature", 0) for m in motors]
                 hottest = max(range(12), key=lambda i: temps[i])
                 coolest = min(range(12), key=lambda i: temps[i])
-                angles = []
-                for leg_index, leg in enumerate(LEG_NAMES):
-                    hip, thigh, calf = (
-                        math.degrees(motors[leg_index * 3 + joint].get("q", 0.0))
-                        for joint in range(3)
-                    )
-                    angles.append(f"{leg} {hip:.0f}/{thigh:.0f}/{calf:.0f}")
-                joint_part = (
-                    f", joints {sum(temps) / 12:.0f}°C average"
-                    f" (warmest {JOINT_NAMES[hottest]} {temps[hottest]}°C,"
-                    f" coolest {JOINT_NAMES[coolest]} {temps[coolest]}°C)"
-                    f", joint angles in degrees hip/thigh/calf {', '.join(angles)}"
-                )
+                readings.append((float(temps[coolest]), f"coolest joint {JOINT_NAMES[coolest]}"))
+                readings.append((float(temps[hottest]), f"warmest joint {JOINT_NAMES[hottest]}"))
+            board_temp = data.get("temperature_ntc1")
+            if board_temp:
+                readings.append((float(board_temp), "chassis"))
+            imu_temp = sport_state.get("imu_temperature")
+            if imu_temp:
+                readings.append((float(imu_temp), "IMU core"))
 
-            summary = (
-                f"battery {battery_pct:.0f}%{power_part}, velocity {speed:.2f} m/s"
-                f"{height_part}, "
-                f"tilt pitch {pitch_deg:+.1f}° roll {roll_deg:+.1f}°"
-                f"{joint_part}"
-            )
+            warmth_part = ""
+            if readings:
+                readings.sort()
+                warmth = ", ".join(f"{label} {value:.0f}°C" for value, label in readings)
+                warmth_part = f", warmth from cool to hot: {warmth}"
+
+            summary = f"battery {battery_pct:.0f}%, {stance}, {motion}{warmth_part}"
             with body_state_lock:
                 latest_body_state = summary
             print(f"[Body State] {summary}", file=sys.stderr)
