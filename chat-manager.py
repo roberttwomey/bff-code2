@@ -291,6 +291,18 @@ DEFAULT_SILENCE_THRESHOLD = float(os.environ.get("BFF_SILENCE_THRESHOLD", "0.015
 DEFAULT_SILENCE_DURATION = float(os.environ.get("BFF_SILENCE_DURATION", "0.8"))
 DEFAULT_MIN_PHRASE_SECONDS = float(os.environ.get("BFF_MIN_PHRASE_SECONDS", "0.5"))
 DEFAULT_BLOCK_DURATION = float(os.environ.get("BFF_BLOCK_DURATION", "0.2"))
+# How long the mic stays deaf after the assistant stops speaking, so the robot
+# does not transcribe its own voice as user input. Blocks inside this window are
+# dropped before they reach the queue, so nothing downstream - not even the
+# pre-roll below - can recover them; every millisecond here is a millisecond of
+# a user's reply that can go missing.
+#
+# It was 0.4s to match PULSE_LATENCY_MSEC, covering audio written to the sink
+# but not yet played. drain_playback_tail() now waits for exactly that before
+# stamping last_assistant_speech_time, so this only needs to cover room
+# reverberation and mic-side latency.
+POST_SPEECH_MUTE_SECONDS = float(os.environ.get("BFF_POST_SPEECH_MUTE", "0.15"))
+
 # Audio kept from just before speech is detected. The detector decides in whole
 # blocks, and the onset of a word - the unvoiced /h/ of "helper" - often scores
 # below threshold, so recording used to begin one block late and the first
@@ -2047,7 +2059,7 @@ def phrase_stream(
 
     def audio_callback(indata, outdata, frames, time_info, status):
         now = time.time()
-        mute_mic = is_assistant_speaking or (now - last_assistant_speech_time < 0.4)
+        mute_mic = is_assistant_speaking or (now - last_assistant_speech_time < POST_SPEECH_MUTE_SECONDS)
         if not mute_mic or config.interruptable:
             q.put(indata.copy())
         if outdata is not None:
