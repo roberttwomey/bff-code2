@@ -82,7 +82,7 @@ import threading
 import time
 import urllib.request
 from dataclasses import dataclass, asdict, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Callable, Iterable, List
 import shutil
@@ -1118,8 +1118,102 @@ def stop_dashboard_server(process: subprocess.Popen | None, dashboard_log: Any) 
         dashboard_log.close()
 
 
+# Seconds to add to this machine's clock to get real wall time. The Jetsons
+# have no RTC battery and, on the robot's network, no reachable NTP server, so
+# they boot at the epoch and count forward - session folders come out named
+# session-19700101-*. sync_clock_from_robot() fills this in at startup when it
+# can't set the system clock outright. Zero on a correctly-timed machine.
+CLOCK_OFFSET_SECONDS = 0.0
+
+
+def wall_now() -> datetime:
+    """Wall-clock now, corrected for a Jetson that booted without a clock.
+
+    Named wall_now rather than now because run_conversation() already binds a
+    local `now` for elapsed-time math, which would shadow this for the whole
+    function and fail at the session-naming call above it."""
+    return datetime.now() + timedelta(seconds=CLOCK_OFFSET_SECONDS)
+
+
+def read_robot_clock(interface: str, timeout: float = 4.0) -> float | None:
+    """The robot's own wall clock, from the stamp on its sportmodestate
+    messages. The Go2 keeps real time across our reboots and is reachable over
+    DDS on the internal network, which makes it the one time source that needs
+    no internet, no laptop and no human. Returns epoch seconds, or None."""
+    try:
+        from unitree_sdk2py.core.channel import ChannelSubscriber, ChannelFactoryInitialize
+        from unitree_sdk2py.idl.unitree_go.msg.dds_ import SportModeState_
+    except ImportError:
+        return None
+
+    stamped: list[float] = []
+
+    def handler(msg) -> None:
+        if not stamped:
+            stamped.append(msg.stamp.sec + msg.stamp.nanosec / 1e9)
+
+    try:
+        ChannelFactoryInitialize(0, interface)
+        subscriber = ChannelSubscriber("rt/sportmodestate", SportModeState_)
+        subscriber.Init(handler, 10)
+        deadline = time.time() + timeout
+        while not stamped and time.time() < deadline:
+            time.sleep(0.05)
+    except Exception as e:
+        print(f"[Clock] Could not read the robot's clock over DDS: {e}", file=sys.stderr)
+        return None
+
+    if not stamped:
+        return None
+    # A robot that also booted without a clock is no help.
+    return stamped[0] if stamped[0] > 1_600_000_000 else None
+
+
+def sync_clock_from_robot() -> None:
+    """Correct this machine's sense of time before anything is named by it.
+
+    Sets the system clock when that is permitted (passwordless sudo for date,
+    which also fixes file mtimes and every other program on the box) and
+    otherwise records an offset that now() applies. Skipped entirely when the
+    local clock already looks sane, so this is a no-op on a laptop."""
+    global CLOCK_OFFSET_SECONDS
+
+    if os.getenv("BFF_CLOCK_SYNC", "true").lower() in ("0", "false", "no", "off"):
+        return
+
+    local = time.time()
+    # 2025-01-01. Anything earlier means the machine booted without a clock.
+    if local > 1_735_689_600:
+        return
+
+    interface = os.getenv("BFF_DDS_INTERFACE", "enP8p1s0")
+    print(f"[Clock] Local clock reads {datetime.fromtimestamp(local):%Y-%m-%d %H:%M} - "
+          f"asking the robot for the time on {interface}...", file=sys.stderr)
+    robot_time = read_robot_clock(interface)
+    if robot_time is None:
+        print("[Clock] No usable time from the robot; timestamps will be wrong.", file=sys.stderr)
+        return
+
+    # Prefer the real fix. -n means never prompt: if the sudoers drop-in isn't
+    # installed this fails immediately rather than blocking startup on a
+    # password nobody is there to type.
+    result = subprocess.run(
+        ["sudo", "-n", "date", "-u", "-s", f"@{robot_time:.0f}"],
+        capture_output=True, text=True, check=False,
+    )
+    if result.returncode == 0:
+        print(f"[Clock] System clock set from the robot: {datetime.now():%Y-%m-%d %H:%M:%S}", file=sys.stderr)
+        return
+
+    CLOCK_OFFSET_SECONDS = robot_time - time.time()
+    print(f"[Clock] Cannot set the system clock ({result.stderr.strip() or 'sudo denied'}); "
+          f"applying a {CLOCK_OFFSET_SECONDS / 3600:.1f}h offset instead - session folders and "
+          f"logs will be dated correctly, file mtimes will not.", file=sys.stderr)
+    print(f"[Clock] Corrected time is now {wall_now():%Y-%m-%d %H:%M:%S}.", file=sys.stderr)
+
+
 def append_log_line(log_path: Path, payload: dict[str, Any]) -> None:
-    record = {"timestamp": datetime.now().isoformat(), **payload}
+    record = {"timestamp": wall_now().isoformat(), **payload}
     with log_path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
 
@@ -3216,7 +3310,7 @@ class VLMBackgroundWorker:
         vlm_dir = self.session_dir / "vlm_captures"
         vlm_dir.mkdir(parents=True, exist_ok=True)
 
-        timestamp_str = datetime.now().strftime("%Y%m%d-%H%M%S")
+        timestamp_str = wall_now().strftime("%Y%m%d-%H%M%S")
         image_path = vlm_dir / f"snapshot_{timestamp_str}.jpg"
         cv2.imwrite(str(image_path), frame)
         if WORKER_VERBOSE:
@@ -3393,9 +3487,13 @@ def run_conversation(config: ConversationConfig) -> None:
 
     preload_ollama_models(config)
 
+    # Before anything is named after the current time. The Jetson may have
+    # booted at the epoch; the robot knows what time it is.
+    sync_clock_from_robot()
+
     # Create session directory first so dashboard log can write to it
     log_dir = ensure_log_dir()
-    session_id = datetime.now().strftime("%Y%m%d-%H%M%S")
+    session_id = wall_now().strftime("%Y%m%d-%H%M%S")
     session_dir = log_dir / f"session-{session_id}"
     session_dir.mkdir(parents=True, exist_ok=True)
 
