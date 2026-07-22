@@ -363,6 +363,7 @@ class ConversationConfig:
     ollama_model: str = DEFAULT_OLLAMA_MODEL
     vlm_model: str = DEFAULT_VLM_MODEL
     no_vlm: bool = False
+    no_body: bool = False
     whisper_model: str = DEFAULT_WHISPER_MODEL
     whisper_compute_type: str = "int8"  # optimized for Jetson
     piper_voice: Path | None = None
@@ -498,6 +499,12 @@ def parse_args() -> ConversationConfig:
         action="store_true",
         help="Disable VLM scene captioning entirely: no VLM background worker and no VLM model preload "
         "(frees the VLM model's memory on constrained devices)",
+    )
+    parser.add_argument(
+        "--no-body",
+        action="store_true",
+        help="Stop polling the robot's telemetry and stop injecting the body state "
+        "(charge, stance, movement, joint warmth) into the LLM prompt",
     )
     parser.add_argument(
         "--ollama-think",
@@ -737,6 +744,7 @@ def parse_args() -> ConversationConfig:
         ollama_model=args.ollama_model,
         vlm_model=args.vlm_model,
         no_vlm=args.no_vlm,
+        no_body=args.no_body,
         whisper_model=args.whisper_model,
         whisper_compute_type=args.whisper_compute_type,
         piper_voice=args.piper_voice,
@@ -3099,7 +3107,12 @@ class VLMBackgroundWorker:
             
     def _run(self):
         global last_vlm_query_time
-        print("[VLM Worker] Started background VLM worker thread (change-triggered capture).", file=sys.stderr)
+        jobs = []
+        if not self.config.no_vlm:
+            jobs.append("scene captioning")
+        if not self.config.no_body:
+            jobs.append("body state")
+        print(f"[VLM Worker] Started background worker thread ({', '.join(jobs)}).", file=sys.stderr)
 
         while not self.stop_event.is_set():
             # Don't start a new capture while the chat model is generating a
@@ -3109,10 +3122,18 @@ class VLMBackgroundWorker:
                 time.sleep(0.1)
                 continue
 
-            self._capture_and_query()
-            self._fetch_body_state()
+            if not self.config.no_vlm:
+                self._capture_and_query()
+            if not self.config.no_body:
+                self._fetch_body_state()
 
-            wait_until = last_vlm_query_time + self.vlm_interval
+            # Pace from the last VLM query, which is the expensive step. With
+            # captioning off nothing advances that clock, so pace from now
+            # instead - otherwise the loop spins and hammers /lowstate.
+            if self.config.no_vlm:
+                wait_until = time.time() + self.vlm_interval
+            else:
+                wait_until = last_vlm_query_time + self.vlm_interval
             while time.time() < wait_until and not self.stop_event.is_set():
                 time.sleep(0.1)
 
@@ -3623,9 +3644,14 @@ def run_conversation(config: ConversationConfig) -> None:
         },
     )
 
-    # Initialize and start VLM background worker
+    # Initialize and start the background worker. It carries two independent
+    # jobs - scene captioning and body-state polling - so it runs unless both
+    # are switched off.
     if config.no_vlm:
         print("[VLM Worker] Disabled via --no-vlm; skipping scene captioning.", file=sys.stderr)
+    if config.no_body:
+        print("[Body State] Disabled via --no-body; not polling telemetry.", file=sys.stderr)
+    if config.no_vlm and config.no_body:
         vlm_worker = None
     else:
         vlm_worker = VLMBackgroundWorker(config, session_dir, log_file)
@@ -4279,9 +4305,9 @@ def run_conversation(config: ConversationConfig) -> None:
             # notices while answering, not as background stated earlier.
             messages.append({"role": "user", "content": user_text})
 
-            if current_description:
+            if current_description and not config.no_vlm:
                 messages.append({"role": "system", "content": f"{VISUAL_CONTEXT_PREFIX} {current_description}"})
-            if current_body_state:
+            if current_body_state and not config.no_body:
                 messages.append({"role": "system", "content": f"{BODY_STATE_PREFIX} {current_body_state}"})
             
             # Truncate history: Keep generic system prompt + last N messages
