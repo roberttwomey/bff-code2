@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SNAPPER Robot Dashboard</title>
+    <title>{{ robot_name }} Robot Dashboard</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400&family=JetBrains+Mono:wght@300;400;500&display=swap"
         rel="stylesheet">
@@ -617,7 +617,7 @@
                     <div
                         style="display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem; border-bottom: 1px solid var(--panel-border); padding-bottom: 12px; margin-bottom: 12px;">
                         <div><span style="color: var(--text-muted);">DEVICE NAME:</span> <span
-                                style="color: #ffffff; font-weight: 400;">snapper.local</span></div>
+                                style="color: #ffffff; font-weight: 400;">{{ device_name }}</span></div>
                         <div><span style="color: var(--text-muted);">CONNECTION:</span> <span id="connStatus"
                                 style="color: #ffffff; font-weight: 400;">ONLINE</span></div>
                         <div><span style="color: var(--text-muted);">WEB AUDIO:</span> <span id="webAudioStatus"
@@ -1359,7 +1359,7 @@
                 welcomeRemoved = true;
             }
 
-            const rawSpeaker = payload.speaker || (logType === 'user' ? 'USER' : 'SNAPPER');
+            const rawSpeaker = payload.speaker || (logType === 'user' ? 'USER' : '{{ robot_name }}');
             const speakerName = rawSpeaker.toUpperCase();
             const speakerPrefix = `[${speakerName}] `;
 

@@ -7,6 +7,7 @@ body telemetry data (WebSockets), and Chat-Manager logs (WebSockets).
 
 import os
 import sys
+import socket
 import time
 import json
 import queue
@@ -128,7 +129,18 @@ def index():
                 lidar_settings = json.load(f)
         except Exception as e:
             print(f"[Dashboard Server] Error loading lidar_settings.json: {e}")
-    return render_template('dashboard.html', server_lidar_settings=lidar_settings)
+    # BFF_SPEAKER is the name chat-manager already labels its own turns with,
+    # so the dashboard borrows it rather than inventing a second setting.
+    # BFF_DEVICE_NAME is just the host shown in the header; it defaults to this
+    # machine's own hostname, which is right on both Jetsons.
+    robot_name = os.environ.get("BFF_SPEAKER", "SNAPPER").upper()
+    device_name = os.environ.get("BFF_DEVICE_NAME") or f"{socket.gethostname()}.local"
+    return render_template(
+        'dashboard.html',
+        server_lidar_settings=lidar_settings,
+        robot_name=robot_name,
+        device_name=device_name,
+    )
 
 @app.route('/video_feed')
 def video_feed():
