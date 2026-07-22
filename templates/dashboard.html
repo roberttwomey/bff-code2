@@ -1199,9 +1199,10 @@
                 document.getElementById('footContact').textContent = `[ ${contacts[0]} | ${contacts[1]} | ${contacts[2]} | ${contacts[3]} ]`;
             }
 
-            // Velocity
-            if (lowstate.velocity) {
-                const v = lowstate.velocity || [0, 0, 0];
+            // Velocity — body frame, from the injected sportmodestate sample.
+            // LowState itself carries no velocity field on this hardware.
+            if (lowstate.sport_state && lowstate.sport_state.velocity) {
+                const v = lowstate.sport_state.velocity;
                 const speed = Math.sqrt(v[0] * v[0] + v[1] * v[1]);
                 document.getElementById('bodyVel').textContent = `${speed.toFixed(2)} m/s`;
             }

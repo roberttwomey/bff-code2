@@ -2626,8 +2626,9 @@ class VLMBackgroundWorker:
         self.change_threshold = float(os.getenv("BFF_VLM_CHANGE_THRESHOLD", "12.0"))
         self._last_compared_frame = None  # small grayscale frame, for change detection
 
-        # Previous SLAM sample, used to estimate velocity by position delta -
-        # LowState_ has no velocity field on this hardware.
+        # Fallback velocity estimate by SLAM position delta, used only when
+        # sport_state is missing from the payload (e.g. replaying an older
+        # session capture) - LowState_ has no velocity field on this hardware.
         self._last_slam_position = None
         self._last_slam_time = None
 
@@ -2664,7 +2665,8 @@ class VLMBackgroundWorker:
         (battery, velocity, tilt) for injection into the LLM prompt. Foot
         contact is deliberately excluded - it doesn't return valid data on
         the Go2 Pro. LowState_ has no velocity field on this hardware either,
-        so velocity is estimated from slam_pose position deltas between polls."""
+        so velocity comes from the sportmodestate subscription injected as
+        sport_state, falling back to slam_pose position deltas when absent."""
         global latest_body_state
         dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
         url = f"http://localhost:{dashboard_port}/lowstate"
@@ -2689,22 +2691,29 @@ class VLMBackgroundWorker:
             pitch_deg = math.degrees(rpy[0])
             roll_deg = math.degrees(rpy[1])
 
-            # Velocity via SLAM position delta between consecutive polls
+            # Body-frame velocity straight from the sport controller's state
+            # estimator - no SLAM jumps, so no spike guard needed.
             speed = 0.0
-            position = (data.get("slam_pose") or {}).get("position")
-            sample_time = payload.get("timestamp")
-            if position is not None and sample_time is not None:
-                if self._last_slam_position is not None and self._last_slam_time is not None:
-                    dt = sample_time - self._last_slam_time
-                    if dt > 0.05:
-                        dx = position[0] - self._last_slam_position[0]
-                        dy = position[1] - self._last_slam_position[1]
-                        candidate_speed = math.hypot(dx, dy) / dt
-                        # Guard against SLAM relocalization jumps producing bogus spikes
-                        if candidate_speed <= 5.0:
-                            speed = candidate_speed
-                self._last_slam_position = position
-                self._last_slam_time = sample_time
+            velocity = (data.get("sport_state") or {}).get("velocity")
+            if velocity is not None:
+                speed = math.hypot(velocity[0], velocity[1])
+            else:
+                # Older captures have no sport_state: estimate by SLAM position
+                # delta between consecutive polls instead.
+                position = (data.get("slam_pose") or {}).get("position")
+                sample_time = payload.get("timestamp")
+                if position is not None and sample_time is not None:
+                    if self._last_slam_position is not None and self._last_slam_time is not None:
+                        dt = sample_time - self._last_slam_time
+                        if dt > 0.05:
+                            dx = position[0] - self._last_slam_position[0]
+                            dy = position[1] - self._last_slam_position[1]
+                            candidate_speed = math.hypot(dx, dy) / dt
+                            # Guard against SLAM relocalization jumps producing bogus spikes
+                            if candidate_speed <= 5.0:
+                                speed = candidate_speed
+                    self._last_slam_position = position
+                    self._last_slam_time = sample_time
 
             summary = (
                 f"battery {battery_pct:.0f}%, velocity {speed:.2f} m/s, "
