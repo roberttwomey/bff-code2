@@ -28,3 +28,6 @@ snapshot.jpg
 
 # macOS
 .DS_Store
+
+# Personal alternate performance scripts, kept local
+performance-script.json-0*
