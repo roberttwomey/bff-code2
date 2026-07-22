@@ -1169,6 +1169,13 @@ def read_robot_clock(interface: str, timeout: float = 4.0) -> float | None:
     return stamped[0] if stamped[0] > 1_600_000_000 else None
 
 
+def clock_is_broken(value: float) -> bool:
+    """Whether an epoch reading is too early to be now. 2025-01-01: this code
+    did not exist before then, so anything earlier is a machine that booted
+    without a clock."""
+    return value < 1_735_689_600
+
+
 def sync_clock_from_robot() -> None:
     """Correct this machine's sense of time before anything is named by it.
 
@@ -1182,8 +1189,7 @@ def sync_clock_from_robot() -> None:
         return
 
     local = time.time()
-    # 2025-01-01. Anything earlier means the machine booted without a clock.
-    if local > 1_735_689_600:
+    if not clock_is_broken(local):
         return
 
     interface = os.getenv("BFF_DDS_INTERFACE", "enP8p1s0")
@@ -1192,6 +1198,15 @@ def sync_clock_from_robot() -> None:
     robot_time = read_robot_clock(interface)
     if robot_time is None:
         print("[Clock] No usable time from the robot; timestamps will be wrong.", file=sys.stderr)
+        return
+
+    # Not every robot knows what year it is - helper's reports 2023. Only ever
+    # correct forwards: a machine that booted without a clock is behind, never
+    # ahead, so a stamp older than what we already believe is the robot being
+    # wrong rather than us.
+    if clock_is_broken(robot_time) or robot_time <= local:
+        print(f"[Clock] The robot's clock reads {datetime.fromtimestamp(robot_time):%Y-%m-%d %H:%M}, "
+              f"which is no better than ours - leaving the clock alone.", file=sys.stderr)
         return
 
     # Prefer the real fix. -n means never prompt: if the sudoers drop-in isn't
