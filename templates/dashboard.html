@@ -645,8 +645,6 @@
                                 style="color: #ffffff; font-weight: 400;">--°</span></div>
                         <div><span style="color: var(--text-muted);">IMU YAW:</span> <span id="imuYaw"
                                 style="color: #ffffff; font-weight: 400;">--°</span></div>
-                        <div><span style="color: var(--text-muted);">CONTACT:</span> <span id="footContact"
-                                style="color: #ffffff; font-weight: 400;">--</span></div>
                         <div><span style="color: var(--text-muted);">TEMP AVG:</span> <span id="jointTemp"
                                 style="color: #ffffff; font-weight: 400;">--°C</span></div>
                         <div><span style="color: var(--text-muted);">POWER:</span> <span id="powerState"
@@ -1204,13 +1202,6 @@
                 document.getElementById('imuPitch').textContent = `${pitchDeg.toFixed(1)}°`;
                 document.getElementById('imuRoll').textContent = `${rollDeg.toFixed(1)}°`;
                 document.getElementById('imuYaw').textContent = `${yawDeg.toFixed(1)}°`;
-            }
-
-            // Foot Contacts
-            if (lowstate.foot_force) {
-                const force = lowstate.foot_force;
-                const contacts = force.map(f => f > 40 ? 1 : 0);
-                document.getElementById('footContact').textContent = `[ ${contacts[0]} | ${contacts[1]} | ${contacts[2]} | ${contacts[3]} ]`;
             }
 
             // Velocity — body frame, from the injected sportmodestate sample.
