@@ -180,6 +180,23 @@ latest_body_state = ""
 LEG_NAMES = ("FR", "FL", "RR", "RL")
 JOINT_NAMES = tuple(f"{leg}_{joint}" for leg in LEG_NAMES for joint in ("hip", "thigh", "calf"))
 
+# Prefixes of the system messages the background workers inject. Shared so the
+# injection, the stale-message cleanup and the console log can't drift apart.
+VISUAL_CONTEXT_PREFIX = "Visual context (what you see):"
+BODY_STATE_PREFIX = "Body state:"
+
+# Per-capture chatter from the background workers (snapshot paths, YOLO hints,
+# query timings). Off by default - the packet lines below are what matters.
+WORKER_VERBOSE = os.getenv("BFF_WORKER_VERBOSE", "0").lower() in ("1", "true", "yes")
+
+
+def log_context_packet(prefix: str, content: str) -> None:
+    """Print a context packet exactly as the model will receive it.
+
+    Workers call this only when the packet's meaning changes, so the console
+    shows the model's view of the world rather than a sensor tick."""
+    print(f"[LLM context] {prefix} {content}", file=sys.stderr)
+
 from piper import PiperVoice
 try:  # Optional type that some versions expose
     from piper import AudioChunk  # type: ignore
@@ -2935,6 +2952,12 @@ class VLMBackgroundWorker:
         self._last_slam_position = None
         self._last_slam_time = None
 
+        # Console-logging state. The body state is polled every couple of
+        # seconds but only printed when it says something new, or when a fresh
+        # scene description means the model's whole context has moved.
+        self._last_logged_state_key = None
+        self._last_logged_scene = None
+
     def start(self):
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.thread.start()
@@ -3061,7 +3084,24 @@ class VLMBackgroundWorker:
             summary = f"battery {battery_pct:.0f}%, {stance}, {motion}{warmth_part}"
             with body_state_lock:
                 latest_body_state = summary
-            print(f"[Body State] {summary}", file=sys.stderr)
+
+            # Log only when the packet means something new. Raw temperatures
+            # jitter by a degree between polls, so compare the shape of the
+            # state - charge to the nearest 5%, posture, moving or not, and
+            # which joints are the extremes - rather than the string itself.
+            with vlm_lock:
+                current_scene = latest_scene_description
+            state_key = (
+                round(battery_pct / 5.0),
+                stance,
+                motion != "still",
+                readings[0][1] if readings else None,
+                readings[-1][1] if readings else None,
+            )
+            if state_key != self._last_logged_state_key or current_scene != self._last_logged_scene:
+                self._last_logged_state_key = state_key
+                self._last_logged_scene = current_scene
+                log_context_packet(BODY_STATE_PREFIX, summary)
         except Exception as e:
             print(f"[Body State] Failed to fetch lowstate: {e}", file=sys.stderr)
 
@@ -3140,7 +3180,8 @@ class VLMBackgroundWorker:
         timestamp_str = datetime.now().strftime("%Y%m%d-%H%M%S")
         image_path = vlm_dir / f"snapshot_{timestamp_str}.jpg"
         cv2.imwrite(str(image_path), frame)
-        print(f"[VLM Worker] Scene changed - snapshot saved to {image_path}", file=sys.stderr)
+        if WORKER_VERBOSE:
+            print(f"[VLM Worker] Scene changed - snapshot saved to {image_path}", file=sys.stderr)
 
         # Fetch latest YOLO detections from local dashboard server if available
         yolo_summary = ""
@@ -3176,7 +3217,8 @@ class VLMBackgroundWorker:
         )
         if yolo_summary:
             prompt += f"\n\nHigh-confidence bounding-box objects detected: {yolo_summary}"
-            print(f"[VLM Worker] Incorporating YOLO hints: {yolo_summary}", file=sys.stderr)
+            if WORKER_VERBOSE:
+                print(f"[VLM Worker] Incorporating YOLO hints: {yolo_summary}", file=sys.stderr)
 
         try:
             client = ollama.Client()
@@ -3224,11 +3266,18 @@ class VLMBackgroundWorker:
             description = "".join(description_chunks).strip()
             
             with vlm_lock:
+                previous_description = latest_scene_description
                 latest_scene_description = description
                 last_vlm_query_time = time.time()
-                
-            print(f"[VLM Worker] VLM query finished in {query_duration:.2f}s.", file=sys.stderr)
-            print(f"[VLM Worker] Description: {description}", file=sys.stderr)
+
+            if WORKER_VERBOSE:
+                print(f"[VLM Worker] VLM query finished in {query_duration:.2f}s.", file=sys.stderr)
+            # Same rule as the body state: print the packet the model receives,
+            # and only when it actually says something new. The scene-change
+            # check upstream still fires on lighting shifts that describe
+            # identically, so compare the text rather than trusting the trigger.
+            if description and description != previous_description:
+                log_context_packet(VISUAL_CONTEXT_PREFIX, description)
             
             # Save companion description text file
             desc_path = vlm_dir / f"description_{timestamp_str}.txt"
@@ -4066,16 +4115,16 @@ def run_conversation(config: ConversationConfig) -> None:
             messages = [
                 m for m in messages
                 if not (m["role"] == "system" and (
-                    m["content"].startswith("Visual context (what you see):")
-                    or m["content"].startswith("Body state:")
+                    m["content"].startswith(VISUAL_CONTEXT_PREFIX)
+                    or m["content"].startswith(BODY_STATE_PREFIX)
                 ))
             ]
 
             # Inject new visual context and body state if available
             if current_description:
-                messages.append({"role": "system", "content": f"Visual context (what you see): {current_description}"})
+                messages.append({"role": "system", "content": f"{VISUAL_CONTEXT_PREFIX} {current_description}"})
             if current_body_state:
-                messages.append({"role": "system", "content": f"Body state: {current_body_state}"})
+                messages.append({"role": "system", "content": f"{BODY_STATE_PREFIX} {current_body_state}"})
 
             messages.append({"role": "user", "content": user_text})
             
