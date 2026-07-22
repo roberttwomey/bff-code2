@@ -151,9 +151,43 @@ Check for skew by comparing against a machine that is properly synchronized:
 echo "skew: $(( $(date +%s) - $(ssh cohab@snapper.local date +%s) )) seconds"
 ```
 
-Correct it for the current boot (prompts for the sudo password):
+### How chat-manager fixes it
+
+At startup, if the local clock is clearly wrong (before 2025), `chat-manager.py` reads the robot's own wall clock from the `stamp` on its `sportmodestate` messages over DDS. The Go2 keeps real time across our reboots, needs no internet, and is already on the wire before anything gets named — which makes it the one time source that needs no laptop and no human.
+
+It then tries `sudo -n date`, which fixes file mtimes and every other program on the box. Without the sudoers drop-in below, that call fails immediately rather than blocking on a password nobody is there to type, and an in-process offset is applied instead — session folders, VLM snapshots and log timestamps come out right; file mtimes do not.
+
+Time is only ever corrected **forwards**. A machine that booted without a clock is behind real time, never ahead, so a robot stamp older than what the machine already believes means the robot is wrong rather than the machine. This is not hypothetical: helper's Go2 reports 2023, and is correctly refused.
+
+`BFF_CLOCK_SYNC=0` disables the whole mechanism; `BFF_DDS_INTERFACE` overrides the interface (default `enP8p1s0`).
+
+### Granting permission to set the clock
+
+Install a sudoers drop-in granting exactly one command, substituting the machine's user for `cohab`:
+
+```
+cohab ALL=(root) NOPASSWD: /usr/bin/date -u -s @*
+```
+
+```bash
+ssh -t cohab@snapper.local "sudo install -m 440 -o root -g root /tmp/99-bff-clock /etc/sudoers.d/99-bff-clock && sudo visudo -c"
+```
+
+`visudo -c` validates every sudoers file afterwards, so a syntax error cannot lock you out of sudo. Both Jetsons have this installed.
+
+### When the robot's clock is also wrong
+
+Then nothing automatic can help — helper is in this position. Its own clock and its robot's are both untrustworthy, so it comes up misdated after every reboot and stays that way. With the drop-in installed, correcting it from a machine that *is* synchronized needs no password:
+
+```bash
+ssh jesse@helper.local "sudo -n date -u -s @$(date -u +%s)"
+```
+
+Fixing the robot's clock is what removes the problem for good: after that the machine self-heals on every boot with nothing further to run. Failing that, the same one-liner in a boot-time systemd unit — sourcing time from the other Jetson rather than a laptop that may be absent — would close it, needing only key-based ssh between the two.
+
+Correct it manually for the current boot on a machine without the drop-in (prompts for the sudo password):
 ```bash
 ssh -t cohab@snapper.local "sudo date -u -s '$(date -u '+%Y-%m-%d %H:%M:%S')'"
 ```
 
-This does not survive a reboot. The durable fix is to give the machine a reachable NTP server — either one served on the LAN or a route out — after which `systemd-timesyncd` corrects itself at every boot with no further intervention.
+None of this survives a reboot by itself. The cleanest durable fix remains giving the machine a reachable NTP server — one served on the LAN or a route out — after which `systemd-timesyncd` corrects itself at every boot with no further intervention.
