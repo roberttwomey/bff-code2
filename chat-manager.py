@@ -57,6 +57,9 @@ Environment variables:
     BFF_PULSE_COMBINED_SINK_NAME combined PulseAudio sink name (default: bff_combined)
     BFF_PULSE_DEVICE_NAME   PulseAudio device name for PortAudio (default: pulse)
     BFF_PULSE_SOURCE_VOLUME override mic capture volume percentage (e.g. 60%) via pactl
+    BFF_DASHBOARD_START_ATTEMPTS how many times to (re)start dashboard_server.py while waiting for the WebRTC feed (default: 3)
+    BFF_DASHBOARD_HTTP_TIMEOUT   seconds to wait for the dashboard to serve its index page (default: 15)
+    BFF_DASHBOARD_STREAM_TIMEOUT seconds to wait for the robot camera/telemetry feeds before restarting the dashboard (default: 30)
 """
 
 from __future__ import annotations
@@ -867,6 +870,210 @@ def is_process_running(pattern: str) -> bool:
         return result.returncode == 0
     except FileNotFoundError:
         return False
+
+
+def env_bool(name: str, default: bool) -> bool:
+    """Read a boolean env var using the same spelling dashboard_server.py accepts."""
+    val = os.getenv(name)
+    if val is None:
+        return default
+    return val.lower() in ("true", "1", "yes", "on")
+
+
+def dashboard_url(path: str = "/") -> str:
+    port = os.getenv("BFF_DASHBOARD_PORT", "8080")
+    return f"http://localhost:{port}{path}"
+
+
+def dashboard_endpoint_ok(path: str, timeout: float = 2.0) -> bool:
+    """True when the dashboard answers `path` with 200. A 503 means Flask is up
+    but the WebRTC feed behind that endpoint hasn't delivered anything yet."""
+    import urllib.request
+    try:
+        with urllib.request.urlopen(dashboard_url(path), timeout=timeout) as response:
+            return response.status == 200
+    except Exception:
+        return False
+
+
+def kill_stale_dashboards() -> None:
+    """Clear any dashboard orphaned by a previous crash or a failed start attempt:
+    it still holds the port, so a new instance dies at bind while the orphan's dead
+    feed answers the index liveness check with a healthy-looking 200."""
+    try:
+        stale = subprocess.run(
+            ["pgrep", "-f", "dashboard_server.py"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if stale.stdout.strip():
+            print(
+                f"[Chat Manager] Killing stale dashboard_server.py (PID {' '.join(stale.stdout.split())})...",
+                file=sys.stderr,
+            )
+            subprocess.run(["pkill", "-f", "dashboard_server.py"], capture_output=True, check=False)
+            time.sleep(1.0)
+    except Exception:
+        pass
+
+
+def required_stream_endpoints(simulate: bool) -> list[tuple[str, str]]:
+    """The (label, path) endpoints that must return 200 before the robot feed
+    counts as usable. Only the streams this run actually enabled are checked -
+    with video off, /snapshot never returns a frame and waiting on it would
+    restart the dashboard forever."""
+    endpoints: list[tuple[str, str]] = []
+    if env_bool("BFF_CAPTURE_VIDEO", True):
+        endpoints.append(("camera", "/snapshot"))
+    # Playback sessions carry telemetry only if it was recorded, so in simulate
+    # mode the video frames alone decide whether the feed came up.
+    if not simulate and env_bool("BFF_CAPTURE_LOWSTATE", True):
+        endpoints.append(("telemetry", "/lowstate"))
+    return endpoints
+
+
+def spawn_dashboard_server(
+    session_dir: Path, session_id: str, extra_args: list[str]
+) -> tuple[subprocess.Popen, Any]:
+    """Launch dashboard_server.py against the current session, returning
+    (process, open log file). The log is appended to so a restarted attempt
+    doesn't erase the failure that caused the restart."""
+    script_dir = Path(__file__).resolve().parent
+    dashboard_log = open(session_dir / "dashboard_server.log", "a", encoding="utf-8")
+    dashboard_env = os.environ.copy()
+    dashboard_env["BFF_SESSION_ID"] = session_id
+    process = subprocess.Popen(
+        [sys.executable, str(script_dir / "dashboard_server.py")] + extra_args,
+        cwd=str(script_dir),
+        stdout=dashboard_log,
+        stderr=subprocess.STDOUT,
+        env=dashboard_env,
+    )
+    return process, dashboard_log
+
+
+def wait_for_dashboard(
+    process: subprocess.Popen,
+    endpoints: list[tuple[str, str]],
+    http_timeout: float,
+    stream_timeout: float,
+) -> bool:
+    """Wait for the dashboard to serve its index, then for every endpoint in
+    `endpoints` to stop returning 503. Returns False as soon as the subprocess
+    dies or either wait times out, so the caller can restart it."""
+    def process_alive() -> bool:
+        if process.poll() is None:
+            return True
+        print(
+            "[Chat Manager] Dashboard server subprocess exited unexpectedly. "
+            "Check dashboard_server.log for errors.",
+            file=sys.stderr,
+        )
+        return False
+
+    print(f"Waiting for dashboard server to become live at {dashboard_url()}...", file=sys.stderr)
+    deadline = time.time() + http_timeout
+    while time.time() < deadline:
+        if not process_alive():
+            return False
+        if dashboard_endpoint_ok("/"):
+            break
+        time.sleep(0.5)
+    else:
+        print("[Chat Manager] Dashboard server did not answer in time.", file=sys.stderr)
+        return False
+
+    if not endpoints:
+        return True
+
+    labels = ", ".join(label for label, _ in endpoints)
+    print(f"Dashboard server is live. Waiting for the robot feed ({labels})...", file=sys.stderr)
+    pending = list(endpoints)
+    deadline = time.time() + stream_timeout
+    while time.time() < deadline:
+        if not process_alive():
+            return False
+        still_pending = []
+        for label, path in pending:
+            if dashboard_endpoint_ok(path):
+                print(f"[Chat Manager] Robot {label} feed is up.", file=sys.stderr)
+            else:
+                still_pending.append((label, path))
+        pending = still_pending
+        if not pending:
+            return True
+        time.sleep(1.0)
+
+    print(
+        f"[Chat Manager] WebRTC feed never came up ({', '.join(label for label, _ in pending)} "
+        f"still 503 after {stream_timeout:.0f}s).",
+        file=sys.stderr,
+    )
+    return False
+
+
+def start_dashboard_with_retries(
+    session_dir: Path, session_id: str, extra_args: list[str], simulate: bool
+) -> tuple[subprocess.Popen | None, Any]:
+    """Start dashboard_server.py and confirm the WebRTC streams actually come up,
+    restarting it when they don't. The Go2 regularly refuses the first WebRTC
+    offer after boot: the capturer thread dies, Flask keeps serving 503s, and
+    every consumer silently degrades (VLM to the webcam, body state to nothing).
+    A restart almost always fixes it, so do it here instead of making the
+    operator relaunch the whole program. Returns (process, log file); the
+    process may be a feed-less dashboard if every attempt failed."""
+    attempts = max(1, int(os.getenv("BFF_DASHBOARD_START_ATTEMPTS", "3")))
+    http_timeout = float(os.getenv("BFF_DASHBOARD_HTTP_TIMEOUT", "15"))
+    stream_timeout = float(os.getenv("BFF_DASHBOARD_STREAM_TIMEOUT", "30"))
+    endpoints = required_stream_endpoints(simulate)
+
+    process: subprocess.Popen | None = None
+    dashboard_log: Any = None
+    for attempt in range(1, attempts + 1):
+        kill_stale_dashboards()
+        print(
+            f"Starting dashboard_server.py{' (simulate mode)' if simulate else ''} "
+            f"(attempt {attempt}/{attempts})...",
+            file=sys.stderr,
+        )
+        try:
+            process, dashboard_log = spawn_dashboard_server(session_dir, session_id, extra_args)
+        except Exception as e:
+            print(f"Failed to start dashboard_server.py: {e}", file=sys.stderr)
+            return None, None
+
+        if wait_for_dashboard(process, endpoints, http_timeout, stream_timeout):
+            print("Robot feed is live! Proceeding with conversation...", file=sys.stderr)
+            return process, dashboard_log
+
+        if attempt < attempts:
+            print("[Chat Manager] Restarting dashboard_server.py to retry the WebRTC connection...", file=sys.stderr)
+            stop_dashboard_server(process, dashboard_log)
+            process, dashboard_log = None, None
+            time.sleep(2.0)
+
+    print(
+        "[Warning] Robot feed did not come up after "
+        f"{attempts} attempt(s). Continuing without it - the VLM will fall back to the webcam.",
+        file=sys.stderr,
+    )
+    return process, dashboard_log
+
+
+def stop_dashboard_server(process: subprocess.Popen | None, dashboard_log: Any) -> None:
+    """Terminate dashboard_server.py and close its log, escalating to SIGKILL."""
+    if process is not None:
+        print("[Chat Manager] Terminating dashboard_server.py...", file=sys.stderr)
+        process.terminate()
+        try:
+            process.wait(timeout=3.0)
+        except subprocess.TimeoutExpired:
+            print("[Chat Manager] Force killing dashboard_server.py...", file=sys.stderr)
+            process.kill()
+            process.wait()
+    if dashboard_log is not None:
+        dashboard_log.close()
 
 
 def append_log_line(log_path: Path, payload: dict[str, Any]) -> None:
@@ -3038,76 +3245,26 @@ def run_conversation(config: ConversationConfig) -> None:
             cmd = ["ping", "-c", "1", "-t", "1" if sys.platform == "darwin" else "1", robot_ip]
             if sys.platform != "darwin":
                 cmd = ["ping", "-c", "1", "-W", "1", robot_ip]
-            try:
-                res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                start_dashboard = (res.returncode == 0)
-            except Exception:
-                start_dashboard = False
-
-    if start_dashboard:
-        # Clear any dashboard orphaned by a previous crash: it still holds the
-        # port, so the new instance dies at bind while the orphan's dead robot
-        # feed answers the liveness check below with a healthy-looking 200.
-        try:
-            stale = subprocess.run(
-                ["pgrep", "-f", "dashboard_server.py"],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-            if stale.stdout.strip():
-                print(
-                    f"[Chat Manager] Killing stale dashboard_server.py (PID {' '.join(stale.stdout.split())}) from a previous run...",
-                    file=sys.stderr,
-                )
-                subprocess.run(["pkill", "-f", "dashboard_server.py"], capture_output=True, check=False)
-                time.sleep(1.0)
-        except Exception:
-            pass
-
-        print(f"Starting dashboard_server.py{' (simulate mode)' if config.simulate else ''}...", file=sys.stderr)
-        try:
-            script_dir = Path(__file__).resolve().parent
-            dashboard_server_path = script_dir / "dashboard_server.py"
-            dashboard_log = open(session_dir / "dashboard_server.log", "w", encoding="utf-8")
-            dashboard_env = os.environ.copy()
-            dashboard_env["BFF_SESSION_ID"] = session_id
-            dashboard_process = subprocess.Popen(
-                [sys.executable, str(dashboard_server_path)] + dashboard_extra_args,
-                cwd=str(script_dir),
-                stdout=dashboard_log,
-                stderr=subprocess.STDOUT,
-                env=dashboard_env
-            )
-
-            # Wait until the dashboard server is live
-            dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
-            url = f"http://localhost:{dashboard_port}/"
-            print(f"Waiting for dashboard server to become live at {url}...", file=sys.stderr)
-
-            import urllib.request
-            start_wait = time.time()
-            is_live = False
-            while time.time() - start_wait < 15.0:
-                if dashboard_process.poll() is not None:
-                    print("[Chat Manager] Dashboard server subprocess exited unexpectedly. Check dashboard_server.log for errors.", file=sys.stderr)
-                    break
+            # A dog still joining the wifi drops the first ping or two, and one
+            # miss here means no dashboard at all for the whole session.
+            for ping_attempt in range(3):
                 try:
-                    # Query the dashboard server index route
-                    with urllib.request.urlopen(url, timeout=1.0) as response:
-                        if response.status == 200:
-                            is_live = True
-                            break
+                    res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    start_dashboard = (res.returncode == 0)
                 except Exception:
-                    pass
-                time.sleep(0.5)
+                    start_dashboard = False
+                if start_dashboard:
+                    break
+                if ping_attempt < 2:
+                    print(f"No reply from {robot_ip}, retrying...", file=sys.stderr)
+                    time.sleep(1.0)
 
-            if is_live:
-                print(f"Dashboard server is live! Proceeding with conversation...", file=sys.stderr)
-            else:
-                print("[Warning] Dashboard server did not respond in time. Proceeding without it.", file=sys.stderr)
-        except Exception as e:
-            print(f"Failed to start dashboard_server.py: {e}", file=sys.stderr)
+    dashboard_process = None
+    dashboard_log = None
+    if start_dashboard:
+        dashboard_process, dashboard_log = start_dashboard_with_retries(
+            session_dir, session_id, dashboard_extra_args, config.simulate
+        )
     else:
         print("Robot dog is offline or unavailable. Not starting dashboard server.", file=sys.stderr)
 
@@ -4060,18 +4217,8 @@ def run_conversation(config: ConversationConfig) -> None:
         print("\nExiting conversation.")
     finally:
         # Stop dashboard server if running
-        if 'dashboard_process' in locals() and dashboard_process is not None:
-            print("[Chat Manager] Terminating dashboard_server.py...", file=sys.stderr)
-            dashboard_process.terminate()
-            try:
-                dashboard_process.wait(timeout=3.0)
-            except subprocess.TimeoutExpired:
-                print("[Chat Manager] Force killing dashboard_server.py...", file=sys.stderr)
-                dashboard_process.kill()
-                dashboard_process.wait()
-            finally:
-                if 'dashboard_log' in locals() and dashboard_log is not None:
-                    dashboard_log.close()
+        if 'dashboard_process' in locals():
+            stop_dashboard_server(dashboard_process, dashboard_log if 'dashboard_log' in locals() else None)
 
         # behavioral-state-machine.py is intentionally left running - it controls
         # the robot's physical stand-up/stand-down state, which shouldn't be

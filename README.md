@@ -80,6 +80,16 @@ python3 chat-manager.py --require-wakeword
 python3 chat-manager.py --piper-voice speech/piper/en_GB-alan-medium.onnx
 ```
 
+When the robot is reachable, `chat-manager.py` starts `dashboard_server.py` itself and then waits for the WebRTC feed to actually deliver data (camera frames and telemetry) rather than just for Flask to answer. The Go2 often refuses the first WebRTC offer after boot, leaving the dashboard serving `503`s — the camera silently falls back to the local webcam and body state goes blank. Instead of needing a manual relaunch, the dashboard is restarted and retried:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `BFF_DASHBOARD_START_ATTEMPTS` | `3` | How many times to (re)start `dashboard_server.py` waiting for the feed |
+| `BFF_DASHBOARD_HTTP_TIMEOUT` | `15` | Seconds to wait for the dashboard's index page per attempt |
+| `BFF_DASHBOARD_STREAM_TIMEOUT` | `30` | Seconds to wait for camera/telemetry before restarting |
+
+Streams disabled for the run (`BFF_CAPTURE_VIDEO=false`, `BFF_CAPTURE_LOWSTATE=false`) are not waited on. If every attempt fails the session still continues with the webcam fallback.
+
 ### 3. Interactive 3D LiDAR Viewer
 Replay and explore recorded LiDAR voxel data in an interactive 3D scene (rotatable/pannable) using Three.js and WebGL:
 ```bash
