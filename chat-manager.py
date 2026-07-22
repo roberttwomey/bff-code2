@@ -291,6 +291,12 @@ DEFAULT_SILENCE_THRESHOLD = float(os.environ.get("BFF_SILENCE_THRESHOLD", "0.015
 DEFAULT_SILENCE_DURATION = float(os.environ.get("BFF_SILENCE_DURATION", "0.8"))
 DEFAULT_MIN_PHRASE_SECONDS = float(os.environ.get("BFF_MIN_PHRASE_SECONDS", "0.5"))
 DEFAULT_BLOCK_DURATION = float(os.environ.get("BFF_BLOCK_DURATION", "0.2"))
+# Audio kept from just before speech is detected. The detector decides in whole
+# blocks, and the onset of a word - the unvoiced /h/ of "helper" - often scores
+# below threshold, so recording used to begin one block late and the first
+# syllable was simply gone. Whisper also drops leading tokens when audio starts
+# abruptly at sample zero; this gives it something to lead in on.
+DEFAULT_PREROLL_SECONDS = float(os.environ.get("BFF_PREROLL_SECONDS", "0.6"))
 DEFAULT_VAD_BACKEND = os.environ.get("BFF_VAD_BACKEND", "silero").lower()
 DEFAULT_VAD_THRESHOLD = float(os.environ.get("BFF_VAD_THRESHOLD", "0.5"))
 DEFAULT_INTERRUPTABLE_ENV = os.environ.get("BFF_INTERRUPTABLE", "true").lower()
@@ -379,6 +385,7 @@ class ConversationConfig:
     silence_duration: float = DEFAULT_SILENCE_DURATION
     min_phrase_seconds: float = DEFAULT_MIN_PHRASE_SECONDS
     block_duration: float = DEFAULT_BLOCK_DURATION
+    preroll_seconds: float = DEFAULT_PREROLL_SECONDS
     vad_backend: str = DEFAULT_VAD_BACKEND
     vad_threshold: float = DEFAULT_VAD_THRESHOLD
     show_levels: bool = True
@@ -2031,6 +2038,7 @@ def phrase_stream(
     CURRENT_STREAM_SAMPLERATE = stream_samplerate
 
     block_size = max(1, int(stream_samplerate * config.block_duration))
+    preroll_blocks = max(0, round(config.preroll_seconds / config.block_duration))
     silence_blocks_required = max(1, int(config.silence_duration / config.block_duration))
     max_blocks = max(1, int(config.max_record_seconds / config.block_duration))
     min_blocks = max(1, int(config.min_phrase_seconds / config.block_duration))
@@ -2087,6 +2095,9 @@ def phrase_stream(
         silence_blocks = 0
         collected: List[np.ndarray] = []
         block_counter = 0
+        # Rolling window of the blocks just before speech was detected, so a
+        # phrase can begin with its own onset rather than one block after it.
+        preroll: collections.deque[np.ndarray] = collections.deque(maxlen=preroll_blocks)
 
         while True:
             if stop_event and stop_event.is_set():
@@ -2141,9 +2152,15 @@ def phrase_stream(
                     if on_voice_activity:
                         on_voice_activity()
                     recording = True
-                    collected = [block]
+                    # Lead with what was already in the air. Without this the
+                    # phrase starts at the block that tripped the detector,
+                    # which is routinely one block after the word began.
+                    collected = list(preroll) + [block]
+                    preroll.clear()
                     silence_blocks = 0
                     block_counter = 1
+                else:
+                    preroll.append(block)
             else:
                 collected.append(block)
                 if silence_detected:
@@ -2152,14 +2169,21 @@ def phrase_stream(
                     silence_blocks = 0
 
                 if silence_blocks >= silence_blocks_required or block_counter >= max_blocks:
-                    duration = len(collected) * config.block_duration
+                    # Counted from when recording started, not len(collected):
+                    # the prepended pre-roll is silence, and including it would
+                    # loosen this gate by the pre-roll length. (The count still
+                    # includes the trailing silence that ended the phrase, as
+                    # it always has - this keeps the threshold's old meaning,
+                    # it does not tighten it.)
+                    speech_blocks = block_counter
+                    duration = speech_blocks * config.block_duration
                     recording = False
                     silence_blocks = 0
                     block_counter = 0
                     if vad is not None:
                         vad.reset()
 
-                    if len(collected) < min_blocks:
+                    if speech_blocks < min_blocks:
                         print("Discarded short segment.", file=sys.stderr)
                         collected = []
                         meter_break(config.show_levels)
