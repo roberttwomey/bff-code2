@@ -185,6 +185,27 @@ JOINT_NAMES = tuple(f"{leg}_{joint}" for leg in LEG_NAMES for joint in ("hip", "
 VISUAL_CONTEXT_PREFIX = "Visual context (what you see):"
 BODY_STATE_PREFIX = "Body state:"
 
+# What counts as cool / warm / hot for each kind of sensor, since a small model
+# has no reference for these numbers and reads magnitude as alarm - it called a
+# 24°C pack "quite hot" when the charge beside it read 97%. Bands are (warm
+# above, hot above) in °C, against each part's own normal operating range.
+TEMP_BANDS = {
+    "cell": (38.0, 45.0),      # pack thermistors; sits near ambient
+    "joint": (55.0, 70.0),     # motors idle around 35-50 and climb under load
+    "chassis": (60.0, 75.0),   # main board NTC
+    "core": (88.0, 95.0),      # IMU die runs ~79 all the time
+}
+
+
+def describe_temperature(value: float, kind: str) -> str:
+    """Cool / warm / hot for a reading, judged against its own normal range."""
+    warm_above, hot_above = TEMP_BANDS[kind]
+    if value > hot_above:
+        return "hot"
+    if value > warm_above:
+        return "warm"
+    return "cool"
+
 # Per-capture chatter from the background workers (snapshot paths, YOLO hints,
 # query timings). Off by default - the packet lines below are what matters.
 WORKER_VERBOSE = os.getenv("BFF_WORKER_VERBOSE", "0").lower() in ("1", "true", "yes")
@@ -3054,34 +3075,52 @@ class VLMBackgroundWorker:
             # Thermal gradient across the whole frame, sorted coolest to
             # hottest so the ordering *is* the gradient - if load ever pushes a
             # joint past the chassis, the sentence reorders itself rather than
-            # asserting a fixed story. motor_state pads out to 20 entries; only
-            # the first 12 are real motors.
+            # asserting a fixed story. Nothing here shares a word with the
+            # charge reading above: "battery 97%" next to "battery pack 24°C"
+            # is what made the model call a cool pack hot. motor_state pads out
+            # to 20 entries; only the first 12 are real motors.
             readings = []
             bq_ntc = bms.get("bq_ntc") or []
             if bq_ntc:
                 # Hottest of the two pack thermistors - heat matters where it peaks.
-                readings.append((float(max(bq_ntc)), "battery pack"))
+                readings.append((float(max(bq_ntc)), "power cell", "cell"))
             motors = (data.get("motor_state") or [])[:12]
             if len(motors) == 12:
                 temps = [m.get("temperature", 0) for m in motors]
                 hottest = max(range(12), key=lambda i: temps[i])
                 coolest = min(range(12), key=lambda i: temps[i])
-                readings.append((float(temps[coolest]), f"coolest joint {JOINT_NAMES[coolest]}"))
-                readings.append((float(temps[hottest]), f"warmest joint {JOINT_NAMES[hottest]}"))
+                readings.append((float(temps[coolest]), f"coolest joint {JOINT_NAMES[coolest]}", "joint"))
+                readings.append((float(temps[hottest]), f"warmest joint {JOINT_NAMES[hottest]}", "joint"))
             board_temp = data.get("temperature_ntc1")
             if board_temp:
-                readings.append((float(board_temp), "chassis"))
+                readings.append((float(board_temp), "chassis", "chassis"))
             imu_temp = sport_state.get("imu_temperature")
             if imu_temp:
-                readings.append((float(imu_temp), "IMU core"))
+                readings.append((float(imu_temp), "sensing core", "core"))
 
             warmth_part = ""
             if readings:
                 readings.sort()
-                warmth = ", ".join(f"{label} {value:.0f}°C" for value, label in readings)
-                warmth_part = f", warmth from cool to hot: {warmth}"
+                items = []
+                running_hot = []
+                for value, label, kind in readings:
+                    verdict = describe_temperature(value, kind)
+                    if verdict == "hot":
+                        running_hot.append(label)
+                    if kind == "core" and verdict == "cool":
+                        # The IMU die sits at ~79°C forever. Calling that "cool"
+                        # invites alarm; calling it usual is what it is.
+                        items.append(f"{label} at its usual {value:.0f}°C")
+                    elif kind == "cell" or verdict != "cool":
+                        # Always qualify the cell - it is the reading that gets
+                        # misread - and anything that isn't cool.
+                        items.append(f"{label} {verdict} at {value:.0f}°C")
+                    else:
+                        items.append(f"{label} {value:.0f}°C")
+                headline = f"{', '.join(running_hot)} running hot" if running_hot else "nothing running hot"
+                warmth_part = f", {headline}: {', '.join(items)}"
 
-            summary = f"battery {battery_pct:.0f}%, {stance}, {motion}{warmth_part}"
+            summary = f"charge {battery_pct:.0f}%, {stance}, {motion}{warmth_part}"
             with body_state_lock:
                 latest_body_state = summary
 
@@ -4120,13 +4159,17 @@ def run_conversation(config: ConversationConfig) -> None:
                 ))
             ]
 
-            # Inject new visual context and body state if available
+            # The user's turn goes in first, then the context, so perception
+            # sits at the very end of the prompt. A small model weights the
+            # tail of its context most heavily, and these packets describe the
+            # moment being asked about - they should read as what the body
+            # notices while answering, not as background stated earlier.
+            messages.append({"role": "user", "content": user_text})
+
             if current_description:
                 messages.append({"role": "system", "content": f"{VISUAL_CONTEXT_PREFIX} {current_description}"})
             if current_body_state:
                 messages.append({"role": "system", "content": f"{BODY_STATE_PREFIX} {current_body_state}"})
-
-            messages.append({"role": "user", "content": user_text})
             
             # Truncate history: Keep generic system prompt + last N messages
             # This prevents the context from growing indefinitely and slowing down prefill.
