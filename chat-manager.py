@@ -3316,8 +3316,9 @@ def run_conversation(config: ConversationConfig) -> None:
         # Announce readiness
         print("Ready to chat...", file=sys.stderr)
         
-        startup_intro = ""#Bluetooth connected, ready to chat."
-        startup_prompt = "Give a short friendly greeting to start the conversation. One sentence."
+        startup_intro = ""
+        #Bluetooth connected, ready to chat."
+        startup_prompt = "Give a short greeting to start the conversation, one sentence."
         startup_line = ""
         for sentence in query_ollama_streaming(
             config.ollama_model,

@@ -197,6 +197,12 @@
             pointer-events: none !important;
         }
 
+        .lidar-panel.on-top,
+        .lidar-panel:has(#lidarFooter:hover),
+        .lidar-panel:has(#lidarFooter:not(.minimized)) {
+            z-index: 150 !important;
+        }
+
         .lidar-panel .panel-content {
             background: transparent !important;
             pointer-events: none !important;
@@ -369,6 +375,12 @@
             overflow: hidden;
             pointer-events: auto;
             /* always interactable */
+        }
+
+        .lidar-footer.on-top,
+        .lidar-footer:hover,
+        .lidar-footer:not(.minimized) {
+            z-index: 150;
         }
 
         .lidar-footer-handle {
@@ -737,7 +749,7 @@
                     <div class="lidar-footer minimized" id="lidarFooter">
                         <div class="lidar-footer-handle">
                             <span class="footer-title">Controls</span>
-                            <span class="footer-hint"> +++ </span>
+                            <span class="footer-hint">^</span>
                         </div>
                         <div class="lidar-footer-content">
                             <div class="ui-record-btn" id="recordBtn">
@@ -1470,16 +1482,36 @@
 
 
 
-        // Toggle LiDAR Footer Minimize/Expand
+        // Toggle LiDAR Footer Minimize/Expand & manage z-index
         const lidarFooterEl = document.getElementById('lidarFooter');
-        lidarFooterEl.addEventListener('click', (e) => {
-            if (e.target.closest('.ui-checkbox') || e.target.closest('.ui-slider') || e.target.closest('.ui-button') || e.target.closest('.ui-record-btn') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
-                return;
+        const lidarPanelEl = document.getElementById('lidarPanel');
+
+        function updateControlBarZIndex(isHovering = null) {
+            if (!lidarFooterEl || !lidarPanelEl) return;
+            const isHovered = isHovering !== null ? isHovering : lidarFooterEl.matches(':hover');
+            const isExpanded = !lidarFooterEl.classList.contains('minimized');
+            if (isHovered || isExpanded) {
+                lidarPanelEl.classList.add('on-top');
+                lidarFooterEl.classList.add('on-top');
+            } else {
+                lidarPanelEl.classList.remove('on-top');
+                lidarFooterEl.classList.remove('on-top');
             }
-            lidarFooterEl.classList.toggle('minimized');
-            // Trigger WebGL scene update recalculation
-            setTimeout(onWindowResize, 350);
-        });
+        }
+
+        if (lidarFooterEl) {
+            lidarFooterEl.addEventListener('mouseenter', () => updateControlBarZIndex(true));
+            lidarFooterEl.addEventListener('mouseleave', () => updateControlBarZIndex(false));
+            lidarFooterEl.addEventListener('click', (e) => {
+                if (e.target.closest('.ui-checkbox') || e.target.closest('.ui-slider') || e.target.closest('.ui-button') || e.target.closest('.ui-record-btn') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
+                    return;
+                }
+                lidarFooterEl.classList.toggle('minimized');
+                updateControlBarZIndex(lidarFooterEl.matches(':hover'));
+                // Trigger WebGL scene update recalculation
+                setTimeout(onWindowResize, 350);
+            });
+        }
 
         // Toggle canvas pointer-events on Interact Map checkbox state
         const interactMapCheckbox = document.getElementById('interactMap');
