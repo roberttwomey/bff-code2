@@ -62,6 +62,8 @@ Environment variables:
 from __future__ import annotations
 
 import argparse
+import base64
+import http.client
 import collections
 import difflib
 import json
@@ -74,6 +76,7 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.request
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path
@@ -96,6 +99,8 @@ import soundfile as sf
 from faster_whisper import WhisperModel
 import torch
 import dotenv
+
+SCRIPT_DIR = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
 
 import cv2
 import asyncio
@@ -166,6 +171,11 @@ last_assistant_speech_time = 0.0
 body_state_lock = threading.Lock()
 latest_body_state = ""
 
+# Motor order as the SDK reports it: three joints per leg, front-right first.
+# motor_state pads out to 20 entries; only these first 12 are real motors.
+LEG_NAMES = ("FR", "FL", "RR", "RL")
+JOINT_NAMES = tuple(f"{leg}_{joint}" for leg in LEG_NAMES for joint in ("hip", "thigh", "calf"))
+
 from piper import PiperVoice
 try:  # Optional type that some versions expose
     from piper import AudioChunk  # type: ignore
@@ -178,23 +188,40 @@ dotenv.load_dotenv()
 
 def fix_user_paths() -> None:
     """
-    If /home/cohab does not exist, replace /home/cohab prefixes in environment variables
-    with the current user's home directory.
+    Check environment variables for non-existent file paths and attempt to resolve them
+    relative to repository relative subpaths or current user's home directory.
     """
-    # Check if we are likely on a different machine (i.e., /home/cohab missing)
-    # or just want to be safe and use the current user's home.
     cohab_home = Path("/home/cohab")
-    if cohab_home.exists():
-        return
+    if not cohab_home.exists():
+        print(f"Notice: {cohab_home} not found. Remapping paths to {Path.home()}...", file=sys.stderr)
 
     current_home = Path.home()
-    print(f"Notice: {cohab_home} not found. Remapping paths to {current_home}...", file=sys.stderr)
+    repo_root = SCRIPT_DIR
 
-    for key, value in os.environ.items():
-        if value and "/home/cohab" in value:
-            new_value = value.replace("/home/cohab", str(current_home))
-            os.environ[key] = new_value
-            # print(f"  Remapped {key}: {value} -> {new_value}", file=sys.stderr)
+    for key, value in list(os.environ.items()):
+        if not value or not isinstance(value, str):
+            continue
+        p = Path(value)
+        if len(value) < 1000 and (value.startswith("/") or "speech" in value or "captures" in value or "logs" in value):
+            try:
+                exists = p.exists()
+            except (OSError, ValueError):
+                exists = False
+            if not exists:
+                parts = p.parts
+                found_rel = False
+                for sub in ("speech", "captures", "logs"):
+                    if sub in parts:
+                        idx = parts.index(sub)
+                        rel_path = Path(*parts[idx:])
+                        candidate = repo_root / rel_path
+                        if candidate.exists():
+                            os.environ[key] = str(candidate)
+                            found_rel = True
+                            break
+                if not found_rel and "/home/cohab" in value:
+                    new_value = value.replace("/home/cohab", str(current_home))
+                    os.environ[key] = new_value
 
 fix_user_paths()
 
@@ -226,7 +253,7 @@ DEFAULT_INTERRUPTABLE = DEFAULT_INTERRUPTABLE_ENV in ("true", "1", "yes", "on")
 DEFAULT_FLUSH_ON_INTERRUPT_ENV = os.environ.get("BFF_FLUSH_ON_INTERRUPT", "false").lower()
 DEFAULT_FLUSH_ON_INTERRUPT = DEFAULT_FLUSH_ON_INTERRUPT_ENV in ("true", "1", "yes", "on")
 LOG_ROOT = Path(
-    os.environ.get("BFF_LOG_ROOT", Path(__file__).resolve().parent / "captures")
+    os.environ.get("BFF_LOG_ROOT", SCRIPT_DIR / "captures")
 ).expanduser()
 DEFAULT_HISTORY_TRUNCATION_LIMIT = int(os.environ.get("BFF_HISTORY_TRUNCATION_LIMIT", "11"))
 DEFAULT_OLLAMA_TEMPERATURE = float(os.environ.get("BFF_OLLAMA_TEMPERATURE", "0.7"))
@@ -254,7 +281,7 @@ DEFAULT_PULSE_COMBINED_SINK_NAME = os.environ.get(
 )
 DEFAULT_PULSE_DEVICE_NAME = os.environ.get("BFF_PULSE_DEVICE_NAME", "pulse")
 DEFAULT_PULSE_SOURCE_VOLUME = os.environ.get("BFF_PULSE_SOURCE_VOLUME")
-HEADSET_STATE_FILE = Path(__file__).resolve().parent / "headset_state.json"
+HEADSET_STATE_FILE = SCRIPT_DIR / "headset_state.json"
 
 
 def load_headset_state() -> tuple[str | None, str | None]:
@@ -618,10 +645,32 @@ def parse_args() -> ConversationConfig:
     )
     args = parser.parse_args()
 
+    repo_root = SCRIPT_DIR
     if args.piper_voice is None:
-        parser.error("Piper voice model must be provided via --piper-voice or BFF_PIPER_VOICE")
+        default_voice = repo_root / "speech/piper/en_GB-aru-medium.onnx"
+        if default_voice.exists():
+            args.piper_voice = default_voice
+        else:
+            parser.error("Piper voice model must be provided via --piper-voice or BFF_PIPER_VOICE")
     if not args.piper_voice.exists():
-        parser.error(f"Piper voice model not found: {args.piper_voice}")
+        rel_voice = repo_root / args.piper_voice
+        if rel_voice.exists():
+            args.piper_voice = rel_voice
+        else:
+            parts = args.piper_voice.parts
+            found = False
+            if "speech" in parts:
+                idx = parts.index("speech")
+                candidate = repo_root / Path(*parts[idx:])
+                if candidate.exists():
+                    args.piper_voice = candidate
+                    found = True
+            if not found:
+                default_voice = repo_root / "speech/piper/en_GB-aru-medium.onnx"
+                if default_voice.exists():
+                    args.piper_voice = default_voice
+                else:
+                    parser.error(f"Piper voice model not found: {args.piper_voice}")
 
     input_keyword = args.input_device_keyword.strip() if args.input_device_keyword else None
     if input_keyword == "":
@@ -1512,6 +1561,11 @@ class UnifiedAudioSystem:
             self.chunks.clear()
             self.is_playing = False
 
+    def queued_frames(self) -> int:
+        """Frames still pending in the buffer, i.e. how far playback is ahead."""
+        with self.buffer_mutex:
+            return sum(len(c) for c in self.chunks)
+
     def fill_output(self, outdata: np.ndarray, frames: int):
         with self.buffer_mutex:
             if self.interrupt_event.is_set():
@@ -1552,13 +1606,47 @@ def phrase_stream(
         on_voice_activity: Callback called immediately when voice activity is detected
     """
 
+    # Only the duplex (CoreAudio) path shares one device with other audio clients.
+    # The PulseAudio path goes through the sound server, which does its own mixing
+    # and rate conversion, so leave the Jetson deployments on their existing rate.
+    prefer_native_rate = os.environ.get(
+        "BFF_NATIVE_STREAM_RATE",
+        "false" if is_pulseaudio_available() else "true",
+    ).lower() in ("true", "1", "yes", "on")
+
     stream_samplerate = config.sample_rate
     input_channels = 1
+
+    # CoreAudio accepts an off-native rate without complaint and resamples inside the
+    # IO proc, so check_input_settings alone never steers us to the native rate. Running
+    # the duplex stream off-native makes the hardware rate disagree with other clients on
+    # the device (notably the dashboard's 48kHz AudioContext), and each reconciliation is
+    # audible as a dropout. Prefer the device rate and resample down to config.sample_rate
+    # for VAD/STT below. On macOS input_device_index is deliberately None (system default
+    # device), so resolve the rate from the default input rather than skipping this.
+    if prefer_native_rate:
+        try:
+            rate_probe = sd.query_devices(
+                config.input_device_index if config.input_device_index is not None else None,
+                kind="input",
+            )
+            native_sr = int(rate_probe.get("default_samplerate", 0))
+            if native_sr and native_sr != config.sample_rate:
+                sd.check_input_settings(device=config.input_device_index, samplerate=native_sr)
+                stream_samplerate = native_sr
+                print(
+                    f"[Audio] Running input '{rate_probe.get('name', 'default')}' at its native "
+                    f"{native_sr}Hz; resampling to {config.sample_rate}Hz for VAD/STT.",
+                    file=sys.stderr,
+                )
+        except Exception as probe_err:
+            print(f"[Audio] Native rate probe failed, using {config.sample_rate}Hz: {probe_err}", file=sys.stderr)
+
     if config.input_device_index is not None:
         try:
             dev_info = sd.query_devices(config.input_device_index)
             input_channels = max(1, min(int(dev_info.get("max_input_channels", 1)), 2))
-            sd.check_input_settings(device=config.input_device_index, samplerate=config.sample_rate)
+            sd.check_input_settings(device=config.input_device_index, samplerate=stream_samplerate)
         except Exception:
             dev_info = sd.query_devices(config.input_device_index)
             native_sr = int(dev_info.get("default_samplerate", 48000))
@@ -2118,6 +2206,116 @@ class TTSWorker:
         self.audio_queue.put(None) # End of audio stream
 
 
+class DashboardAudioRelay:
+    """Non-blocking asynchronous worker queue for sending PCM audio streams to dashboard server."""
+    def __init__(self):
+        self.queue: queue.Queue[tuple[str, Any]] = queue.Queue(maxsize=300)
+        self.worker_thread = threading.Thread(target=self._run, daemon=True)
+        self.worker_thread.start()
+
+    def start_stream(self, sample_rate: int) -> None:
+        self.clear()
+        try:
+            self.queue.put_nowait(("start", sample_rate))
+        except queue.Full:
+            pass
+
+    def send_chunk(self, chunk: np.ndarray, sample_rate: int) -> None:
+        try:
+            self.queue.put_nowait(("chunk", (chunk.copy(), sample_rate)))
+        except queue.Full:
+            pass
+
+    def end_stream(self) -> None:
+        try:
+            self.queue.put_nowait(("end", None))
+        except queue.Full:
+            pass
+
+    def interrupt_stream(self) -> None:
+        self.clear()
+        try:
+            self.queue.put_nowait(("interrupt", None))
+        except queue.Full:
+            pass
+
+    def clear(self) -> None:
+        while not self.queue.empty():
+            try:
+                self.queue.get_nowait()
+            except queue.Empty:
+                break
+
+    def _run(self) -> None:
+        # One keep-alive connection for the whole run. A fresh TCP connect per 80ms
+        # chunk makes the worker fall behind in bursts, and the browser schedules those
+        # bursts back-to-back into the future — which is what pushes web playback out of
+        # sync with the local device. Reusing the socket keeps delivery paced with audio.
+        conn: http.client.HTTPConnection | None = None
+        dashboard_port = int(os.getenv("BFF_DASHBOARD_PORT", "8080"))
+
+        while True:
+            cmd, data = self.queue.get()
+            try:
+                if cmd == "start":
+                    path = "/audio_start"
+                    payload = json.dumps({"sample_rate": data}).encode("utf-8")
+                elif cmd == "chunk":
+                    chunk, sample_rate = data
+                    if chunk.ndim > 1:
+                        chunk = chunk.flatten()
+                    clipped = np.clip(chunk, -1.0, 1.0)
+                    int16_pcm = (clipped * 32767).astype(np.int16)
+                    b64_data = base64.b64encode(int16_pcm.tobytes()).decode("ascii")
+                    path = "/audio_chunk"
+                    payload = json.dumps({"data": b64_data, "sample_rate": sample_rate}).encode("utf-8")
+                elif cmd == "end":
+                    path = "/audio_end"
+                    payload = b"{}"
+                elif cmd == "interrupt":
+                    path = "/audio_interrupt"
+                    payload = b"{}"
+                else:
+                    continue
+
+                if conn is None:
+                    conn = http.client.HTTPConnection("127.0.0.1", dashboard_port, timeout=1.0)
+                conn.request("POST", path, body=payload,
+                             headers={"Content-Type": "application/json"})
+                # Drain the body or the socket cannot be reused for the next chunk.
+                conn.getresponse().read()
+            except Exception:
+                if conn is not None:
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    conn = None
+
+
+dashboard_audio_relay = DashboardAudioRelay()
+
+
+def send_dashboard_audio_start(sample_rate: int) -> None:
+    """Notify dashboard server that speech audio streaming is starting (non-blocking)."""
+    dashboard_audio_relay.start_stream(sample_rate)
+
+
+def send_dashboard_audio_chunk(chunk: np.ndarray, sample_rate: int) -> None:
+    """Send a PCM audio chunk to dashboard server for real-time Web Audio playback (non-blocking)."""
+    dashboard_audio_relay.send_chunk(chunk, sample_rate)
+
+
+def send_dashboard_audio_end() -> None:
+    """Notify dashboard server that speech audio streaming has completed (non-blocking)."""
+    dashboard_audio_relay.end_stream()
+
+
+def send_dashboard_audio_interrupt() -> None:
+    """Notify dashboard server that speech audio playback was interrupted (non-blocking)."""
+    dashboard_audio_relay.interrupt_stream()
+
+
 def play_audio_stream(
     audio_queue: queue.Queue[tuple[str | None, np.ndarray] | np.ndarray | None],
     sample_rate: int,
@@ -2131,6 +2329,7 @@ def play_audio_stream(
     global is_assistant_speaking, last_assistant_speech_time
     is_assistant_speaking = True
     output_stream = None
+    was_interrupted = False
     try:
         wav_file = None
         if save_path:
@@ -2140,23 +2339,41 @@ def play_audio_stream(
             wav_file.setframerate(sample_rate)
 
         target_rate = CURRENT_STREAM_SAMPLERATE
+        send_dashboard_audio_start(target_rate)
 
-        try:
-            dev_idx = output_device_indices[0] if output_device_indices else None
-            output_stream = sd.OutputStream(
-                samplerate=target_rate,
-                channels=1,
-                dtype="float32",
-                device=dev_idx,
-            )
-            output_stream.start()
-        except Exception as stream_err:
-            print(f"[Audio] Warning: Could not open dedicated output stream: {stream_err}", file=sys.stderr)
-            output_stream = None
-        
+        # On the PulseAudio path phrase_stream opens an input-only InputStream, so
+        # nothing else owns the output device and we need our own stream. On the
+        # duplex path (macOS) phrase_stream already holds an sd.Stream on this same
+        # device and drains unified_audio from its callback — opening a second
+        # stream there makes the two contend and drop out.
+        if is_pulseaudio_available():
+            try:
+                dev_idx = output_device_indices[0] if output_device_indices else None
+                output_stream = sd.OutputStream(
+                    samplerate=target_rate,
+                    channels=1,
+                    dtype="float32",
+                    device=dev_idx,
+                    latency="high",
+                )
+                output_stream.start()
+            except Exception as stream_err:
+                print(f"[Audio] Warning: Could not open dedicated output stream: {stream_err}", file=sys.stderr)
+                output_stream = None
+
+        # Slicing chunk into 50-100ms blocks (~80ms) for tight hardware/web audio sync
+        chunk_size_samples = max(256, int(target_rate * 0.08))
+        # How far unified_audio playback may run ahead of this loop. Writing to the
+        # dedicated stream blocks for the chunk duration and paces itself; the
+        # callback-driven path does not, so throttle on buffer depth instead to keep
+        # on_chunk_playback text logging aligned with what is actually audible.
+        max_backlog_frames = int(target_rate * 0.25)
+
         while True:
             if interruptable and interrupt_event.is_set():
+                was_interrupted = True
                 unified_audio.clear()
+                send_dashboard_audio_interrupt()
                 break
 
             try:
@@ -2184,23 +2401,47 @@ def play_audio_stream(
             if sample_rate != target_rate:
                 play_chunk = resample_audio(play_chunk, sample_rate, target_rate)
 
-            # Play chunk through dedicated OutputStream or fallback to unified_audio
-            if output_stream is not None:
-                output_stream.write(play_chunk.astype(np.float32))
-            else:
-                unified_audio.play_chunk(play_chunk)
-
             # Write original chunk to wav file if needed
             if wav_file:
-                if chunk.ndim == 1:
-                    chunk = chunk[:, np.newaxis]
-                clipped = np.clip(chunk, -1.0, 1.0)
+                w_chunk = play_chunk
+                if w_chunk.ndim == 1:
+                    w_chunk = w_chunk[:, np.newaxis]
+                clipped = np.clip(w_chunk, -1.0, 1.0)
                 int16_data = (clipped * 32767).astype(np.int16)
                 wav_file.writeframes(int16_data.tobytes())
 
+            # Sub-chunk streaming in ~80ms blocks to align USB hardware & Web Audio clocks
+            if play_chunk.ndim > 1:
+                play_chunk = play_chunk.flatten()
+
+            for start_i in range(0, len(play_chunk), chunk_size_samples):
+                if interruptable and interrupt_event.is_set():
+                    was_interrupted = True
+                    unified_audio.clear()
+                    send_dashboard_audio_interrupt()
+                    break
+
+                sub_chunk = play_chunk[start_i : start_i + chunk_size_samples]
+
+                # 1. Relays PCM to web dashboard (queued, never blocks this thread)
+                send_dashboard_audio_chunk(sub_chunk, target_rate)
+
+                # 2. Output to local audio device
+                if output_stream is not None:
+                    output_stream.write(sub_chunk.astype(np.float32))
+                else:
+                    unified_audio.play_chunk(sub_chunk)
+                    while unified_audio.queued_frames() > max_backlog_frames:
+                        if interruptable and interrupt_event.is_set():
+                            break
+                        time.sleep(0.02)
+
+            if was_interrupted:
+                break
+
         if wav_file:
             wav_file.close()
-                
+
     except Exception as e:
         print(f"Playback Error: {e}", file=sys.stderr)
     finally:
@@ -2210,6 +2451,10 @@ def play_audio_stream(
                 output_stream.close()
             except Exception:
                 pass
+        if was_interrupted:
+            send_dashboard_audio_interrupt()
+        else:
+            send_dashboard_audio_end()
         is_assistant_speaking = False
         last_assistant_speech_time = time.time()
 
@@ -2223,7 +2468,23 @@ def play_audio(
 ) -> bool:
     global is_assistant_speaking, last_assistant_speech_time
     is_assistant_speaking = True
+    was_interrupted = False
     try:
+        data, samplerate = sf.read(audio_path, dtype="float32")
+
+        target_rate = CURRENT_STREAM_SAMPLERATE
+        if samplerate != target_rate:
+            data = resample_audio(data, samplerate, target_rate)
+            samplerate = target_rate
+
+        if data.ndim > 1:
+            data = data.mean(axis=1) # mix down to mono
+
+        send_dashboard_audio_start(samplerate)
+        interrupt_event.clear()
+
+        chunk_size = max(256, int(samplerate * 0.08))
+
         if is_pulseaudio_available() and shutil.which("paplay"):
             cmd = ["paplay"]
             try:
@@ -2234,48 +2495,45 @@ def play_audio(
             except Exception:
                 pass
             cmd.append(str(audio_path))
-            
-            interrupt_event.clear()
+
             proc = subprocess.Popen(cmd)
-            while proc.poll() is None:
+            # Send chunks to dashboard in background while paplay plays locally
+            for i in range(0, len(data), chunk_size):
                 if interruptable and interrupt_event.is_set():
                     proc.terminate()
+                    was_interrupted = True
+                    send_dashboard_audio_interrupt()
                     return False
-                time.sleep(0.05)
+                sub_chunk = data[i : i + chunk_size]
+                send_dashboard_audio_chunk(sub_chunk, samplerate)
+                time.sleep(len(sub_chunk) / float(samplerate))
+            proc.wait()
             return proc.returncode == 0
-
-        # Sounddevice fallback for non-PulseAudio / macOS
-        data, samplerate = sf.read(audio_path, dtype="float32")
-        
-        # Resample to the active stream rate (e.g. 16000Hz or native 48000Hz)
-        target_rate = CURRENT_STREAM_SAMPLERATE
-        if samplerate != target_rate:
-            data = resample_audio(data, samplerate, target_rate)
-            samplerate = target_rate
-            
-        if data.ndim > 1:
-            data = data.mean(axis=1) # mix down to mono
-            
-        interrupt_event.clear()
-        
-        stream = sd.OutputStream(
-            samplerate=samplerate,
-            channels=1,
-            dtype="float32",
-            device=output_device_indices[0] if output_device_indices else None,
-        )
-        with stream:
-            block_size = 1024
-            for i in range(0, len(data), block_size):
-                if interruptable and interrupt_event.is_set():
-                    return False
-                chunk = data[i : i + block_size]
-                stream.write(chunk)
-        return True
+        else:
+            stream = sd.OutputStream(
+                samplerate=samplerate,
+                channels=1,
+                dtype="float32",
+                device=output_device_indices[0] if output_device_indices else None,
+            )
+            with stream:
+                for i in range(0, len(data), chunk_size):
+                    if interruptable and interrupt_event.is_set():
+                        was_interrupted = True
+                        send_dashboard_audio_interrupt()
+                        return False
+                    sub_chunk = data[i : i + chunk_size]
+                    send_dashboard_audio_chunk(sub_chunk, samplerate)
+                    stream.write(sub_chunk)
+            return True
     except Exception as e:
         print(f"Playback Error: {e}", file=sys.stderr)
         return False
     finally:
+        if was_interrupted:
+            send_dashboard_audio_interrupt()
+        else:
+            send_dashboard_audio_end()
         is_assistant_speaking = False
         last_assistant_speech_time = time.time()
 
@@ -2373,8 +2631,9 @@ class VLMBackgroundWorker:
         self.change_threshold = float(os.getenv("BFF_VLM_CHANGE_THRESHOLD", "12.0"))
         self._last_compared_frame = None  # small grayscale frame, for change detection
 
-        # Previous SLAM sample, used to estimate velocity by position delta -
-        # LowState_ has no velocity field on this hardware.
+        # Fallback velocity estimate by SLAM position delta, used only when
+        # sport_state is missing from the payload (e.g. replaying an older
+        # session capture) - LowState_ has no velocity field on this hardware.
         self._last_slam_position = None
         self._last_slam_time = None
 
@@ -2408,10 +2667,12 @@ class VLMBackgroundWorker:
 
     def _fetch_body_state(self):
         """Poll the dashboard's /lowstate endpoint and cache a compact summary
-        (battery, velocity, tilt) for injection into the LLM prompt. Foot
-        contact is deliberately excluded - it doesn't return valid data on
-        the Go2 Pro. LowState_ has no velocity field on this hardware either,
-        so velocity is estimated from slam_pose position deltas between polls."""
+        (battery, velocity, stance height, tilt, joint warmth and angles) for
+        injection into the LLM prompt. Foot contact is deliberately excluded -
+        it doesn't return valid data on the Go2 Pro. LowState_ has no velocity
+        field on this hardware either, so velocity and body height come from
+        the sportmodestate subscription injected as sport_state, falling back
+        to slam_pose position deltas when absent."""
         global latest_body_state
         dashboard_port = os.getenv("BFF_DASHBOARD_PORT", "8080")
         url = f"http://localhost:{dashboard_port}/lowstate"
@@ -2436,26 +2697,63 @@ class VLMBackgroundWorker:
             pitch_deg = math.degrees(rpy[0])
             roll_deg = math.degrees(rpy[1])
 
-            # Velocity via SLAM position delta between consecutive polls
+            # Body-frame velocity straight from the sport controller's state
+            # estimator - no SLAM jumps, so no spike guard needed.
             speed = 0.0
-            position = (data.get("slam_pose") or {}).get("position")
-            sample_time = payload.get("timestamp")
-            if position is not None and sample_time is not None:
-                if self._last_slam_position is not None and self._last_slam_time is not None:
-                    dt = sample_time - self._last_slam_time
-                    if dt > 0.05:
-                        dx = position[0] - self._last_slam_position[0]
-                        dy = position[1] - self._last_slam_position[1]
-                        candidate_speed = math.hypot(dx, dy) / dt
-                        # Guard against SLAM relocalization jumps producing bogus spikes
-                        if candidate_speed <= 5.0:
-                            speed = candidate_speed
-                self._last_slam_position = position
-                self._last_slam_time = sample_time
+            velocity = (data.get("sport_state") or {}).get("velocity")
+            if velocity is not None:
+                speed = math.hypot(velocity[0], velocity[1])
+            else:
+                # Older captures have no sport_state: estimate by SLAM position
+                # delta between consecutive polls instead.
+                position = (data.get("slam_pose") or {}).get("position")
+                sample_time = payload.get("timestamp")
+                if position is not None and sample_time is not None:
+                    if self._last_slam_position is not None and self._last_slam_time is not None:
+                        dt = sample_time - self._last_slam_time
+                        if dt > 0.05:
+                            dx = position[0] - self._last_slam_position[0]
+                            dy = position[1] - self._last_slam_position[1]
+                            candidate_speed = math.hypot(dx, dy) / dt
+                            # Guard against SLAM relocalization jumps producing bogus spikes
+                            if candidate_speed <= 5.0:
+                                speed = candidate_speed
+                    self._last_slam_position = position
+                    self._last_slam_time = sample_time
+
+            # Stance height, also from the sport controller (~0.08 m sitting,
+            # ~0.32 m standing).
+            body_height = (data.get("sport_state") or {}).get("body_height")
+            height_part = f", body height {body_height:.2f} m" if body_height else ""
+
+            # Joint warmth and rotation. motor_state pads out to 20 entries;
+            # only the first 12 are real motors, and averaging over the padding
+            # would drag the mean down by the 8 zeroed placeholders.
+            joint_part = ""
+            motors = (data.get("motor_state") or [])[:12]
+            if len(motors) == 12:
+                temps = [m.get("temperature", 0) for m in motors]
+                hottest = max(range(12), key=lambda i: temps[i])
+                coolest = min(range(12), key=lambda i: temps[i])
+                angles = []
+                for leg_index, leg in enumerate(LEG_NAMES):
+                    hip, thigh, calf = (
+                        math.degrees(motors[leg_index * 3 + joint].get("q", 0.0))
+                        for joint in range(3)
+                    )
+                    angles.append(f"{leg} {hip:.0f}/{thigh:.0f}/{calf:.0f}")
+                joint_part = (
+                    f", joints {sum(temps) / 12:.0f}°C average"
+                    f" (warmest {JOINT_NAMES[hottest]} {temps[hottest]}°C,"
+                    f" coolest {JOINT_NAMES[coolest]} {temps[coolest]}°C)"
+                    f", joint angles in degrees hip/thigh/calf {', '.join(angles)}"
+                )
 
             summary = (
-                f"battery {battery_pct:.0f}%, velocity {speed:.2f} m/s, "
+                f"battery {battery_pct:.0f}%, velocity {speed:.2f} m/s"
+                f"{height_part}, "
                 f"tilt pitch {pitch_deg:+.1f}° roll {roll_deg:+.1f}°"
+                f"{joint_part}"
             )
             with body_state_lock:
                 latest_body_state = summary
@@ -3029,6 +3327,7 @@ def run_conversation(config: ConversationConfig) -> None:
                 current_tts_worker.pause()
                 current_tts_worker.flush()  # Flush queued audio chunks
             playback_interrupt.set()
+            send_dashboard_audio_interrupt()
             # Also abort current LLM generation if in progress
             if current_abort_event is not None:
                 current_abort_event.set()
@@ -3053,8 +3352,9 @@ def run_conversation(config: ConversationConfig) -> None:
         # Announce readiness
         print("Ready to chat...", file=sys.stderr)
         
-        startup_intro = ""#Bluetooth connected, ready to chat."
-        startup_prompt = "Give a short friendly greeting to start the conversation. One sentence."
+        startup_intro = ""
+        #Bluetooth connected, ready to chat."
+        startup_prompt = "Give a short greeting to start the conversation, one sentence."
         startup_line = ""
         for sentence in query_ollama_streaming(
             config.ollama_model,

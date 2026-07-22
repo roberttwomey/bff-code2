@@ -197,6 +197,12 @@
             pointer-events: none !important;
         }
 
+        .lidar-panel.on-top,
+        .lidar-panel:has(#lidarFooter:hover),
+        .lidar-panel:has(#lidarFooter:not(.minimized)) {
+            z-index: 150 !important;
+        }
+
         .lidar-panel .panel-content {
             background: transparent !important;
             pointer-events: none !important;
@@ -357,7 +363,7 @@
             right: 0;
             z-index: 10;
             background: rgba(0, 0, 0, 0.85);
-            backdrop-filter: blur(10px);
+            /* backdrop-filter: blur(10px); */
             border-top: 1px solid var(--panel-border);
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -369,6 +375,12 @@
             overflow: hidden;
             pointer-events: auto;
             /* always interactable */
+        }
+
+        .lidar-footer.on-top,
+        .lidar-footer:hover,
+        .lidar-footer:not(.minimized) {
+            z-index: 150;
         }
 
         .lidar-footer-handle {
@@ -403,7 +415,7 @@
         .lidar-footer.minimized {
             height: 24px;
             border-top: 1px solid rgba(255, 255, 255, 0.05);
-            background: rgba(0, 0, 0, 0.65);
+            background: rgba(0, 0, 0, 0.15);
         }
 
         .lidar-footer.minimized .lidar-footer-content {
@@ -608,6 +620,8 @@
                                 style="color: #ffffff; font-weight: 400;">snapper.local</span></div>
                         <div><span style="color: var(--text-muted);">CONNECTION:</span> <span id="connStatus"
                                 style="color: #ffffff; font-weight: 400;">ONLINE</span></div>
+                        <div><span style="color: var(--text-muted);">WEB AUDIO:</span> <span id="webAudioStatus"
+                                style="color: #00ff66; cursor: pointer; font-weight: 400;">ACTIVE</span></div>
                     </div>
 
                     <!-- General metrics block -->
@@ -623,14 +637,14 @@
                                 style="color: #ffffff; font-weight: 400;">-- V</span></div>
                         <div><span style="color: var(--text-muted);">VELOCITY:</span> <span id="bodyVel"
                                 style="color: #ffffff; font-weight: 400;">-- m/s</span></div>
+                        <div><span style="color: var(--text-muted);">BODY HEIGHT:</span> <span id="bodyHeight"
+                                style="color: #ffffff; font-weight: 400;">-- m</span></div>
                         <div><span style="color: var(--text-muted);">IMU PITCH:</span> <span id="imuPitch"
                                 style="color: #ffffff; font-weight: 400;">--°</span></div>
                         <div><span style="color: var(--text-muted);">IMU ROLL:</span> <span id="imuRoll"
                                 style="color: #ffffff; font-weight: 400;">--°</span></div>
                         <div><span style="color: var(--text-muted);">IMU YAW:</span> <span id="imuYaw"
                                 style="color: #ffffff; font-weight: 400;">--°</span></div>
-                        <div><span style="color: var(--text-muted);">CONTACT:</span> <span id="footContact"
-                                style="color: #ffffff; font-weight: 400;">--</span></div>
                         <div><span style="color: var(--text-muted);">TEMP AVG:</span> <span id="jointTemp"
                                 style="color: #ffffff; font-weight: 400;">--°C</span></div>
                         <div><span style="color: var(--text-muted);">POWER:</span> <span id="powerState"
@@ -716,7 +730,7 @@
                         </div>
                         <div class="console-container" id="consoleLogs"
                             style="width: 100%; height: auto !important; padding: 0 !important; background: transparent !important; overflow-y: visible !important; font-size: 0.75rem; line-height: 1.6; display: flex; flex-direction: column; gap: 4px;">
-                            <div class="console-welcome">> listening for active session logs...</div>
+                            <div class="console-welcome">...</div>
                         </div>
                     </div>
 
@@ -734,9 +748,8 @@
                     <div id="lidarWebGL"></div>
                     <div class="lidar-footer minimized" id="lidarFooter">
                         <div class="lidar-footer-handle">
-                            <span class="footer-title">LiDAR Controls</span>
-                            <span class="footer-hint">Click to toggle controls | Drag to rotate/pan | Scroll to
-                                zoom</span>
+                            <span class="footer-title">Controls</span>
+                            <span class="footer-hint">^</span>
                         </div>
                         <div class="lidar-footer-content">
                             <div class="ui-record-btn" id="recordBtn">
@@ -1016,6 +1029,147 @@
             document.getElementById('connStatus').style.borderColor = 'rgba(255, 0, 0, 0.4)';
         });
 
+        // Web Audio API Realtime PCM Streaming Receiver
+        let webAudioCtx = null;
+        let webAudioGain = null;
+        let audioNextPlayTime = 0;
+        let activeAudioSources = [];
+        let isAudioMuted = false;
+        let warnedRateMismatch = false;
+
+        // How far ahead of the context clock chunks are scheduled. TARGET is the
+        // steady-state lead (jitter absorption); if the schedule ever runs further than
+        // MAX ahead — the relay worker lagging then delivering a burst — playback would
+        // sit that far behind the Python audio forever, since nothing pulls it back.
+        // Resyncing to TARGET caps worst-case lag at MAX instead of letting it ratchet.
+        const AUDIO_TARGET_LEAD = 0.12;
+        const AUDIO_MAX_LEAD = 0.40;
+
+        function initAudioContext() {
+            if (!webAudioCtx) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (AudioCtx) {
+                    // Leave the rate unpinned so the context adopts the output device's
+                    // native rate — the same rate chat-manager now runs its stream at.
+                    // Matching rates means no per-buffer resampling here and no hardware
+                    // rate renegotiation between us and the Python process.
+                    webAudioCtx = new AudioCtx({ latencyHint: 'playback' });
+                    webAudioGain = webAudioCtx.createGain();
+                    webAudioGain.gain.value = isAudioMuted ? 0 : 1;
+                    webAudioGain.connect(webAudioCtx.destination);
+                    console.log('[WebAudio] context rate', webAudioCtx.sampleRate);
+                }
+            }
+            if (webAudioCtx && webAudioCtx.state === 'suspended') {
+                webAudioCtx.resume();
+            }
+        }
+
+        function stopAllWebAudio() {
+            activeAudioSources.forEach(src => {
+                try { src.stop(); } catch (e) { }
+            });
+            activeAudioSources = [];
+            if (webAudioCtx) {
+                audioNextPlayTime = webAudioCtx.currentTime;
+            }
+        }
+
+        document.addEventListener('click', () => {
+            initAudioContext();
+        });
+
+        const webAudioStatusEl = document.getElementById('webAudioStatus');
+        if (webAudioStatusEl) {
+            webAudioStatusEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                isAudioMuted = !isAudioMuted;
+                initAudioContext();
+                // Mute by ducking the master gain, never by dropping chunks or resetting
+                // the schedule. The timeline keeps running underneath, so unmuting lands
+                // exactly where the stream actually is rather than wherever the next
+                // chunk happens to arrive. The short ramp avoids a click on the step.
+                if (webAudioGain) {
+                    webAudioGain.gain.setTargetAtTime(
+                        isAudioMuted ? 0 : 1, webAudioCtx.currentTime, 0.015);
+                }
+                webAudioStatusEl.textContent = isAudioMuted ? 'MUTED' : 'ACTIVE';
+                webAudioStatusEl.style.color = isAudioMuted ? '#ff4444' : '#00ff66';
+            });
+        }
+
+        socket.on('audio_start', (payload) => {
+            initAudioContext();
+            stopAllWebAudio();
+            if (webAudioCtx) {
+                audioNextPlayTime = webAudioCtx.currentTime + AUDIO_TARGET_LEAD;
+            }
+        });
+
+        socket.on('audio_chunk', (payload) => {
+            if (!payload.data) return;
+            initAudioContext();
+            if (!webAudioCtx) return;
+
+            try {
+                const sampleRate = payload.sample_rate || 22050;
+                if (sampleRate !== webAudioCtx.sampleRate && !warnedRateMismatch) {
+                    warnedRateMismatch = true;
+                    console.warn('[WebAudio] rate mismatch: stream', sampleRate,
+                        'vs context', webAudioCtx.sampleRate,
+                        '- every chunk is being resampled in isolation, expect seam clicks.');
+                }
+                const binaryStr = atob(payload.data);
+                const len = binaryStr.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                const int16Array = new Int16Array(bytes.buffer);
+                const float32Array = new Float32Array(int16Array.length);
+                for (let i = 0; i < int16Array.length; i++) {
+                    float32Array[i] = int16Array[i] / 32768.0;
+                }
+
+                const buffer = webAudioCtx.createBuffer(1, float32Array.length, sampleRate);
+                buffer.getChannelData(0).set(float32Array);
+
+                const source = webAudioCtx.createBufferSource();
+                source.buffer = buffer;
+                source.connect(webAudioGain || webAudioCtx.destination);
+
+                const now = webAudioCtx.currentTime;
+                if (audioNextPlayTime < now + 0.005) {
+                    // Behind the clock: starved, or the first chunk of an utterance.
+                    audioNextPlayTime = now + AUDIO_TARGET_LEAD;
+                } else if (audioNextPlayTime > now + AUDIO_MAX_LEAD) {
+                    // Too far ahead: a delivery burst ratcheted the schedule forward and
+                    // playback would trail the Python audio by this much indefinitely.
+                    console.warn('[WebAudio] resync, lead was',
+                        (audioNextPlayTime - now).toFixed(3), 's');
+                    audioNextPlayTime = now + AUDIO_TARGET_LEAD;
+                }
+                source.start(audioNextPlayTime);
+                audioNextPlayTime += buffer.duration;
+                activeAudioSources.push(source);
+
+                source.onended = () => {
+                    const idx = activeAudioSources.indexOf(source);
+                    if (idx !== -1) activeAudioSources.splice(idx, 1);
+                };
+            } catch (e) {
+                console.error("[WebAudio] Error processing audio chunk:", e);
+            }
+        });
+
+        socket.on('audio_interrupt', () => {
+            stopAllWebAudio();
+        });
+
+        socket.on('audio_end', () => {
+            // Speech synthesis complete
+        });
+
         // Telemetry Data Relayer
         socket.on('telemetry_data', (payload) => {
             const lowstate = payload.data;
@@ -1050,25 +1204,26 @@
                 document.getElementById('imuYaw').textContent = `${yawDeg.toFixed(1)}°`;
             }
 
-            // Foot Contacts
-            if (lowstate.foot_force) {
-                const force = lowstate.foot_force;
-                const contacts = force.map(f => f > 40 ? 1 : 0);
-                document.getElementById('footContact').textContent = `[ ${contacts[0]} | ${contacts[1]} | ${contacts[2]} | ${contacts[3]} ]`;
-            }
-
-            // Velocity
-            if (lowstate.velocity) {
-                const v = lowstate.velocity || [0, 0, 0];
+            // Velocity — body frame, from the injected sportmodestate sample.
+            // LowState itself carries no velocity field on this hardware.
+            if (lowstate.sport_state && lowstate.sport_state.velocity) {
+                const v = lowstate.sport_state.velocity;
                 const speed = Math.sqrt(v[0] * v[0] + v[1] * v[1]);
                 document.getElementById('bodyVel').textContent = `${speed.toFixed(2)} m/s`;
+                const bodyHeight = lowstate.sport_state.body_height;
+                if (typeof bodyHeight === 'number') {
+                    document.getElementById('bodyHeight').textContent = `${bodyHeight.toFixed(2)} m`;
+                }
             }
 
             // Joint temperatures & Leg Joints detailed metrics extraction
             if (lowstate.motor_state) {
                 const motors = lowstate.motor_state;
 
-                const avgTemp = motors.length > 0 ? motors.reduce((sum, m) => sum + (m.temperature || 0), 0) / motors.length : 0;
+                // Only the first 12 entries are real motors - motor_state pads
+                // out to 20, and the zeroed placeholders would drag the mean down.
+                const realMotors = motors.slice(0, 12);
+                const avgTemp = realMotors.length > 0 ? realMotors.reduce((sum, m) => sum + (m.temperature || 0), 0) / realMotors.length : 0;
                 document.getElementById('jointTemp').textContent = `${avgTemp.toFixed(1)}°C`;
 
                 // Update Joint States on Leg cards (FL, FR, RL, RR)
@@ -1327,16 +1482,36 @@
 
 
 
-        // Toggle LiDAR Footer Minimize/Expand
+        // Toggle LiDAR Footer Minimize/Expand & manage z-index
         const lidarFooterEl = document.getElementById('lidarFooter');
-        lidarFooterEl.addEventListener('click', (e) => {
-            if (e.target.closest('.ui-checkbox') || e.target.closest('.ui-slider') || e.target.closest('.ui-button') || e.target.closest('.ui-record-btn') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
-                return;
+        const lidarPanelEl = document.getElementById('lidarPanel');
+
+        function updateControlBarZIndex(isHovering = null) {
+            if (!lidarFooterEl || !lidarPanelEl) return;
+            const isHovered = isHovering !== null ? isHovering : lidarFooterEl.matches(':hover');
+            const isExpanded = !lidarFooterEl.classList.contains('minimized');
+            if (isHovered || isExpanded) {
+                lidarPanelEl.classList.add('on-top');
+                lidarFooterEl.classList.add('on-top');
+            } else {
+                lidarPanelEl.classList.remove('on-top');
+                lidarFooterEl.classList.remove('on-top');
             }
-            lidarFooterEl.classList.toggle('minimized');
-            // Trigger WebGL scene update recalculation
-            setTimeout(onWindowResize, 350);
-        });
+        }
+
+        if (lidarFooterEl) {
+            lidarFooterEl.addEventListener('mouseenter', () => updateControlBarZIndex(true));
+            lidarFooterEl.addEventListener('mouseleave', () => updateControlBarZIndex(false));
+            lidarFooterEl.addEventListener('click', (e) => {
+                if (e.target.closest('.ui-checkbox') || e.target.closest('.ui-slider') || e.target.closest('.ui-button') || e.target.closest('.ui-record-btn') || e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT' || e.target.tagName === 'LABEL') {
+                    return;
+                }
+                lidarFooterEl.classList.toggle('minimized');
+                updateControlBarZIndex(lidarFooterEl.matches(':hover'));
+                // Trigger WebGL scene update recalculation
+                setTimeout(onWindowResize, 350);
+            });
+        }
 
         // Toggle canvas pointer-events on Interact Map checkbox state
         const interactMapCheckbox = document.getElementById('interactMap');

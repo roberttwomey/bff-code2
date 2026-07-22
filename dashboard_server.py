@@ -212,6 +212,38 @@ def get_record_status():
     from flask import jsonify
     return jsonify({'is_recording': is_recording})
 
+@app.route('/audio_start', methods=['POST'])
+def audio_start():
+    """Relays audio start event to web clients via SocketIO."""
+    from flask import request, jsonify
+    data = request.get_json(silent=True) or {}
+    socketio.emit('audio_start', data)
+    return jsonify({'status': 'ok'})
+
+@app.route('/audio_chunk', methods=['POST'])
+def audio_chunk():
+    """Relays PCM audio chunk payload to web clients via SocketIO."""
+    from flask import request, jsonify
+    data = request.get_json(silent=True) or {}
+    socketio.emit('audio_chunk', data)
+    return jsonify({'status': 'ok'})
+
+@app.route('/audio_end', methods=['POST'])
+def audio_end():
+    """Relays audio end event to web clients via SocketIO."""
+    from flask import request, jsonify
+    data = request.get_json(silent=True) or {}
+    socketio.emit('audio_end', data)
+    return jsonify({'status': 'ok'})
+
+@app.route('/audio_interrupt', methods=['POST'])
+def audio_interrupt():
+    """Relays audio interrupt event to web clients via SocketIO."""
+    from flask import request, jsonify
+    data = request.get_json(silent=True) or {}
+    socketio.emit('audio_interrupt', data)
+    return jsonify({'status': 'ok'})
+
 @socketio.on('ping_latency')
 def handle_ping():
     """Latency calculation handshake."""

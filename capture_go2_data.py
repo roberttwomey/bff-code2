@@ -102,6 +102,14 @@ class Go2DataCapturer:
             "position": [0.0, 0.0, 0.0],
             "orientation": [0.0, 0.0, 0.0, 1.0]
         }
+        # Body-frame velocity from the sport controller's own state estimator.
+        # LowState_ carries no velocity field on this hardware, so this comes
+        # from a separate sportmodestate subscription and gets injected below.
+        self.sport_state = {
+            "velocity": [0.0, 0.0, 0.0],
+            "yaw_speed": 0.0,
+            "body_height": 0.0
+        }
 
         # Queues and control
         self.video_queue = queue.Queue()
@@ -550,6 +558,25 @@ class Go2DataCapturer:
             self.conn.datachannel.pub_sub.subscribe("rt/utlidar/robot_pose", pose_callback)
             print("LiDAR SLAM robot pose subscription enabled.")
 
+            # Body-frame velocity. Only the low-frequency variant is bridged
+            # onto the data channel - rt/sportmodestate publishes nothing over
+            # WebRTC - so this arrives at 20Hz, well above the lowstate rate.
+            def sportmode_callback(message):
+                try:
+                    data_field = message.get("data", {})
+                    vel = data_field.get("velocity")
+                    if vel:
+                        self.sport_state = {
+                            "velocity": [float(v) for v in vel],
+                            "yaw_speed": float(data_field.get("yaw_speed", 0.0)),
+                            "body_height": float(data_field.get("body_height", 0.0))
+                        }
+                except Exception as e:
+                    logging.error(f"Error in sportmode callback: {e}")
+
+            self.conn.datachannel.pub_sub.subscribe(RTC_TOPIC['LF_SPORT_MOD_STATE'], sportmode_callback)
+            print("Sport mode state (velocity) subscription enabled.")
+
             def lowstate_callback(message):
                 try:
                     now = time.time()
@@ -561,6 +588,7 @@ class Go2DataCapturer:
                     if current_message:
                         # Inject SLAM position and orientation quaternion
                         current_message['slam_pose'] = self.slam_pose
+                        current_message['sport_state'] = self.sport_state
                         payload = {
                             "timestamp": now,
                             "data": current_message
