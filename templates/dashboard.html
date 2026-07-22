@@ -628,7 +628,7 @@
                     <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.7rem;">
                         <div><span style="color: var(--text-muted);">BATTERY PERCENT:</span> <span id="headerBattery"
                                 style="color: #ffffff; font-weight: 400;">--%</span></div>
-                        <div><span style="color: var(--text-muted);">OPERATION MODE:</span> <span id="headerMode"
+                        <div><span style="color: var(--text-muted);">STANCE:</span> <span id="headerMode"
                                 style="color: #ffffff; font-weight: 400;">--</span></div>
                         <div><span style="color: var(--text-muted);">PING LATENCY:</span> <span id="headerPing"
                                 style="color: #ffffff; font-weight: 400;">-- ms</span></div>
@@ -1179,9 +1179,25 @@
             const power_v = lowstate.power_v || 0;
             document.getElementById('batVolt').textContent = `${power_v.toFixed(1)} V`;
 
-            let batPercent = ((power_v - 22.0) / (29.6 - 22.0)) * 100;
-            batPercent = Math.max(0, Math.min(100, batPercent));
+            // Prefer the BMS's own state of charge. Mapping pack voltage
+            // linearly from 22.0-29.6V badly overstates a lithium pack, which
+            // sits near its top voltage for most of the discharge - it reads
+            // ~99% at an actual 58% charge. Voltage is only the fallback.
+            const bms = lowstate.bms_state;
+            let batPercent;
+            if (bms && typeof bms.soc === 'number') {
+                batPercent = bms.soc;
+            } else {
+                batPercent = Math.max(0, Math.min(100, ((power_v - 22.0) / (29.6 - 22.0)) * 100));
+            }
             document.getElementById('headerBattery').textContent = `${batPercent.toFixed(0)}%`;
+
+            // Actual draw, since the pack reports current (mA, negative while
+            // discharging). power_state doesn't exist in this payload.
+            if (bms && typeof bms.current === 'number') {
+                const watts = Math.abs(bms.current) / 1000 * power_v;
+                document.getElementById('powerState').textContent = `${watts.toFixed(0)} W`;
+            }
 
             // SLAM Pose Details
             if (lowstate.slam_pose) {
@@ -1245,9 +1261,12 @@
                 }
             }
 
-            const motionMode = lowstate.motion_mode !== undefined ? lowstate.motion_mode : '--';
-            document.getElementById('headerMode').textContent = motionMode;
-            document.getElementById('powerState').textContent = `${lowstate.power_state || 0}`;
+            // Stance, since this payload has no motion_mode and the sport
+            // controller's own mode field never leaves 0 on this firmware.
+            const bodyHeight = (lowstate.sport_state || {}).body_height;
+            if (typeof bodyHeight === 'number') {
+                document.getElementById('headerMode').textContent = bodyHeight > 0.2 ? 'STANDING' : 'RESTING';
+            }
         });
 
         // LiDAR stream packet receiver: maps ROS coordinates to ThreeJS WebGL

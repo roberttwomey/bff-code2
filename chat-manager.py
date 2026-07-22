@@ -2685,13 +2685,25 @@ class VLMBackgroundWorker:
             if not data:
                 return
 
-            bms_soc = (data.get("bms_state") or {}).get("soc")
+            bms = data.get("bms_state") or {}
+            power_v = data.get("power_v", 0.0)
+            bms_soc = bms.get("soc")
             if bms_soc is not None:
                 battery_pct = float(bms_soc)
             else:
-                # Fallback voltage-based estimate if bms_state.soc isn't available
-                power_v = data.get("power_v", 0.0)
+                # Fallback voltage-based estimate if bms_state.soc isn't
+                # available. Overstates a lithium pack badly - it reads ~97%
+                # at an actual 55% - so it really is a last resort.
                 battery_pct = max(0.0, min(100.0, ((power_v - 22.0) / (29.6 - 22.0)) * 100))
+
+            # What the body is currently burning. bms current is in mA, and
+            # goes positive while charging.
+            power_part = ""
+            current_ma = bms.get("current")
+            if current_ma is not None and power_v:
+                watts = abs(current_ma) / 1000.0 * power_v
+                verb = "charging at" if current_ma > 0 else "drawing"
+                power_part = f" ({verb} {watts:.0f} W)"
 
             rpy = (data.get("imu_state") or {}).get("rpy") or [0.0, 0.0, 0.0]
             pitch_deg = math.degrees(rpy[0])
@@ -2750,7 +2762,7 @@ class VLMBackgroundWorker:
                 )
 
             summary = (
-                f"battery {battery_pct:.0f}%, velocity {speed:.2f} m/s"
+                f"battery {battery_pct:.0f}%{power_part}, velocity {speed:.2f} m/s"
                 f"{height_part}, "
                 f"tilt pitch {pitch_deg:+.1f}° roll {roll_deg:+.1f}°"
                 f"{joint_part}"
