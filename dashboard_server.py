@@ -168,6 +168,40 @@ def lowstate():
         return jsonify(latest_lowstate)
 
 
+@app.route('/history')
+def history():
+    """Returns the conversation so far, so a page that opens (or reloads) mid
+    session isn't blank. The tail worker only relays lines written while it is
+    watching - everything before that lives here."""
+    from flask import jsonify, request
+    try:
+        limit = int(request.args.get('limit', 200))
+    except ValueError:
+        limit = 200
+
+    log_file = get_current_log_file()
+    if not log_file or not log_file.exists():
+        return jsonify({"entries": []})
+
+    entries = []
+    with log_file.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            # assistant_chunk lines are the progressive stream of a reply that
+            # also lands as a final 'assistant' record - replaying both would
+            # print every answer twice.
+            if record.get("type") in ("user", "assistant"):
+                entries.append(record)
+
+    return jsonify({"entries": entries[-limit:]})
+
+
 @app.route('/toggle_yolo', methods=['POST'])
 def toggle_yolo():
     """Enable or disable YOLO inference and bounding-box overlays.
@@ -318,6 +352,20 @@ def get_latest_log_file():
     log_files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
     return log_files[0]
 
+def get_current_log_file():
+    """The session.jsonl belonging to this dashboard's session.
+
+    chat-manager.py sets BFF_SESSION_ID when it spawns us, which pins the right
+    session even before its first line is written - picking by mtime instead
+    would latch onto the previous session's log and stay there until the new
+    one happens to be written. Standalone runs have no id and fall back to
+    whichever session was written most recently."""
+    session_id = os.environ.get("BFF_SESSION_ID")
+    if session_id:
+        pinned = get_session_root() / f"session-{session_id}" / "session.jsonl"
+        return pinned if pinned.exists() else None
+    return get_latest_log_file()
+
 def tail_logs_worker():
     """Background worker that tails new log lines and relays them via WebSockets."""
     print("[Log Watcher] Logging tail worker started.")
@@ -326,7 +374,7 @@ def tail_logs_worker():
 
     while True:
         try:
-            latest_file = get_latest_log_file()
+            latest_file = get_current_log_file()
             if latest_file != current_file:
                 if file_handle:
                     file_handle.close()

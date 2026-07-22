@@ -1335,13 +1335,24 @@
         let currentAssistantTurn = null;
         let currentAssistantContentSpan = null;
 
-        socket.on('log_data', (payload) => {
+        // Lines already on screen, so backfilled history and the live tail
+        // can't print the same turn twice.
+        const renderedKeys = new Set();
+        const entryKey = (payload) => `${payload.timestamp || ''}|${payload.type}|${payload.turn}`;
+
+        const handleLogEntry = (payload) => {
             // Chat history only: speech input and generated responses, no
             // visual annotations (vlm_query) or other session bookkeeping.
             const logType = payload.type || 'raw';
             if (logType !== 'user' && logType !== 'assistant' && logType !== 'assistant_chunk') {
                 return;
             }
+
+            const key = entryKey(payload);
+            if (renderedKeys.has(key)) {
+                return;
+            }
+            renderedKeys.add(key);
 
             if (!welcomeRemoved) {
                 consoleLogs.innerHTML = '';
@@ -1437,7 +1448,25 @@
             if (consoleLogs.childElementCount > 200) {
                 consoleLogs.removeChild(consoleLogs.firstChild);
             }
-        });
+        };
+
+        socket.on('log_data', handleLogEntry);
+
+        // The server only relays lines written while it is watching, so a page
+        // opened or reloaded mid-session would start blank. Pull what has
+        // already been said; renderedKeys keeps the live tail from repeating it.
+        const loadHistory = async () => {
+            try {
+                const response = await fetch('/history');
+                const payload = await response.json();
+                (payload.entries || []).forEach(handleLogEntry);
+            } catch (err) {
+                console.warn('Could not load conversation history:', err);
+            }
+        };
+
+        loadHistory();
+        socket.on('connect', loadHistory);
 
         // Toggle Log/Chat Minimize/Expand
         const toggleChatBtn = document.getElementById('toggleChatBtn');
