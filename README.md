@@ -80,6 +80,12 @@ python3 chat-manager.py --require-wakeword
 python3 chat-manager.py --piper-voice speech/piper/en_GB-alan-medium.onnx
 ```
 
+Scene prompts (the default persona plus any trigger-phrase scenes) are read from `performance-script.json`, which is deliberately untracked — it's edited per machine and per show. Start from the committed template:
+```bash
+cp performance-script.example.json performance-script.json
+```
+Without it, the assistant runs with its built-in default scene only.
+
 When the robot is reachable, `chat-manager.py` starts `dashboard_server.py` itself and then waits for the WebRTC feed to actually deliver data (camera frames and telemetry) rather than just for Flask to answer. The Go2 often refuses the first WebRTC offer after boot, leaving the dashboard serving `503`s — the camera silently falls back to the local webcam and body state goes blank. Instead of needing a manual relaunch, the dashboard is restarted and retried:
 
 | Variable | Default | Purpose |
