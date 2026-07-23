@@ -61,6 +61,11 @@ Environment variables:
     BFF_DASHBOARD_START_ATTEMPTS how many times to (re)start dashboard_server.py while waiting for the WebRTC feed (default: 3)
     BFF_DASHBOARD_HTTP_TIMEOUT   seconds to wait for the dashboard to serve its index page (default: 15)
     BFF_DASHBOARD_STREAM_TIMEOUT seconds to wait for the robot camera/telemetry feeds before restarting the dashboard (default: 30)
+    BFF_TIME_HOST           host running `set_time.py --serve` to take the clock from at startup,
+                            in preference to the robot's DDS stamp (e.g. Roberts-MacBook-Air.local)
+    BFF_TIME_PORT           port for the above (default: 37020)
+    BFF_CLOCK_SYNC          set false to skip clock correction entirely (default: true)
+    BFF_DDS_INTERFACE       interface for reading the robot's clock over DDS (default: enP8p1s0)
 """
 
 from __future__ import annotations
@@ -1201,6 +1206,47 @@ def clock_is_broken(value: float) -> bool:
     did not exist before then, so anything earlier is a machine that booted
     without a clock."""
     return value < 1_735_689_600
+
+
+def sync_clock() -> None:
+    """Correct this machine's clock before anything is named after it.
+
+    Two sources, in order of how much they can be trusted:
+
+    A peer on the LAN - in practice the Mac, via `set_time.py --serve` - when
+    BFF_TIME_HOST names one. This is preferred because it is the only source
+    here that a human actually looks at, and because it catches the failure the
+    robot cannot: a clock that is wrong but *plausible*. snapper and its Go2
+    have both been seen a little over two days behind, which passes every
+    "is the clock broken" test below while misdating every session folder and
+    making them sort out of order.
+
+    Otherwise the robot's own DDS stamp, which needs no laptop and no internet
+    and so is the right default when nobody is running the server."""
+    if os.getenv("BFF_CLOCK_SYNC", "true").lower() in ("0", "false", "no", "off"):
+        return
+
+    global CLOCK_OFFSET_SECONDS
+
+    if os.getenv("BFF_TIME_HOST"):
+        try:
+            from set_time import sync_clock_from_peer
+        except ImportError as e:
+            print(f"[Clock] BFF_TIME_HOST is set but set_time.py did not import ({e}); "
+                  f"falling back to the robot.", file=sys.stderr)
+        else:
+            # Returns the offset still to apply: zero when it set the system
+            # clock, when the clock was already right, or when the peer was
+            # unreachable. Only the unreachable case should fall through to the
+            # robot, so re-check the clock rather than trusting the zero.
+            offset = sync_clock_from_peer()
+            if offset:
+                CLOCK_OFFSET_SECONDS = offset
+                return
+            if not clock_is_broken(time.time()):
+                return
+
+    sync_clock_from_robot()
 
 
 def sync_clock_from_robot() -> None:
@@ -3560,8 +3606,9 @@ def run_conversation(config: ConversationConfig) -> None:
     preload_ollama_models(config)
 
     # Before anything is named after the current time. The Jetson may have
-    # booted at the epoch; the robot knows what time it is.
-    sync_clock_from_robot()
+    # booted at the epoch, or - harder to notice - be a couple of days behind
+    # with a date that still looks reasonable.
+    sync_clock()
 
     # Create session directory first so dashboard log can write to it
     log_dir = ensure_log_dir()
