@@ -98,6 +98,12 @@ class Go2DataCapturer:
 
         self._last_lowstate_time = 0.0
         self._last_lidar_time = 0.0
+        # How often a decoded voxel snapshot is written to disk, independent of
+        # how often one is decoded for the live map. 0 disables saving while
+        # leaving the dashboard's map working. See the callback in run() for
+        # why this is not simply the publish rate.
+        self.lidar_save_hz = float(os.getenv("BFF_LIDAR_SAVE_HZ", "2.0"))
+        self._last_lidar_save_time = 0.0
         self.slam_pose = {
             "position": [0.0, 0.0, 0.0],
             "orientation": [0.0, 0.0, 0.0, 1.0]
@@ -633,6 +639,15 @@ class Go2DataCapturer:
             self.conn.datachannel.pub_sub.publish_without_callback("rt/utlidar/switch", "on")
 
             lidar_interval = 1.0 / self.video_fps
+            # Saving is throttled separately from decoding, because the two
+            # have very different costs. A voxel snapshot is ~650 KB of JSON
+            # floats - roughly 2000 points written out in full - so the stream
+            # the robot actually publishes (~7 Hz) is about 5 MB/s, 300 MB a
+            # minute, which fills the Jetson's disk in well under an hour. The
+            # dashboard map, meanwhile, wants to stay responsive and costs
+            # nothing to feed. So listeners still see every decoded frame and
+            # only the disk writer is rate-limited.
+            lidar_save_interval = (1.0 / self.lidar_save_hz) if self.lidar_save_hz > 0 else 0.0
 
             def lidar_callback(message):
                 try:
@@ -657,7 +672,12 @@ class Go2DataCapturer:
                             "point_count": len(points_list),
                             "points": points_list
                         }
-                        self.lidar_queue.put(payload)
+                        # Full-resolution snapshots, just fewer of them: the
+                        # points are kept exactly as decoded, so a saved frame
+                        # is as complete as it ever was.
+                        if self.lidar_save_hz > 0 and now - self._last_lidar_save_time >= lidar_save_interval:
+                            self._last_lidar_save_time = now
+                            self.lidar_queue.put(payload)
                         for cb in self.lidar_listeners:
                             try:
                                 cb(payload)
