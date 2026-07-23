@@ -139,8 +139,21 @@ class Go2DataCapturer:
         self.start_time = None
 
         # Circular Logging & Segmented Recording State
-        self.is_recording = False
-        self.chunk_duration = 60  # 1 minute by default for circular logging
+        #
+        # Recording on unless told otherwise. Off does not mean "nothing is
+        # written" - it means circular logging, where all but the last six
+        # 60s chunks are deleted as they age out, so anything more than five
+        # minutes old is gone. That is the right default for a dashboard
+        # someone is watching and the wrong one for a robot recording a
+        # performance, which is what this mostly does. Running
+        # capture_go2_data.py directly never armed recording at all, so the
+        # tool named for capturing data kept a rolling window and pruned the
+        # rest. BFF_RECORD_BY_DEFAULT=false restores the old behaviour.
+        self.is_recording = os.getenv("BFF_RECORD_BY_DEFAULT", "true").lower() in ("true", "1", "yes", "on")
+        # Longer chunks while recording: fewer file boundaries to stitch back
+        # together. Kept in step with set_recording(), which early-returns when
+        # the state already matches and so would not set this on its own.
+        self.chunk_duration = 300 if self.is_recording else 60
         self.chunk_index = 0
         self.current_chunk_dir = None
         self.chunk_start_time = None

@@ -46,7 +46,15 @@ latest_detections = []
 latest_detection_time = 0.0
 detections_lock = threading.Lock()
 yolo_enabled = True   # toggled via /toggle_yolo; also propagated to capturer.yolo_enabled
-is_recording = False  # toggled via /toggle_record; also propagated to capturer.is_recording
+
+# Recording on from the start. The alternative is not "nothing is saved" but
+# circular logging - 60s chunks with all but the last six pruned - so a session
+# nobody thought to arm keeps only the previous five minutes, and the material
+# is gone by the time anyone notices it was worth keeping. A performance is
+# exactly the case where the recording matters and nobody is watching the
+# dashboard to press REC. Set BFF_RECORD_BY_DEFAULT=false for the old
+# behaviour; the button in the UI still toggles it either way.
+is_recording = os.environ.get("BFF_RECORD_BY_DEFAULT", "true").lower() in ("true", "1", "yes", "on")
 
 def detections_callback(payload):
     """Receives detection results from _yolo_worker and stores them for the MJPEG overlay."""
