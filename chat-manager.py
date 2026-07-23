@@ -40,6 +40,10 @@ Environment variables:
     BFF_SCENE_EVENTS        set 0 to stop deriving "what just changed" events from the YOLO boxes (default: 1)
     BFF_SCENE_EVENT_TTL     seconds a change stays in the prompt before it expires (default: 30)
     BFF_SCENE_STALE_SECONDS seconds the view must sit unchanged before that is itself reported (default: 120)
+    BFF_VISUAL_QUESTIONS    set 1 to look at the current frame and answer scene questions on the spot,
+                            instead of replying from the cached caption (default: 0 - adds ~2s to those turns)
+    BFF_VISUAL_QUESTION_BUDGET     wall-clock seconds to wait for that look before using the cache (default: 6.0)
+    BFF_VISUAL_QUESTION_NUM_PREDICT max tokens for the answer (default: 60)
     BFF_WHISPER_MODEL       override Whisper model size (default: tiny.en)
     BFF_WHISPER_DEVICE      override Whisper device, e.g. cpu or cuda (default: cuda if available)
     BFF_PIPER_VOICE         override Piper voice path if --piper-voice not provided
@@ -225,6 +229,50 @@ def describe_temperature(value: float, kind: str) -> str:
 # Per-capture chatter from the background workers (snapshot paths, YOLO hints,
 # query timings). Off by default - the packet lines below are what matters.
 WORKER_VERBOSE = os.getenv("BFF_WORKER_VERBOSE", "0").lower() in ("1", "true", "yes")
+
+
+# Utterances that are asking about what the robot can actually see right now,
+# and so are worth stopping to look for. Everything else is answered from the
+# cached caption, because looking costs a VLM round trip on the interactive
+# path. Across the 806 recorded utterances in ~/bff/logs this fires on 9, all
+# genuinely about the visible scene - so the pause is rare enough to be a
+# beat in the conversation rather than a tax on every turn.
+VISUAL_QUESTION_RE = re.compile(
+    r"""(
+     \b(do|can|could|what|where|who)\b[^.?]{0,40}\byou\s+see\b|
+     \byou\s+see\b[^.?]{0,20}\?|
+     \bwhat\s+do\s+you\s+(see|notice|observe)\b|
+     \blook(\s+at|\s+around|\s+behind|\s+in\s+front)\b|
+     \bdescribe\s+(the|this|what|your)\b|
+     \bcolou?rs?\b[^.?]{0,30}\b(room|here|there|see|you)\b|
+     \bwhat\s+colou?r\b|
+     \b(in\s+front\s+of|behind|around|near|beside)\s+you\b|
+     \bto\s+your\s+(left|right)\b|
+     \bwho(?:'s|\s+is|\s+are)\s+(there|here|with\s+you|in\s+the\s+room)\b|
+     \bam\s+i\s+(in|near|close|visible|here)\b|
+     \bhow\s+many\s+(people|chairs|things)\b|
+     \bwhat.{0,15}\bin\s+the\s+room\b
+    )""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+# Whisper's stock hallucinations on silence and room tone. They carry "see" and
+# "watch", so without this they read as visual questions and buy a needless
+# round trip every time the room goes quiet.
+TRANSCRIPT_NOISE_RE = re.compile(
+    r"""(
+     thanks?\s+for\s+watching | see\s+you\s+(next|later|in\s+the\s+next) |
+     we'?ll\s+see\s+you | subscribe | like\s+and\s+share | bye\s+for\s+now
+    )""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def is_visual_question(text: str) -> bool:
+    """Whether an utterance is asking about the scene in front of the robot."""
+    if not text:
+        return False
+    return bool(VISUAL_QUESTION_RE.search(text)) and not TRANSCRIPT_NOISE_RE.search(text)
 
 
 def log_context_packet(prefix: str, content: str) -> None:
@@ -3163,6 +3211,20 @@ class VLMBackgroundWorker:
         # Minimum gap between approach/retreat reports, damping the same edge
         # jitter that the confidence bands handle for presence.
         self.move_report_gap = float(os.getenv("BFF_PERSON_MOVE_GAP", "10.0"))
+
+        # Stopping to look when asked a question about the scene. Off by
+        # default because it is the one thing here that lands on the
+        # interactive path, where a turn otherwise runs ~2.8 s from end of
+        # speech to first audio. The look is cheaper than the background
+        # caption it replaces - one factual sentence is ~18 generated tokens
+        # against the tag dump's ~38, measured on a frame from
+        # session-20260722-125445 - so against captions that take 3.9-4.7 s on
+        # the Jetson, expect around 2 s. Whether that pause reads as the robot
+        # considering or as the robot hanging is a judgement about the
+        # performance, not about the code, so it stays opt-in.
+        self.visual_question_enabled = os.getenv("BFF_VISUAL_QUESTIONS", "0").lower() in ("1", "true", "yes", "on")
+        self.visual_question_budget = float(os.getenv("BFF_VISUAL_QUESTION_BUDGET", "6.0"))
+        self.visual_question_num_predict = int(os.getenv("BFF_VISUAL_QUESTION_NUM_PREDICT", "60"))
         self._last_move_report = 0.0
         self._person_present = False
         self._person_height = None      # bbox height in pixels, at the last confirmed event
@@ -3528,6 +3590,88 @@ class VLMBackgroundWorker:
         if changed:
             self._last_compared_frame = small
         return changed
+
+    def answer_visual_question(self, question: str):
+        """Look at the current frame and answer one specific question about it.
+
+        The background caption is a fixed tag dump, written before anyone asked
+        anything - fine for "is the room bright", useless for "what am I
+        holding". This is the same VLM pointed at the question actually asked,
+        and it runs on the interactive path, so it is bounded by a wall-clock
+        budget and falls back to the cached caption on any failure. Returns the
+        answer, or None to mean "use the cache".
+        """
+        if self.config.no_vlm:
+            return None
+
+        started = time.perf_counter()
+        frame = self._acquire_frame()
+        if frame is None:
+            return None
+        self._frame_size = (frame.shape[1], frame.shape[0])
+
+        vlm_dir = self.session_dir / "vlm_captures"
+        vlm_dir.mkdir(parents=True, exist_ok=True)
+        timestamp_str = wall_now().strftime("%Y%m%d-%H%M%S")
+        image_path = vlm_dir / f"asked_{timestamp_str}.jpg"
+        cv2.imwrite(str(image_path), frame)
+
+        # Answer plainly and stop. This text is going into the chat model's
+        # perception block, not to the audience - it needs to be a fact about
+        # the frame, not a performance. The VLM is told it may not know, since
+        # a confident wrong answer about the room is worse than a short one:
+        # the caption channel already invents wooden tables in this room.
+        prompt = (
+            "You are the eyes of a robot. Look at the image and answer this question about it "
+            "in one short factual sentence, describing only what is actually visible.\n\n"
+            f"Question: {question}\n\n"
+            "If the image does not show enough to answer, say exactly what you can see instead. "
+            "No preamble, no speculation, no markdown."
+        )
+
+        try:
+            # Bounded here rather than by num_predict alone: the chat model and
+            # this share one GPU, and if the background worker happens to be
+            # mid-caption this request queues behind it.
+            client = ollama.Client(timeout=self.visual_question_budget)
+            response = client.chat(
+                model=self.config.vlm_model,
+                messages=[{"role": "user", "content": prompt, "images": [str(image_path)]}],
+                stream=False,
+                keep_alive=-1,
+                think=False,
+                options={
+                    "num_predict": self.visual_question_num_predict,
+                    "num_ctx": DEFAULT_VLM_NUM_CTX,
+                    "temperature": DEFAULT_VLM_TEMPERATURE,
+                },
+            )
+            message = response.get("message") if isinstance(response, dict) else getattr(response, "message", None)
+            answer = ""
+            if message:
+                answer = (message.get("content") if isinstance(message, dict) else getattr(message, "content", "")) or ""
+            answer = " ".join(answer.split()).strip()
+        except Exception as e:
+            print(f"[VLM Worker] Visual question failed, falling back to the cached scene: {e}", file=sys.stderr)
+            return None
+
+        duration = time.perf_counter() - started
+        if not answer:
+            return None
+
+        append_log_line(
+            self.log_file,
+            {
+                "type": "vlm_query",
+                "timestamp": timestamp_str,
+                "image_path": str(image_path),
+                "question": question,
+                "description": answer,
+                "duration_seconds": duration,
+            },
+        )
+        print(f"[VLM Worker] Looked on request in {duration:.1f}s.", file=sys.stderr)
+        return answer
 
     def _capture_and_query(self):
         global latest_scene_description, last_vlm_query_time, last_scene_change_time
@@ -4498,6 +4642,19 @@ def run_conversation(config: ConversationConfig) -> None:
                 current_scene_events = latest_scene_events
             with body_state_lock:
                 current_body_state = latest_body_state
+
+            # When the question is about what is in front of the robot, look
+            # now rather than answering from a caption written whenever the
+            # pixels last changed enough to trigger one - which in a still room
+            # with people sitting down can be minutes ago. Replaces the cached
+            # description instead of joining it, so a fresh look and a stale
+            # one can't contradict each other in the same block.
+            if (vlm_worker is not None and not config.no_vlm
+                    and vlm_worker.visual_question_enabled
+                    and is_visual_question(user_text)):
+                fresh_look = vlm_worker.answer_visual_question(user_text)
+                if fresh_look:
+                    current_description = fresh_look
 
             # Clean up old visual context / body state messages from dialogue history to avoid context bloating
             messages = [
