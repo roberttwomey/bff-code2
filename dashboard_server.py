@@ -751,8 +751,21 @@ def main():
                 else:
                     print("Dashboard shutdown completed cleanly.")
 
-                # Automatically run overlay_detections immediately on exit
-                if hasattr(capturer, 'output_dir') and capturer.output_dir:
+                # Burning the YOLO boxes into a second copy of every chunk used
+                # to happen unconditionally here, after the files were already
+                # safely closed. It re-encodes frame by frame - ~18s for a
+                # single 37s chunk - and it scales with the session, so a long
+                # performance would spend many minutes re-encoding at exit and
+                # be SIGKILLed partway through, leaving a stray half-written
+                # video_annotated.mp4. It also doubles the video on disk, on a
+                # machine we have already had to clear space on. The boxes are
+                # in detections.jsonl either way and the overlay can be run
+                # later against a finished session, so it is opt-in now.
+                overlay_on_exit = os.environ.get("BFF_OVERLAY_ON_EXIT", "false").lower() in ("true", "1", "yes", "on")
+                if not overlay_on_exit:
+                    print("[Dashboard Server] Skipping detection overlay "
+                          "(set BFF_OVERLAY_ON_EXIT=true to render it at shutdown).")
+                elif hasattr(capturer, 'output_dir') and capturer.output_dir:
                     try:
                         from post_processing.overlay_detections import overlay_detections
                         print(f"\n[Dashboard Server] Post-processing: Overlaying YOLO detections on recorded video chunks...")
