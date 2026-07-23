@@ -37,6 +37,9 @@ Environment variables:
     BFF_VLM_TEMPERATURE     override VLM sampling temperature (default: 0.4)
     BFF_VLM_CHANGE_THRESHOLD override mean grayscale pixel-diff (0-255) required to trigger a re-description (default: 12.0)
     BFF_VLM_INTERVAL        override minimum seconds between VLM capture starts (default: 1.5)
+    BFF_SCENE_EVENTS        set 0 to stop deriving "what just changed" events from the YOLO boxes (default: 1)
+    BFF_SCENE_EVENT_TTL     seconds a change stays in the prompt before it expires (default: 30)
+    BFF_SCENE_STALE_SECONDS seconds the view must sit unchanged before that is itself reported (default: 120)
     BFF_WHISPER_MODEL       override Whisper model size (default: tiny.en)
     BFF_WHISPER_DEVICE      override Whisper device, e.g. cpu or cuda (default: cuda if available)
     BFF_PIPER_VOICE         override Piper voice path if --piper-voice not provided
@@ -175,6 +178,18 @@ last_assistant_speech_time = 0.0
 body_state_lock = threading.Lock()
 latest_body_state = ""
 
+# Perceptual events - what changed, as opposed to what is there. Derived from
+# the YOLO detections the dashboard already publishes, not from the caption:
+# re-describing a static room produces wildly different wording each time
+# ("white chairs" one minute, "wooden chair foreground center" the next), so
+# diffing the caption text would invent events that never happened.
+scene_events_lock = threading.Lock()
+latest_scene_events = ""
+# When the caption last actually said something new. Distinct from
+# last_vlm_query_time, which advances on every capture tick whether or not the
+# scene changed enough to re-describe.
+last_scene_change_time = 0.0
+
 # Motor order as the SDK reports it: three joints per leg, front-right first.
 # motor_state pads out to 20 entries; only these first 12 are real motors.
 LEG_NAMES = ("FR", "FL", "RR", "RL")
@@ -183,6 +198,7 @@ JOINT_NAMES = tuple(f"{leg}_{joint}" for leg in LEG_NAMES for joint in ("hip", "
 # Prefixes of the system messages the background workers inject. Shared so the
 # injection, the stale-message cleanup and the console log can't drift apart.
 VISUAL_CONTEXT_PREFIX = "Visual context (what you see):"
+SCENE_EVENT_PREFIX = "Recent change (what just happened):"
 BODY_STATE_PREFIX = "Body state:"
 
 # What counts as cool / warm / hot for each kind of sensor, since a small model
@@ -3120,6 +3136,41 @@ class VLMBackgroundWorker:
         self.change_threshold = float(os.getenv("BFF_VLM_CHANGE_THRESHOLD", "12.0"))
         self._last_compared_frame = None  # small grayscale frame, for change detection
 
+        # Perceptual events from the YOLO boxes. The frame-difference check
+        # above is photometric - it knows some pixels moved, never that a
+        # person did - so presence and proximity come from the detections the
+        # dashboard already publishes at frame rate.
+        self.scene_events_enabled = os.getenv("BFF_SCENE_EVENTS", "1").lower() not in ("0", "false", "no")
+        # Seconds a change stays in the prompt. Turns run ~15 s apart, so this
+        # wants to outlive one turn and no more - an event the model is still
+        # being told about a minute later is a lie about the present.
+        self.scene_event_ttl = float(os.getenv("BFF_SCENE_EVENT_TTL", "30.0"))
+        # How long the view has to sit unchanged before that silence is itself
+        # worth saying. Below a couple of minutes it is just a quiet room.
+        self.scene_stale_seconds = float(os.getenv("BFF_SCENE_STALE_SECONDS", "120.0"))
+        # Presence hysteresis. A person standing at the edge of frame sits
+        # right on YOLO's confidence cutoff - in a recorded session the median
+        # person detection scored 0.45 - so one threshold makes presence
+        # flicker, and the naive reading of that flicker is someone walking in
+        # and out of the room every few seconds. Enter on a confident box,
+        # keep tracking on a weak one.
+        self.person_enter_conf = float(os.getenv("BFF_PERSON_ENTER_CONF", "0.5"))
+        self.person_keep_conf = float(os.getenv("BFF_PERSON_KEEP_CONF", "0.3"))
+        # And absence has to persist in time, not just across a poll or two:
+        # dropouts in that session ran to 3.4 s at the 90th percentile, while
+        # every real exit left a gap above 8 s.
+        self.person_exit_seconds = float(os.getenv("BFF_PERSON_EXIT_SECONDS", "6.0"))
+        # Minimum gap between approach/retreat reports, damping the same edge
+        # jitter that the confidence bands handle for presence.
+        self.move_report_gap = float(os.getenv("BFF_PERSON_MOVE_GAP", "10.0"))
+        self._last_move_report = 0.0
+        self._person_present = False
+        self._person_height = None      # bbox height in pixels, at the last confirmed event
+        self._person_last_seen = 0.0    # last poll with any box above the keep threshold
+        self._event_text = ""
+        self._event_expires = 0.0
+        self._frame_size = None         # (w, h) of the last acquired frame, for left/right
+
         # Fallback velocity estimate by SLAM position delta, used only when
         # sport_state is missing from the payload (e.g. replaying an older
         # session capture) - LowState_ has no velocity field on this hardware.
@@ -3160,6 +3211,8 @@ class VLMBackgroundWorker:
 
             if not self.config.no_vlm:
                 self._capture_and_query()
+                if self.scene_events_enabled:
+                    self._fetch_scene_events()
             if not self.config.no_body:
                 self._fetch_body_state()
 
@@ -3346,6 +3399,119 @@ class VLMBackgroundWorker:
 
         return frame
 
+    def _side_of(self, bbox) -> str:
+        """Which way a box lies, phrased from the robot's point of view. Needs
+        the frame width, which only arrives once a capture has happened - until
+        then the event is reported without a direction rather than guessed."""
+        if not self._frame_size:
+            return ""
+        width = max(self._frame_size[0], 1)
+        centre_x = ((bbox[0] + bbox[2]) / 2.0) / width
+        if centre_x < 0.35:
+            return " on your left"
+        if centre_x > 0.65:
+            return " on your right"
+        return " in front of you"
+
+    def _fetch_scene_events(self):
+        """Turn the dashboard's YOLO boxes into a short 'what just changed' line.
+
+        Presence and proximity only: a bounding box says reliably whether a
+        person is there and roughly how big they are, and nothing else. Who
+        they are and what they are doing stays the caption's job. The
+        frame-difference gate upstream can't do either - it is photometric, so
+        a person crossing a quarter of the frame scores below the sensor's own
+        noise floor in a still room."""
+        global latest_scene_events
+
+        now = time.time()
+        dashboard_port = getattr(self.config, "dashboard_port", 8080)
+        try:
+            import urllib.request
+            url = f"http://127.0.0.1:{dashboard_port}/detections"
+            with urllib.request.urlopen(url, timeout=0.5) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+        except Exception:
+            # Dashboard down or slow. Say nothing rather than assert an empty
+            # room; whatever event is already standing expires on its own.
+            return
+
+        # The endpoint keeps serving its last non-empty result, so the age of
+        # the payload is the only thing separating "nobody is there" from "the
+        # detector stopped feeding".
+        if now - float(payload.get("timestamp") or 0.0) > 1.5:
+            return
+
+        boxes = [
+            d for d in (payload.get("detections") or [])
+            if isinstance(d, dict) and d.get("class") == "person"
+            and len(d.get("bbox") or ()) == 4
+        ]
+        # Two confidence bands: a firm one to declare someone has arrived, a
+        # loose one to accept they are still there.
+        threshold = self.person_keep_conf if self._person_present else self.person_enter_conf
+        people = [d for d in boxes if d.get("confidence", 0.0) >= threshold]
+        biggest = max(people, key=lambda d: d["bbox"][3] - d["bbox"][1]) if people else None
+        height = (biggest["bbox"][3] - biggest["bbox"][1]) if biggest else None
+        if people:
+            self._person_last_seen = now
+
+        event = ""
+        if people and not self._person_present:
+            self._person_present = True
+            self._person_height = height
+            event = "someone has come into view" + self._side_of(biggest["bbox"])
+        elif not people and self._person_present:
+            # Absence has to hold for a while. Anything shorter is the
+            # detector blinking, not a person leaving.
+            if now - self._person_last_seen >= self.person_exit_seconds:
+                self._person_present = False
+                self._person_height = None
+                event = "the person has moved out of view"
+        elif (people and self._person_present and height and self._person_height
+              and now - self._last_move_report >= self.move_report_gap):
+            # Box height against the height at the last reported move, not
+            # against the previous poll - otherwise a slow approach never
+            # clears the threshold on any single step and goes unmentioned.
+            # The rate limit is because a person at the edge of frame has limbs
+            # crossing in and out, which swings box height enough to read as
+            # approach and retreat within the same second.
+            if height > self._person_height * 1.15:
+                event = "the person is closer than before"
+                self._person_height = height
+                self._last_move_report = now
+            elif height < self._person_height * 0.85:
+                event = "the person has moved further away"
+                self._person_height = height
+                self._last_move_report = now
+
+        if not event and not self._person_present and now > self._event_expires:
+            # Nothing moved and nothing was described for a long time. That
+            # silence is a real observation, and the only honest thing the
+            # visual channel has to say - the caption it is still holding
+            # describes a moment minutes gone. Only claim it with the room
+            # empty: the caption sitting unchanged while someone is in front of
+            # the robot means the captioner is not keeping up, not that nothing
+            # is happening.
+            with vlm_lock:
+                quiet_since = last_scene_change_time
+            if quiet_since and now - quiet_since > self.scene_stale_seconds:
+                minutes = int((now - quiet_since) // 60)
+                unit = "minute" if minutes == 1 else "minutes"
+                event = f"nothing in view has changed for {minutes} {unit}"
+
+        if event:
+            self._event_text = event
+            self._event_expires = now + self.scene_event_ttl
+        elif now > self._event_expires:
+            self._event_text = ""
+
+        with scene_events_lock:
+            is_new = self._event_text != latest_scene_events
+            latest_scene_events = self._event_text
+        if is_new and self._event_text:
+            log_context_packet(SCENE_EVENT_PREFIX, self._event_text)
+
     def _scene_has_changed(self, frame) -> bool:
         """Cheap grayscale frame-difference check against the last frame that
         was actually described. Keeps the (slow) VLM query from re-describing
@@ -3364,7 +3530,7 @@ class VLMBackgroundWorker:
         return changed
 
     def _capture_and_query(self):
-        global latest_scene_description, last_vlm_query_time
+        global latest_scene_description, last_vlm_query_time, last_scene_change_time
 
         # Update immediately to pace the next check, regardless of whether
         # this tick ends up actually querying the VLM.
@@ -3374,6 +3540,10 @@ class VLMBackgroundWorker:
         if frame is None:
             print("[VLM Worker] Capture failed. No image retrieved.", file=sys.stderr)
             return
+
+        # Cached for the event poller, which sees boxes in this frame's pixel
+        # coordinates but never the frame itself.
+        self._frame_size = (frame.shape[1], frame.shape[0])
 
         if not self._scene_has_changed(frame):
             return
@@ -3474,6 +3644,8 @@ class VLMBackgroundWorker:
                 previous_description = latest_scene_description
                 latest_scene_description = description
                 last_vlm_query_time = time.time()
+                if description and description != previous_description:
+                    last_scene_change_time = last_vlm_query_time
 
             if WORKER_VERBOSE:
                 print(f"[VLM Worker] VLM query finished in {query_duration:.2f}s.", file=sys.stderr)
@@ -4322,6 +4494,8 @@ def run_conversation(config: ConversationConfig) -> None:
             # synchronous capture is needed here.
             with vlm_lock:
                 current_description = latest_scene_description
+            with scene_events_lock:
+                current_scene_events = latest_scene_events
             with body_state_lock:
                 current_body_state = latest_body_state
 
@@ -4330,22 +4504,37 @@ def run_conversation(config: ConversationConfig) -> None:
                 m for m in messages
                 if not (m["role"] == "system" and (
                     m["content"].startswith(VISUAL_CONTEXT_PREFIX)
+                    or m["content"].startswith(SCENE_EVENT_PREFIX)
                     or m["content"].startswith(BODY_STATE_PREFIX)
                 ))
             ]
 
-            # The user's turn goes in first, then the context, so perception
-            # sits at the very end of the prompt. A small model weights the
-            # tail of its context most heavily, and these packets describe the
-            # moment being asked about - they should read as what the body
-            # notices while answering, not as background stated earlier.
+            # Perception goes in ahead of the user's turn, as one block, so the
+            # question is the last thing before the model answers.
+            #
+            # Both halves of that were measured against gemma4:e2b on a
+            # recorded turn, asking "what's your temperature" over a body state
+            # carrying five real readings, scoring whether the reply cited any
+            # of them. Trailing the packets after the user turn - which is what
+            # this did originally, on the theory that a small model weights the
+            # tail of its context most heavily - scored 0 of 8, no better than
+            # sending no telemetry at all; it answered the packet instead of the
+            # question. Moving them ahead scored 8 of 10. Splitting them across
+            # separate system messages then dropped it back to 4 of 10, and
+            # merging them into this single block recovered 9 of 10: each extra
+            # message boundary costs attention, so the packets travel together.
+            perception = []
+            if current_description and not config.no_vlm:
+                perception.append(f"{VISUAL_CONTEXT_PREFIX} {current_description}")
+            if current_scene_events and not config.no_vlm:
+                perception.append(f"{SCENE_EVENT_PREFIX} {current_scene_events}")
+            if current_body_state and not config.no_body:
+                perception.append(f"{BODY_STATE_PREFIX} {current_body_state}")
+            if perception:
+                messages.append({"role": "system", "content": "\n".join(perception)})
+
             messages.append({"role": "user", "content": user_text})
 
-            if current_description and not config.no_vlm:
-                messages.append({"role": "system", "content": f"{VISUAL_CONTEXT_PREFIX} {current_description}"})
-            if current_body_state and not config.no_body:
-                messages.append({"role": "system", "content": f"{BODY_STATE_PREFIX} {current_body_state}"})
-            
             # Truncate history: Keep generic system prompt + last N messages
             # This prevents the context from growing indefinitely and slowing down prefill.
             limit = config.history_truncation_limit
