@@ -3422,6 +3422,23 @@ class VLMBackgroundWorker:
                 self._last_logged_state_key = state_key
                 self._last_logged_scene = current_scene
                 log_context_packet(BODY_STATE_PREFIX, summary)
+                # Same gate for the session log as for the console: the poll
+                # runs every couple of seconds and the raw temperatures jitter
+                # by a degree between them, so recording every tick would bury
+                # the session file without adding anything. What lands here is
+                # the sentence the model would have been given, at the moments
+                # it changed meaning.
+                append_log_line(
+                    self.log_file,
+                    {
+                        "type": "body_state",
+                        "timestamp": wall_now().isoformat(),
+                        "summary": summary,
+                        "battery_pct": round(battery_pct, 1),
+                        "stance": stance,
+                        "speed_mps": round(speed, 3),
+                    },
+                )
         except Exception as e:
             print(f"[Body State] Failed to fetch lowstate: {e}", file=sys.stderr)
 
@@ -4709,6 +4726,15 @@ def run_conversation(config: ConversationConfig) -> None:
                     "text": user_text,
                     "audio_path": str(raw_audio),
                     "speaker": "USER",
+                    # Exactly what the model was told it perceived on this
+                    # turn, verbatim and in order. The body state in particular
+                    # went nowhere but stderr before this, so reading a session
+                    # back gave you the robot's answers with no record of what
+                    # it was answering from - and these packets are stateful
+                    # enough (a caption can be minutes stale, an event expires
+                    # after 30 s) that they cannot be reconstructed afterwards
+                    # from the vlm_query and body_state timelines alone.
+                    "perception": perception,
                 },
             )
 
