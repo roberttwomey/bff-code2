@@ -61,6 +61,8 @@ Environment variables:
     BFF_DASHBOARD_START_ATTEMPTS how many times to (re)start dashboard_server.py while waiting for the WebRTC feed (default: 3)
     BFF_DASHBOARD_HTTP_TIMEOUT   seconds to wait for the dashboard to serve its index page (default: 15)
     BFF_DASHBOARD_STREAM_TIMEOUT seconds to wait for the robot camera/telemetry feeds before restarting the dashboard (default: 30)
+    BFF_DASHBOARD_STOP_TIMEOUT   seconds to let the dashboard finalise its recordings on exit before
+                                 force killing it - too short truncates the last chunk's video (default: 60)
     BFF_TIME_HOST           host running `set_time.py --serve` to take the clock from at startup,
                             in preference to the robot's DDS stamp (e.g. Roberts-MacBook-Air.local)
     BFF_TIME_PORT           port for the above (default: 37020)
@@ -1141,9 +1143,16 @@ def stop_dashboard_server(process: subprocess.Popen | None, dashboard_log: Any) 
         print("[Chat Manager] Terminating dashboard_server.py...", file=sys.stderr)
         process.terminate()
         try:
-            process.wait(timeout=3.0)
+            # SIGTERM now makes the dashboard finalise its recordings rather
+            # than die where it stands, and writing the index of a large mp4
+            # takes real time. Three seconds was not enough for that, so the
+            # SIGKILL below landed mid-release and produced the very corruption
+            # the clean shutdown exists to avoid. Waiting costs nothing here -
+            # this runs once, on the way out.
+            process.wait(timeout=float(os.getenv("BFF_DASHBOARD_STOP_TIMEOUT", "60")))
         except subprocess.TimeoutExpired:
-            print("[Chat Manager] Force killing dashboard_server.py...", file=sys.stderr)
+            print("[Chat Manager] dashboard_server.py did not finish finalising in time; "
+                  "force killing (the last chunk's video may be unplayable).", file=sys.stderr)
             process.kill()
             process.wait()
     if dashboard_log is not None:

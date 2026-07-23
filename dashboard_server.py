@@ -7,6 +7,7 @@ body telemetry data (WebSockets), and Chat-Manager logs (WebSockets).
 
 import os
 import sys
+import signal
 import socket
 import time
 import json
@@ -707,6 +708,21 @@ def main():
         print(f"RUNNING IN SIMULATION MODE (PLAYBACK)")
     print(f"=======================================================\n")
 
+    # Ctrl-C already arrives as KeyboardInterrupt, but chat-manager stops this
+    # process with SIGTERM, whose default action is to die on the spot. That
+    # skipped the finally below, so stop_writers() never ran, and every writer
+    # thread is a daemon - killed mid-write without finalising. For the JSONL
+    # streams that costs nothing, since they flush per line, but an mp4 only
+    # gets its moov atom when the writer is released, so the chunk open at exit
+    # was unplayable: 94 MB of frames with no index. Chunk rotation releases
+    # the writer properly, so this only ever hit the last chunk - the one
+    # holding the end of a performance.
+    def _stop_on_signal(signum, _frame):
+        print(f"\nReceived signal {signum}. Finalising recordings...", flush=True)
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, _stop_on_signal)
+
     try:
         socketio.run(app, host='0.0.0.0', port=args.port, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)
     except KeyboardInterrupt:
@@ -720,8 +736,20 @@ def main():
                 print("Stopping robot capture streams and finalizing files...")
                 capturer.stop_event.set()
                 if capturer_thread:
-                    capturer_thread.join(timeout=5.0)
-                print("Dashboard shutdown completed cleanly.")
+                    # Generous, because this is where the video index is
+                    # written: releasing a several-hundred-megabyte mp4 is not
+                    # instant, and the old 5s could expire mid-release, leaving
+                    # exactly the corrupt file it was meant to prevent. Nothing
+                    # is lost by waiting - the process is exiting anyway.
+                    join_timeout = float(os.environ.get("BFF_SHUTDOWN_TIMEOUT", "60"))
+                    capturer_thread.join(timeout=join_timeout)
+                    if capturer_thread.is_alive():
+                        print(f"WARNING: capture threads still running after {join_timeout:.0f}s. "
+                              f"The last chunk's video.mp4 may be missing its index.")
+                    else:
+                        print("Dashboard shutdown completed cleanly.")
+                else:
+                    print("Dashboard shutdown completed cleanly.")
 
                 # Automatically run overlay_detections immediately on exit
                 if hasattr(capturer, 'output_dir') and capturer.output_dir:
