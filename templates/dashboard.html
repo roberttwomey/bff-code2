@@ -604,9 +604,50 @@
             background: rgba(255, 255, 255, 0.3);
         }
     </style>
+    {% if replay_mode %}
+    <style>
+        /* Replay-only: a timeline scrubber pinned to the bottom of the window. */
+        body.replay-mode { padding-bottom: 68px; }
+        #replayBar {
+            position: fixed; left: 0; right: 0; bottom: 0; height: 68px;
+            z-index: 9999; display: flex; align-items: center; gap: 16px;
+            padding: 0 20px; box-sizing: border-box;
+            background: rgba(12, 12, 16, 0.92);
+            border-top: 1px solid var(--panel-border);
+            backdrop-filter: blur(8px); font-size: 0.75rem;
+        }
+        #replayPlay {
+            flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%;
+            border: 1px solid var(--panel-border); background: rgba(255,255,255,0.06);
+            color: #fff; cursor: pointer; font-size: 1rem; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #replayPlay:hover { background: rgba(255,255,255,0.14); }
+        #replaySeek {
+            flex: 1 1 auto; -webkit-appearance: none; appearance: none;
+            height: 6px; border-radius: 3px; cursor: pointer;
+            background: linear-gradient(to right, #00ff66 0%, #00ff66 0%,
+                                        rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.15) 100%);
+        }
+        #replaySeek::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%;
+            background: #00ff66; cursor: pointer;
+        }
+        #replaySeek::-moz-range-thumb {
+            width: 14px; height: 14px; border-radius: 50%; border: none;
+            background: #00ff66; cursor: pointer;
+        }
+        #replayTime {
+            flex: 0 0 auto; font-variant-numeric: tabular-nums; color: #fff;
+            letter-spacing: 0.05em; min-width: 104px; text-align: right;
+        }
+        /* Lift the lidar controls handle so the scrubber doesn't cover it. */
+        #lidarPanel { bottom: 68px !important; }
+    </style>
+    {% endif %}
 </head>
 
-<body>
+<body class="{% if replay_mode %}replay-mode{% endif %}">
 
     <div class="dashboard-container">
         <div class="workspace">
@@ -788,6 +829,15 @@
             </div>
         </div>
     </div>
+
+    {% if replay_mode %}
+    <!-- Replay timeline scrubber -->
+    <div id="replayBar">
+        <button id="replayPlay" title="Play / Pause">&#9658;</button>
+        <input type="range" id="replaySeek" min="0" max="1000" value="0" step="1">
+        <span id="replayTime">0:00 / 0:00</span>
+    </div>
+    {% endif %}
 
     <script>
         // SocketIO connectivity
@@ -1658,6 +1708,106 @@
             reader.readAsText(file);
             e.target.value = ''; // Clear value
         });
+
+        {% if replay_mode %}
+        // ---------------------------------------------------------------- //
+        // Replay controls: one server-authoritative playhead, driven here.
+        // ---------------------------------------------------------------- //
+        (function () {
+            const playBtn = document.getElementById('replayPlay');
+            const seek = document.getElementById('replaySeek');
+            const timeLabel = document.getElementById('replayTime');
+            const accumulateEl = document.getElementById('accumulateLidar');
+
+            // Recording is a live-only action; there's nothing to record here.
+            const recBtn = document.getElementById('recordBtn');
+            if (recBtn) recBtn.style.display = 'none';
+
+            let duration = 0;
+            let playing = false;
+            let dragging = false;
+
+            const fmt = (s) => {
+                s = Math.max(0, Math.floor(s || 0));
+                const m = Math.floor(s / 60);
+                return m + ':' + String(s % 60).padStart(2, '0');
+            };
+            const paintFill = (frac) => {
+                const pct = Math.max(0, Math.min(100, frac * 100));
+                seek.style.background =
+                    'linear-gradient(to right, #00ff66 0%, #00ff66 ' + pct + '%,' +
+                    ' rgba(255,255,255,0.15) ' + pct + '%, rgba(255,255,255,0.15) 100%)';
+            };
+
+            // Reset hooks the server fires before replaying state on a seek.
+            socket.on('chat_reset', () => {
+                consoleLogs.innerHTML = '<div class="console-welcome">...</div>';
+                renderedKeys.clear();
+                welcomeRemoved = false;
+                currentAssistantTurn = null;
+                currentAssistantContentSpan = null;
+            });
+            socket.on('lidar_reset', () => {
+                accumulatedPositions = [];
+                accumulatedColors = [];
+                pointsGeometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+                pointsGeometry.setAttribute('color', new THREE.Float32BufferAttribute([], 3));
+                pointsGeometry.computeBoundingSphere();
+            });
+
+            socket.on('replay_state', (st) => {
+                duration = st.duration || 0;
+                playing = !!st.playing;
+                playBtn.innerHTML = playing ? '&#10074;&#10074;' : '&#9658;';
+                if (!dragging) {
+                    const frac = duration > 0 ? st.playhead / duration : 0;
+                    seek.value = Math.round(frac * 1000);
+                    paintFill(frac);
+                }
+                timeLabel.textContent = fmt(st.playhead) + ' / ' + fmt(duration);
+            });
+
+            playBtn.addEventListener('click', () => {
+                socket.emit(playing ? 'replay_pause' : 'replay_play');
+            });
+
+            const seekTarget = () => (seek.value / 1000) * duration;
+            seek.addEventListener('pointerdown', () => { dragging = true; });
+            seek.addEventListener('input', () => {
+                const frac = seek.value / 1000;
+                paintFill(frac);
+                timeLabel.textContent = fmt(frac * duration) + ' / ' + fmt(duration);
+            });
+            const commitSeek = () => {
+                dragging = false;
+                socket.emit('replay_seek', {
+                    t: seekTarget(),
+                    accumulate: !!(accumulateEl && accumulateEl.checked),
+                });
+            };
+            seek.addEventListener('change', commitSeek);
+            seek.addEventListener('pointerup', commitSeek);
+
+            // Keep the server's idea of accumulation in step with the checkbox,
+            // so a backward seek can rebuild the accumulated cloud correctly.
+            if (accumulateEl) {
+                accumulateEl.addEventListener('change', () => {
+                    socket.emit('replay_set_accumulate', { accumulate: accumulateEl.checked });
+                });
+                socket.on('connect', () => {
+                    socket.emit('replay_set_accumulate', { accumulate: accumulateEl.checked });
+                });
+            }
+
+            // Spacebar toggles play/pause (unless typing in a field).
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {
+                    e.preventDefault();
+                    socket.emit(playing ? 'replay_pause' : 'replay_play');
+                }
+            });
+        })();
+        {% endif %}
     </script>
 </body>
 

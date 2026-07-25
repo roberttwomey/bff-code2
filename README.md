@@ -184,6 +184,35 @@ python dashboard_server.py --simulate    # replay the newest captures/ session
 Open `http://localhost:8080`. Toggle **YOLO DETECT** in the video panel to
 pause/resume inference; use **RECORD** to switch recording mode at runtime.
 
+### Replaying a recorded session
+
+[replay.py](replay.py) replays a whole recorded session against the same
+dashboard UI, with a timeline scrubber. Unlike `dashboard_server.py --simulate`
+(which streams the newest session forward, chunk by chunk, with no audio and no
+seeking), `replay.py` builds one global timeline and a single, scrubbable
+playhead that moves every stream together:
+
+```bash
+python replay.py                                 # newest session with video
+python replay.py --session session-20260723-092744
+python replay.py --mic-audio                     # also mix in the robot-mic ambient
+python replay.py --no-audio --loop
+```
+
+Open `http://localhost:8080` and use the scrubber at the bottom (play/pause,
+drag to seek; spacebar toggles play). It plays the recorded per-turn speech —
+the user's input utterance and the robot's synthesized reply — placed at the
+moment each was heard; accumulates LiDAR up to the playhead; shows the body-state
+sample at the playhead; and labels the header with the **recorded** device
+(e.g. `snapper.local`), not the host running the replay.
+
+Sessions are large — a full performance runs to gigabytes of `lidar.jsonl` — so
+nothing bulky is held in memory: each chunk's telemetry/LiDAR log is reduced to a
+compact `(timestamp → byte offset)` index (cached as `.replay-index.json` in the
+session, so later runs start in seconds), and individual scans are read lazily at
+the playhead. A truncated final chunk (`moov`-less `video.mp4`) is skipped for
+video but still contributes its telemetry and LiDAR.
+
 ### After a session
 
 Recorded sessions live under `BFF_LOG_ROOT` (default `~/bff/logs`) as
