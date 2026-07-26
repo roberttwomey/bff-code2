@@ -182,6 +182,24 @@ last_assistant_speech_time = 0.0
 body_state_lock = threading.Lock()
 latest_body_state = ""
 
+try:
+    from memory.writer import MemoryStore
+except Exception as _memory_import_error:
+    print(
+        f"[Memory] Memory subsystem unavailable ({_memory_import_error}); recall disabled.",
+        file=sys.stderr,
+    )
+
+    class MemoryStore:  # no-op fallback when memory/ deps (e.g. sqlite-vec) aren't installed
+        def __init__(self, session_id: str) -> None:
+            pass
+
+        def record(self, *args, **kwargs) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
 # Motor order as the SDK reports it: three joints per leg, front-right first.
 # motor_state pads out to 20 entries; only these first 12 are real motors.
 LEG_NAMES = ("FR", "FL", "RR", "RL")
@@ -3152,10 +3170,15 @@ def build_initial_messages(system_prompt: str) -> list[dict[str, str]]:
 
 
 class VLMBackgroundWorker:
-    def __init__(self, config: ConversationConfig, session_dir: Path, log_file: Path):
+    def __init__(self, config: ConversationConfig, session_dir: Path, log_file: Path, session_id: str):
         self.config = config
         self.session_dir = session_dir
         self.log_file = log_file
+        self.session_id = session_id
+        # Opened inside _run() rather than here: sqlite3 connections must be
+        # used from the thread that created them, and __init__ runs on the
+        # main thread while _run() is the worker thread.
+        self.memory_store = None
         self.stop_event = threading.Event()
         self.thread = None
         self.ip = os.getenv("UNITREE_ROBOT_IP", "192.168.4.30")
@@ -3204,6 +3227,7 @@ class VLMBackgroundWorker:
         if not self.config.no_body:
             jobs.append("body state")
         print(f"[VLM Worker] Started background worker thread ({', '.join(jobs)}).", file=sys.stderr)
+        self.memory_store = MemoryStore(self.session_id)
 
         while not self.stop_event.is_set():
             # Don't start a new capture while the chat model is generating a
@@ -3344,6 +3368,18 @@ class VLMBackgroundWorker:
             summary = f"charge {battery_pct:.0f}%, {stance}, {motion}{warmth_part}"
             with body_state_lock:
                 latest_body_state = summary
+
+            if self.memory_store is not None:
+                self.memory_store.record(
+                    "telemetry",
+                    summary,
+                    metadata={
+                        "battery_pct": battery_pct,
+                        "velocity_mps": speed,
+                        "stance": stance,
+                        "motion": motion,
+                    },
+                )
 
             # Log only when the packet means something new. Raw temperatures
             # jitter by a degree between polls, so compare the shape of the
@@ -3555,6 +3591,16 @@ class VLMBackgroundWorker:
                     "duration_seconds": query_duration
                 }
             )
+            if self.memory_store is not None:
+                self.memory_store.record(
+                    "vlm_caption",
+                    description,
+                    metadata={
+                        "model": model_name,
+                        "duration_seconds": query_duration,
+                        "image_path": str(image_path),
+                    },
+                )
         except Exception as e:
             print(f"[VLM Worker] Ollama vision query failed: {e}", file=sys.stderr)
 
@@ -3743,10 +3789,12 @@ def run_conversation(config: ConversationConfig) -> None:
         print("[VLM Worker] Disabled via --no-vlm; skipping scene captioning.", file=sys.stderr)
     if config.no_body:
         print("[Body State] Disabled via --no-body; not polling telemetry.", file=sys.stderr)
+    memory_store = MemoryStore(session_id)
+
     if config.no_vlm and config.no_body:
         vlm_worker = None
     else:
-        vlm_worker = VLMBackgroundWorker(config, session_dir, log_file)
+        vlm_worker = VLMBackgroundWorker(config, session_dir, log_file, session_id)
         vlm_worker.start()
 
 
@@ -4421,6 +4469,11 @@ def run_conversation(config: ConversationConfig) -> None:
                     "speaker": "USER",
                 },
             )
+            memory_store.record(
+                "conversation_user",
+                user_text,
+                metadata={"turn": turn},
+            )
 
             abort_event = threading.Event()
             
@@ -4608,7 +4661,12 @@ def run_conversation(config: ConversationConfig) -> None:
                     "speaker": current_speaker,
                 },
             )
-            
+            memory_store.record(
+                "conversation_assistant",
+                full_assistant_text.strip(),
+                metadata={"turn": turn},
+            )
+
             tts_worker.stop() # Cleanup
             # Clear references after successful completion
             current_tts_worker = None
@@ -4641,6 +4699,8 @@ def run_conversation(config: ConversationConfig) -> None:
             log_file,
             {"type": "session_end"},
         )
+        if 'memory_store' in locals():
+            memory_store.close()
 
 
 def main() -> None:
