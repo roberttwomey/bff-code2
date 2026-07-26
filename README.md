@@ -96,6 +96,18 @@ python -c "import torch; print('cuda', torch.cuda.is_available())"   # expect: c
 > `unitree_sdk2py`. On Jetson, install `torch`/`torchvision`/`onnxruntime-gpu`
 > from NVIDIA's wheels, not PyPI.
 
+**Episodic memory (optional).** The cross-session recall database needs a few
+extra packages on top of the above:
+```bash
+pip install -r memory/requirements.txt
+python -m memory.db                    # expect: sqlite-vec <version> loaded OK
+```
+The subsystem is fail-soft in two independent stages — if `sqlite-vec` is
+missing or this Python can't load SQLite extensions, memory degrades to a
+no-op; if the embedder is unavailable, raw events still record without
+vectors. Either way the voice loop runs unaffected, so skipping this step
+costs recall, not stability.
+
 ### 3. Speech + vision models
 
 - **Piper voices** (TTS): place `.onnx` voice files under `speech/piper/`
@@ -104,6 +116,52 @@ python -c "import torch; print('cuda', torch.cuda.is_available())"   # expect: c
   others on first use.
 - **Whisper**: `faster-whisper` downloads the chosen model
   (`BFF_WHISPER_MODEL`, e.g. `tiny.en`) on first run.
+- **Memory embedder** (only if you installed `memory/requirements.txt`):
+  `all-MiniLM-L6-v2` is pulled from Hugging Face on first use and cached on
+  disk — the int8 `arm64` export on Jetson/Apple Silicon, fp32 elsewhere. It
+  runs CPU-only on purpose, so it never competes with Ollama for the Jetson's
+  shared unified memory.
+
+> **Jetson caveat — pre-stage the embedding model, and don't let pip touch
+> `numpy`.** Two things bite on snapper and helper specifically:
+>
+> **1. Warm the model cache before you go on site.** The Hugging Face fetch
+> happens on the *first event the robot records*, and robot internet access is
+> **conditional on where you are**: at home the housemachine network has an
+> uplink and both Jetsons can reach the Hub, but on site that network is a
+> local access point (GL.iNet Beryl AX3000) plus internal-net with **no route
+> out**. A first run on site therefore logs `[Memory] Failed to embed ...` for
+> the whole session — events still land in the database, but without vectors,
+> so they are invisible to semantic recall until backfilled.
+>
+> While still on an uplinked network, warm each robot once:
+> ```bash
+> ssh cohab@snapper.local "cd code/bff-code2 && source venv/bin/activate && \
+>   python -c 'from memory.embedder import embed; embed(\"warm the cache\")'"
+> ```
+> Adjust user, host, and path per robot (see [Fleet Notes](#fleet-notes)) — on
+> helper that is `jesse@helper.local` and `code/bff-code2-main`. One-time per
+> robot per account; `~/.cache/huggingface` persists across runs. Verify with
+> `python -m memory.inspect`, which reports an `N/N embedded` count per event
+> type.
+>
+> If you are already on site with a cold cache, copy it in from the Mac
+> instead — the Mac is Apple Silicon and the Jetsons are aarch64, so both
+> resolve to the same int8 `arm64` export and the ~22 MB cache is portable:
+> ```bash
+> tar -czf /tmp/hf-minilm.tgz -C ~/.cache/huggingface \
+>   hub/models--sentence-transformers--all-MiniLM-L6-v2
+> scp /tmp/hf-minilm.tgz cohab@snapper.local:/tmp/
+> ssh cohab@snapper.local "mkdir -p ~/.cache/huggingface && \
+>   tar -xzf /tmp/hf-minilm.tgz -C ~/.cache/huggingface"
+> ```
+>
+> **2. Install with `numpy` pinned.** `onnxruntime` will happily pull `numpy`
+> 2.x, which **breaks the Jetson `torch`/`cv2` builds**. Pin it on both robots:
+> ```bash
+> pip install -r memory/requirements.txt "numpy<2"
+> python -c "import numpy, torch, cv2; print(numpy.__version__, torch.cuda.is_available())"
+> ```
 
 ### 4. Configure `.env`
 
