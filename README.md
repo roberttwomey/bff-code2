@@ -156,11 +156,14 @@ costs recall, not stability.
 >   tar -xzf /tmp/hf-minilm.tgz -C ~/.cache/huggingface"
 > ```
 >
-> **2. Install with `numpy` pinned.** `onnxruntime` will happily pull `numpy`
-> 2.x, which **breaks the Jetson `torch`/`cv2` builds**. Pin it on both robots:
+> **2. Don't let anything upgrade `numpy`.** `onnxruntime` pulls `numpy`
+> transitively and resolves 2.x unless constrained, which **breaks the Jetson
+> `torch`/`cv2` builds**. `memory/requirements.txt` pins `numpy<2` for exactly
+> this reason — keep that pin, and confirm the CUDA stack still imports after
+> installing:
 > ```bash
-> pip install -r memory/requirements.txt "numpy<2"
 > python -c "import numpy, torch, cv2; print(numpy.__version__, torch.cuda.is_available())"
+> # expect: 1.26.4 True
 > ```
 
 ### 4. Configure `.env`

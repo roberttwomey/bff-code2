@@ -3,3 +3,10 @@ onnxruntime
 tokenizers
 huggingface_hub
 python-dotenv
+
+# onnxruntime pulls numpy transitively and will happily resolve 2.x, which
+# breaks the Jetson torch/cv2 builds on snapper and helper. Pinned here so a
+# bare `pip install -r memory/requirements.txt` can't quietly upgrade numpy
+# out from under the CUDA stack -- do not drop this without checking both
+# robots still import torch and cv2.
+numpy<2
