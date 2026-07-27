@@ -21,8 +21,8 @@ The system has three layers:
    segmented into `chunk_N/` directories. YOLO object detection runs once in a
    background worker and is logged to `detections.jsonl`.
 2. **Voice & dashboard** — [chat-manager.py](chat-manager.py) runs the
-   voice-assistant loop (Whisper STT, Ollama LLM, Moondream/gemma VLM, Piper
-   TTS) and launches [dashboard_server.py](dashboard_server.py), a Flask +
+   voice-assistant loop (Whisper STT, Ollama LLM, `gemma4:e2b` VLM for scene
+   interpretation, Piper TTS) and launches [dashboard_server.py](dashboard_server.py), a Flask +
    Three.js dashboard streaming live video, telemetry, and a 3D LiDAR map. Chat
    transcript, VLM snapshots, and capture data all share one
    `session-YYYYMMDD-HHMMSS/` directory.

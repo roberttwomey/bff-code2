@@ -76,13 +76,28 @@ indexing on `feature/memory-rebased`.
 ### Two constraints that shape every phase
 
 **Unified memory is the scarce resource, not disk or CPU.** Ollama, Whisper,
-and TensorRT already contend on the Jetsons — Moondream has been pushed to CPU
-at ~190 s/caption when it lost. Every background cognitive process here runs a
-*local LLM*, which is far heavier than the VLM captions we already schedule
-around. `chat-manager.py` gates the VLM worker on the `is_dialogue_active`
-global for exactly this reason; consolidation and rumination must use the same
-gate and take a stricter one (idle *and* not mid-turn). A dog that thinks
-beautifully but answers slowly is a regression.
+and TensorRT contend on the Jetsons, and the precedent is sharp: back when
+scene captioning ran a *second* model, a reload that landed after Whisper and
+TensorRT had claimed memory pushed that VLM ~94% onto CPU — 1.4 s/caption
+standalone became ~190 s.
+
+The current configuration is much better placed. Both robots run **one model
+for both roles** — `BFF_OLLAMA_MODEL` and `BFF_VLM_MODEL` are each `gemma4:e2b`
+in `deploy-reference/snapper.env` and `helper.env` — so chat and scene
+interpretation share a single resident model rather than competing for
+residency. Preserve that. Every background cognitive process in this arc runs a
+local LLM, and the cheap way to run them is *as the same model*, not as another
+resident one. `chat-manager.py` already gates the VLM worker on the
+`is_dialogue_active` global; consolidation and rumination must use that gate and
+a stricter one (idle *and* not mid-turn). A dog that thinks beautifully but
+answers slowly is a regression.
+
+One sharp edge to keep in mind: the preload path builds `models_to_load` from
+`(ollama_model, ollama_num_ctx)` then `(vlm_model, DEFAULT_VLM_NUM_CTX)`. With
+one model and both `num_ctx` at 2048 the second call is a harmless no-op — but
+setting `BFF_VLM_NUM_CTX` different from `BFF_OLLAMA_NUM_CTX` while sharing a
+model would make Ollama re-place it on every startup, which is exactly how the
+190 s incident began.
 
 **Unprompted speech re-opens the hardest solved problem in the project.**
 Self-echo, barge-in gating, and AEC (`feature/aec`) were expensive to get
@@ -265,9 +280,11 @@ Python 3.10–3.12 (snapper is 3.10), `numpy>=1.26.4` (satisfied by our
    for GPU.
 3. **dimos's own Jetson extras are disabled** in their `pyproject.toml`
    (noted as 404ing). Jetson is not a supported path there today.
-4. **Memory contention.** Moondream has already been pushed to CPU
-   (~190 s/caption) once Whisper and TensorRT claimed unified memory. A
-   2 M-block voxel grid is a serious new claimant on the same pool.
+4. **Memory contention.** A VLM has already been pushed ~94% onto CPU
+   (~190 s/caption) once Whisper and TensorRT claimed unified memory. The
+   current single-model setup (`gemma4:e2b` for both chat and scene) keeps only
+   one model resident; a 2 M-block voxel grid would be a serious new claimant
+   on that same pool, and unlike a model it cannot be shared.
 
 ### What to take
 
