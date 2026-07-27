@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
-"""Voice chat assistant using Whisper STT, Ollama Gemma 4 LLM, Moondream VLM, and Piper TTS.
+"""Voice chat assistant using Whisper STT, Ollama Gemma 4 LLM and VLM, and Piper TTS.
 
 This script performs continuous voice activity detection (VAD) on microphone
 audio, automatically segments speech, transcribes each utterance with Whisper,
-maintains continuous visual context via a background Moondream VLM worker,
+maintains continuous visual context via a background VLM worker,
 sends the resulting text and scene descriptions to an Ollama model (`gemma4:e2b` by default), and
 plays back the assistant response via Piper text-to-speech using the Python
 `piper-tts` library.
 
+Chat and scene interpretation default to the same model, so Ollama keeps one
+resident copy serving both roles rather than two competing for the Jetson's
+unified memory.
+
 Requirements:
-    - ollama (Python package) with the configured LLM (`gemma4:e2b`) and VLM (`moondream`) models pulled locally
+    - ollama (Python package) with `gemma4:e2b` pulled locally (serves both the
+      LLM and VLM roles unless BFF_VLM_MODEL points elsewhere)
     - openai-whisper / faster-whisper
     - sounddevice, soundfile, numpy
     - piper-tts (Python package) and at least one Piper voice model file
@@ -31,7 +36,7 @@ Environment variables:
     BFF_OLLAMA_THINK        enable thinking token parsing for reasoning models (default: false)
     BFF_SYSTEM_PROMPT       override default system prompt for the chat assistant
     BFF_HISTORY_TRUNCATION_LIMIT override conversation history truncation limit (default: 11)
-    BFF_VLM_MODEL           override Ollama model name for VLM scene captioning (default: moondream)
+    BFF_VLM_MODEL           override Ollama model name for VLM scene captioning (default: gemma4:e2b)
     BFF_VLM_NUM_PREDICT     override max tokens generated per VLM scene description (default: 50)
     BFF_VLM_NUM_CTX         override context size for the VLM model (default: 2048)
     BFF_VLM_TEMPERATURE     override VLM sampling temperature (default: 0.4)
@@ -283,7 +288,12 @@ DEFAULT_SYSTEM_PROMPT = (
 )
 
 DEFAULT_OLLAMA_MODEL = os.environ.get("BFF_OLLAMA_MODEL", "gemma4:e2b")
-DEFAULT_VLM_MODEL = os.environ.get("BFF_VLM_MODEL", "moondream")
+# Matches the chat default on purpose - both robots set BFF_VLM_MODEL to
+# gemma4:e2b, and one resident model serving both roles keeps scene captioning
+# from competing with chat for the Jetson's unified memory. Spelled out rather
+# than derived from DEFAULT_OLLAMA_MODEL so that pointing chat at a text-only
+# model (deepseek-r1 et al) can't silently leave the VLM without vision.
+DEFAULT_VLM_MODEL = os.environ.get("BFF_VLM_MODEL", "gemma4:e2b")
 DEFAULT_WHISPER_MODEL = os.environ.get("BFF_WHISPER_MODEL", "tiny.en")
 DEFAULT_SAMPLE_RATE = int(os.environ.get("BFF_SAMPLE_RATE", "16000"))
 DEFAULT_PLAYBACK_SPEED = float(os.environ.get("BFF_PLAYBACK_SPEED", "1.0"))
@@ -4373,8 +4383,8 @@ def run_conversation(config: ConversationConfig) -> None:
                     continue
 
             # --- VLM Visual Context & Body State Injection ---
-            # The background worker captures continuously (~1-2s cadence with a fast
-            # VLM like moondream), so the cache is always near-fresh; no on-demand
+            # The background worker captures continuously (~1-2s cadence with a
+            # resident VLM), so the cache is always near-fresh; no on-demand
             # synchronous capture is needed here.
             with vlm_lock:
                 current_description = latest_scene_description
