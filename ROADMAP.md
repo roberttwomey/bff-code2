@@ -54,7 +54,172 @@ the port happens.
 
 ---
 
+## Long-term arc: memory, persona, agency
+
+The through-line is moving the dog from a reactive assistant to something with
+continuity between walks, lasting preferences, and the capacity to speak first.
+Three phases, each usable on its own — none requires the next to be worth
+building.
+
+```
+Phase 1  Consolidation & rumination   ("sleep and dream")
+   ↓
+Phase 2  Preferences & affective state ("internal life")
+   ↓
+Phase 3  Proactive agency              ("curiosity")
+```
+
+Where we are: live interaction and CV with the DJI mic; multimodal chat
+(image + body state in-context); and episodic SQLite memory with semantic
+indexing on `feature/memory-rebased`.
+
+### Two constraints that shape every phase
+
+**Unified memory is the scarce resource, not disk or CPU.** Ollama, Whisper,
+and TensorRT already contend on the Jetsons — Moondream has been pushed to CPU
+at ~190 s/caption when it lost. Every background cognitive process here runs a
+*local LLM*, which is far heavier than the VLM captions we already schedule
+around. `chat-manager.py` gates the VLM worker on the `is_dialogue_active`
+global for exactly this reason; consolidation and rumination must use the same
+gate and take a stricter one (idle *and* not mid-turn). A dog that thinks
+beautifully but answers slowly is a regression.
+
+**Unprompted speech re-opens the hardest solved problem in the project.**
+Self-echo, barge-in gating, and AEC (`feature/aec`) were expensive to get
+right, and they assume the robot speaks in response to a turn. Phase 3 speech
+originates while the mic is live and no turn is in flight. Budget for that
+explicitly rather than discovering it in the field.
+
+### Phase 1 — Consolidation & rumination
+
+**Do not design a new schema.** `memory/schema.sql` already anticipates this
+work: an `episodes` table (`ts_start`, `ts_end`, `summary`, `event_count`), an
+`episode_embeddings` vec0 table, `events.consolidated_into` (NULL until rolled
+up), a partial index `idx_events_unconsolidated` for finding exactly the rows
+that need processing, and `episode_summary` in the `events.type` CHECK
+constraint. Phase 1 is a *writer against a schema that already exists* — the
+one thing not to do is add a parallel `long_term_memories` table beside it.
+
+**Do not write a cron.** `behavioral-state-machine.py` already has
+`RobotState.DREAMING_MODE`, entered by `check_idle_state()` after
+`BFF_IDLE_TIMEOUT` (default 45 s) and left by `check_wake_from_dreaming()` on
+controller or UWB activity — with a cyan VUI colour already assigned to it. The
+sleep-and-dream loop has a home; consolidation should be what DREAMING *does*,
+and must yield immediately when the dog wakes.
+
+> **Prompt 1.1 — consolidation pass**
+>
+> "Add `memory/consolidate.py`. It should select unconsolidated events via the
+> existing `idx_events_unconsolidated` partial index, batch them by session and
+> time window, and summarize each batch with `gemma4:e2b` through Ollama into
+> the **existing** `episodes` table — then set `events.consolidated_into` and
+> embed the summary into `episode_embeddings` using `memory/embedder.py`.
+> Read `memory/schema.sql` first and use the tables that are already there; do
+> not add new ones. Follow the fail-soft pattern in `memory/writer.py`: never
+> raise into the caller. Make it interruptible — it runs during idle and must
+> abandon the current batch promptly when the dog wakes. Include a dry-run flag
+> that prints what it would consolidate without writing, and show me its output
+> on a real archived session before we run it live."
+
+> **Prompt 1.2 — rumination**
+>
+> "Add `memory/ruminate.py`. When invoked, sample 2–3 semantically *distant*
+> episodes (use `episode_embeddings` — pick low cosine similarity deliberately,
+> the point is unlikely juxtaposition), and prompt `gemma4:e2b` to write a short
+> speculative reflection bridging them. Record it as an `episode_summary` event
+> so it becomes recallable like any other memory, and also write a dated
+> Markdown file under `ruminations/`. Keep the model call under a configurable
+> token ceiling. Do not let this run while `is_dialogue_active` is true."
+
+> **Prompt 1.3 — wire into DREAMING**
+>
+> "Read `behavioral-state-machine.py`, then have `DREAMING_MODE` drive
+> consolidation and rumination. Respect the existing transitions — the state
+> machine controls physical posture and must keep doing so — and make sure
+> `check_wake_from_dreaming()` still wakes promptly with cognitive work in
+> flight. Explain the concurrency story before you write code: which process
+> owns the model, and what happens if a turn starts mid-consolidation."
+
+### Phase 2 — Preferences & affective state
+
+A low-dimensional state vector (curiosity, fatigue, attachment, topic
+affinities) that decays and updates from experience, injected into the system
+prompt each turn.
+
+The honest risk here is **feedback collapse**: a dog that prefers what it has
+already seen retrieves more of it, reinforcing the preference until it becomes
+monotonous. Build the decay and a novelty floor at the same time as the
+preference, not after.
+
+> **Prompt 2.1 — persona state**
+>
+> "Add `persona/state.py` maintaining a small affective state vector persisted
+> to `dog_state.json`: `curiosity`, `fatigue`, `attachment`, plus a topic-affinity
+> map. Update it from session signals — telemetry already gives us battery,
+> motion, and posture via the body-state summary in `chat-manager.py`, and
+> conversation gives us topics. Include **time-based decay** so no value latches,
+> and a `get_system_prompt_extension()` returning short natural-language
+> directives. Keep the output well under the history truncation limit
+> (`BFF_HISTORY_TRUNCATION_LIMIT`, default 11) — this competes with real
+> conversation for context, so show me the token cost."
+
+> **Prompt 2.2 — preference-weighted recall**
+>
+> "Add hybrid retrieval to the memory module: vector distance from
+> `event_embeddings`/`episode_embeddings` combined with keyword matching,
+> re-weighted by the topic affinities in `dog_state.json`. Include an explicit
+> novelty term so high-affinity topics cannot crowd the context window —
+> I want to see the weighting exposed as tunable constants, and a small
+> evaluation over an archived session showing what changes versus pure vector
+> search."
+
+### Phase 3 — Proactive agency
+
+The dog initiates: an unprompted observation after silence, a question about
+something visually novel, or a move toward something interesting.
+
+> **Prompt 3.1 — initiation loop**
+>
+> "Add `proactive.py`, an async monitor that proposes unprompted utterances
+> when silence duration, visual-novelty score, and the `curiosity` state value
+> cross thresholds. Reuse the VLM worker's existing frame-difference change
+> detection (`BFF_VLM_CHANGE_THRESHOLD`) for novelty rather than adding a second
+> comparator. Generate a short observation (under 4 sentences) drawn from recent
+> ruminations or the current scene.
+>
+> Before writing the audio path, read how `feature/aec` handles barge-in and
+> self-echo and tell me what breaks when TTS starts with no user turn in
+> flight — unprompted speech while the mic is live is the risk here, not the
+> generation. Put it behind an env flag, default off."
+
+> **Prompt 3.2 — physical gestures as tools**
+>
+> "Expose a small tool surface to the model in `robot_tools.py`:
+> `orient_towards_human()`, `curious_pause()`, `speak_unprompted(text)`. Bind
+> them to the **posture-level** `SportClient` calls already used in
+> `behavioral-state-machine.py` (`StandUp`, `StandDown`, `BalanceStand`) — do
+> **not** introduce velocity commands in this step. Every tool call must be
+> logged to `session.jsonl` and recorded to memory, and must refuse while the
+> behavioral state machine holds a conflicting state. Explain how this
+> coordinates with the state machine's MCF-mode handling before implementing."
+
+**Exploration is gated on navigation.** "Move toward something interesting"
+needs a velocity command and a costmap the dog can trust — see the navigation
+section below, which is the physical substrate for this part of Phase 3 and
+carries its own safety prerequisites. Phases 1 and 2, and the speech half of
+Phase 3, need none of that and can proceed independently.
+
+*This arc was drafted with Google Gemini and adapted here against the actual
+codebase — the schema, state machine, and contention notes above are the main
+departures from that draft.*
+
+---
+
 ## Future direction: autonomous navigation
+
+Also the physical substrate for the exploration half of Phase 3 above: the dog
+cannot move toward what interests it without a velocity command and a costmap
+it can trust.
 
 Assessed 2026-07-26 against the [dimos](https://github.com/dimensionalOS/dimos)
 project (Dimensional Inc., Apache 2.0), whose navigation stack targets the
