@@ -31,6 +31,9 @@ The system has three layers:
    subtitle, and re-mux recorded sessions into finished assets. See
    [Helper Scripts](#helper-scripts).
 
+Planned work — in-flight branches and future directions such as autonomous
+navigation — is tracked in [ROADMAP.md](ROADMAP.md).
+
 ### Recording modes
 
 Capture defaults to **full recording** (`BFF_RECORD_BY_DEFAULT=true`): 5-minute
