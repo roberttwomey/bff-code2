@@ -59,6 +59,7 @@ Environment variables:
     BFF_MIN_PHRASE_SECONDS   minimum phrase length in seconds (default: 0.5)
     BFF_REQUIRE_WAKEWORD    require wake phrase to activate (default: false)
     BFF_WAKE_PHRASES        comma-separated list of wake phrases
+    BFF_LOG_EMPTY_SEGMENTS  log vad_segment records for empty transcriptions (default: false)
     BFF_PULSE_SINKS         comma-separated PulseAudio sink names to combine for output
     BFF_PULSE_COMBINED_SINK_NAME combined PulseAudio sink name (default: bff_combined)
     BFF_PULSE_DEVICE_NAME   PulseAudio device name for PortAudio (default: pulse)
@@ -349,6 +350,8 @@ DEFAULT_OLLAMA_THINK = DEFAULT_OLLAMA_THINK_ENV in ("true", "1", "yes", "on")
 DEFAULT_REQUIRE_WAKEWORD_ENV = os.environ.get("BFF_REQUIRE_WAKEWORD", "false").lower()
 DEFAULT_REQUIRE_WAKEWORD = DEFAULT_REQUIRE_WAKEWORD_ENV in ("true", "1", "yes", "on")
 DEFAULT_WAKE_PHRASES_ENV = os.environ.get("BFF_WAKE_PHRASES", "ok snapper, okay snapper, hey snapper, snapper")
+DEFAULT_LOG_EMPTY_SEGMENTS_ENV = os.environ.get("BFF_LOG_EMPTY_SEGMENTS", "false").lower()
+DEFAULT_LOG_EMPTY_SEGMENTS = DEFAULT_LOG_EMPTY_SEGMENTS_ENV in ("true", "1", "yes", "on")
 DEFAULT_OUTPUT_USB_KEYWORD = os.environ.get("BFF_OUTPUT_USB_KEYWORD", "USB")
 DEFAULT_OUTPUT_BT_KEYWORD = os.environ.get("BFF_OUTPUT_BT_KEYWORD")
 DEFAULT_OUTPUT_SAMPLE_RATE_ENV = os.environ.get("BFF_OUTPUT_SAMPLE_RATE")
@@ -439,6 +442,7 @@ class ConversationConfig:
     ollama_think: bool = DEFAULT_OLLAMA_THINK
     require_wakeword: bool = DEFAULT_REQUIRE_WAKEWORD
     wake_phrases: list[str] = field(default_factory=list)
+    log_empty_segments: bool = DEFAULT_LOG_EMPTY_SEGMENTS
     simulate: bool = False
     speaker: str = os.environ.get("BFF_SPEAKER", "SNAPPER")
 
@@ -558,6 +562,13 @@ def parse_args() -> ConversationConfig:
         "--wake-phrases",
         default=DEFAULT_WAKE_PHRASES_ENV,
         help="Comma-separated list of wake phrases (default: from env or 'ok snapper, okay snapper, hey snapper, snapper')",
+    )
+    parser.add_argument(
+        "--log-empty-segments",
+        action=argparse.BooleanOptionalAction,
+        default=DEFAULT_LOG_EMPTY_SEGMENTS,
+        help="Also emit a vad_segment record for segments Whisper transcribed as empty "
+        "(mostly room noise; default: from env or false)",
     )
     parser.add_argument(
         "--simulate",
@@ -817,6 +828,7 @@ def parse_args() -> ConversationConfig:
         ollama_think=args.ollama_think,
         require_wakeword=args.require_wakeword,
         wake_phrases=[p.strip().lower() for p in args.wake_phrases.split(",") if p.strip()],
+        log_empty_segments=args.log_empty_segments,
         simulate=args.simulate,
     )
 
@@ -4102,7 +4114,11 @@ def run_conversation(config: ConversationConfig) -> None:
 
             return False
 
-        turn = 1
+        # `turn` indexes VAD segments, not accepted exchanges. It advances once per
+        # phrase the segmenter emits, whether or not that phrase is answered, so
+        # turn-NNN-input.wav is never reused. Gaps in the turn sequence of accepted
+        # records mark segments that were dropped; see the vad_segment log entries.
+        turn = 0
         listening_active = True  # When False, ignore all transcribed input until "start listening"
         global is_dialogue_active, last_interaction_time
         is_dialogue_active = True
@@ -4136,8 +4152,33 @@ def run_conversation(config: ConversationConfig) -> None:
             except queue.Empty:
                 continue
 
+            turn += 1
             raw_audio = session_dir / f"turn-{turn:03d}-input.wav"
             sf.write(raw_audio, phrase, config.sample_rate)
+
+            vad_segment_logged = False
+
+            def log_vad_segment(disposition: str, text: str = "") -> None:
+                """Record one line per VAD segment, whatever becomes of it.
+
+                Emitted exactly once per segment, at the point the disposition is
+                known. The typed records that follow (user, reset, scene_switch,
+                ...) refine an accepted segment; a dropped segment has only this.
+                """
+                nonlocal vad_segment_logged
+                if vad_segment_logged:
+                    return
+                vad_segment_logged = True
+                append_log_line(
+                    log_file,
+                    {
+                        "type": "vad_segment",
+                        "turn": turn,
+                        "disposition": disposition,
+                        "text": text,
+                        "audio_path": str(raw_audio),
+                    },
+                )
 
             # If this segment interrupted a previous turn, ensure previous TTS is fully stopped
             if current_tts_worker is not None:
@@ -4153,6 +4194,10 @@ def run_conversation(config: ConversationConfig) -> None:
 
             user_text = transcribe_audio(whisper_model, raw_audio, config.show_levels)
             if not user_text:
+                # The segmenter fired but Whisper heard nothing — usually room noise.
+                # Off by default: in a live room this is most of the traffic.
+                if config.log_empty_segments:
+                    log_vad_segment("empty_transcript")
                 continue
 
             # Stop conversation: stop listening, reset to default system prompt, wait until "snapper start listening"
@@ -4165,9 +4210,15 @@ def run_conversation(config: ConversationConfig) -> None:
                     current_system_prompt = config.system_prompt
                 messages = build_initial_messages(current_system_prompt)
                 print("Conversation stopped (reset to default). Say snapper start listening when ready.", file=sys.stderr)
+                log_vad_segment("stop_conversation", user_text)
                 append_log_line(
                     log_file,
-                    {"type": "stop_conversation", "turn": turn, "text": user_text},
+                    {
+                        "type": "stop_conversation",
+                        "turn": turn,
+                        "text": user_text,
+                        "audio_path": str(raw_audio),
+                    },
                 )
                 try:
                     stop_conv_audio = session_dir / f"turn-{turn:03d}-stop-conversation.wav"
@@ -4186,12 +4237,12 @@ def run_conversation(config: ConversationConfig) -> None:
                     )
                 except Exception as exc:
                     print(f"Stop-conversation TTS/playback error: {exc}", file=sys.stderr)
-                turn += 1
                 continue
 
             # Stop/start listening (no LLM prompting when stopped) — works with or without "snapper"
             if is_stop_listening_command(user_text):
                 listening_active = False
+                log_vad_segment("stop_listening", user_text)
                 print("Stopped listening (no LLM prompting until you say 'start listening').", file=sys.stderr)
                 try:
                     stop_audio = session_dir / f"turn-{turn:03d}-stop-listening.wav"
@@ -4210,10 +4261,10 @@ def run_conversation(config: ConversationConfig) -> None:
                     )
                 except Exception as exc:
                     print(f"Stop-listening TTS/playback error: {exc}", file=sys.stderr)
-                turn += 1
                 continue
             if is_start_listening_command(user_text):
                 listening_active = True
+                log_vad_segment("start_listening", user_text)
                 print("Listening again.", file=sys.stderr)
                 try:
                     start_audio = session_dir / f"turn-{turn:03d}-start-listening.wav"
@@ -4232,10 +4283,10 @@ def run_conversation(config: ConversationConfig) -> None:
                     )
                 except Exception as exc:
                     print(f"Start-listening TTS/playback error: {exc}", file=sys.stderr)
-                turn += 1
                 continue
             if not listening_active:
                 # Ignore all other input until "start listening" is heard
+                log_vad_segment("not_listening", user_text)
                 continue
 
             if pending_concatenation:
@@ -4258,6 +4309,7 @@ def run_conversation(config: ConversationConfig) -> None:
                 inline = strip_wake_phrase(user_norm, matched_wake).strip()
                 if inline:
                     if run_special_command(inline, user_text):
+                        log_vad_segment("special_command", user_text)
                         return
                     # Not a special command: treat inline text as the user prompt,
                     # arm the wake window, and fall through to normal LLM generation.
@@ -4265,6 +4317,7 @@ def run_conversation(config: ConversationConfig) -> None:
                     wake_armed_until = now + WAKE_WINDOW_SECONDS
                 else:
                     wake_armed_until = now + WAKE_WINDOW_SECONDS
+                    log_vad_segment("wake_ack", user_text)
                     try:
                         ack_audio = session_dir / f"turn-{turn:03d}-wake.wav"
                         synthesize_with_piper(piper_voice, "Yes?", ack_audio)
@@ -4282,6 +4335,7 @@ def run_conversation(config: ConversationConfig) -> None:
             else:
                 if wake_armed_until and now <= wake_armed_until:
                     if run_special_command(user_text, user_text):
+                        log_vad_segment("special_command", user_text)
                         return
                     # Not a special command: disarm wake window and fall through to normal chat handling.
                     wake_armed_until = 0.0
@@ -4289,7 +4343,12 @@ def run_conversation(config: ConversationConfig) -> None:
                     # No wake word detected, and not in the armed wake window.
                     if config.require_wakeword:
                         print(f"Ignoring input: Wake word not detected in '{user_text}'", file=sys.stderr)
+                        log_vad_segment("no_wake", user_text)
                         continue
+
+            # Past every gate: this segment will be answered. The records that
+            # follow (scene_switch / reset / user) say what was made of it.
+            log_vad_segment("accepted", user_text)
 
             # Check for scene triggers
             matched_scene = next(
@@ -4379,7 +4438,6 @@ def run_conversation(config: ConversationConfig) -> None:
                         output_device_indices=config.output_device_indices,
                         output_sample_rate=config.output_sample_rate,
                     )
-                    turn += 1
                     continue
 
             # --- VLM Visual Context & Body State Injection ---
@@ -4577,7 +4635,6 @@ def run_conversation(config: ConversationConfig) -> None:
                 current_tts_worker = None
                 current_playback_thread = None
                 current_abort_event = None
-                turn += 1
                 config.show_levels = original_show_levels
                 continue
 
@@ -4602,7 +4659,6 @@ def run_conversation(config: ConversationConfig) -> None:
                  current_tts_worker = None
                  current_playback_thread = None
                  current_abort_event = None
-                 turn += 1
                  config.show_levels = original_show_levels
                  continue
             
@@ -4628,8 +4684,7 @@ def run_conversation(config: ConversationConfig) -> None:
             # Save full response audio for logging (non-blocking or post-hoc?)
             # Re-synthesizing for logs is expensive. Ideally we'd capture the stream.
             # For now, let's skip re-synthesis to save time/resources on Jetson.
-            
-            turn += 1
+
             config.show_levels = original_show_levels
     except KeyboardInterrupt:
         print("\nExiting conversation.")
