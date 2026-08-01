@@ -3,7 +3,7 @@
 Curated exchanges from the BFF development and performance archive, with an
 inventory of every recorded stream that survives for each one.
 
-- **Generated:** 2026-08-01T12:32:53
+- **Generated:** 2026-08-01T13:15:19
 - **Archive:** `/Volumes/Cohab2024/BFF/logs-all`
 - **Derived:** `/Volumes/Cohab2024/BFF/processed`
 - **Companion index:** [`bff-replay-index.json`](bff-replay-index.json) — per-turn timestamps,
@@ -23,8 +23,14 @@ wrote audio.
 ## Machine, persona and voice are three different things
 
 By July 2026 the **helper machine was running the SNAPPER persona prompt**, so the name in the
-system prompt no longer tells the dogs apart. The Piper voice does: `aru` is snapper, `alan` is
-helper. The index carries `group` (machine), `persona` (prompt) and `voice` separately.
+system prompt does not tell the dogs apart. The index carries `group` (machine), `persona`
+(prompt) and `voice` (Piper model) as separate fields.
+
+**`group` is the only proven one** — it comes from absolute paths the logger wrote. Voice is
+suggestive but conditional: `aru`=snapper / `alan`=helper holds **100% (33/33)** for scripted
+sessions, those carrying `scene_switch` cues, and 95% across the two performance days — but
+only **68%** overall, because both dogs ran both voices during technical development. Trust it
+for rehearsal and performance material; ignore it for dev sessions.
 
 ## Sessions run long and overlap
 
@@ -138,11 +144,11 @@ than the raw per-chunk files.
 
 | Group | Sessions | SNAPPER | HELPER | Unattributed |
 |---|---|---|---|---|
-| `_review-unattributed-robot` | 62 | 40 | 0 | 22 |
-| `_review-unknown` | 41 | 34 | 0 | 7 |
-| `helper` | 121 | 28 | 85 | 8 |
-| `mac` | 135 | 132 | 0 | 3 |
-| `snapper` | 329 | 280 | 0 | 49 |
+| `_review-unattributed-robot` | 23 | 9 | 0 | 14 |
+| `_review-unknown` | 40 | 33 | 0 | 7 |
+| `helper` | 125 | 31 | 85 | 9 |
+| `mac` | 147 | 144 | 0 | 3 |
+| `snapper` | 353 | 297 | 0 | 56 |
 | **total** | **688** | | | |
 
 ## Syncing notes

@@ -146,9 +146,12 @@ def build(group, sid, full):
             except Exception: pass
     cfg = (recs[0].get("config") or {}) if recs and recs[0].get("type") == "session_start" else {}
     ent["persona"] = persona_of(cfg.get("system_prompt"))
-    # By July 2026 the helper machine also ran the SNAPPER prompt, so persona no
-    # longer distinguishes the two dogs - the Piper voice does (aru=snapper,
-    # alan=helper). Promote it out of config.
+    # By July 2026 the helper machine also ran the SNAPPER prompt, so persona does
+    # not distinguish the two dogs. Voice is worth surfacing but is NOT proof of
+    # machine: aru=snapper / alan=helper holds 100% for scripted sessions (those
+    # with scene_switch cues) and 95% on performance days, but only 68% overall -
+    # both dogs ran both voices during technical development. Use `group` for
+    # machine identity; `group` is proven from absolute paths.
     if cfg.get("piper_voice"):
         ent["voice"] = os.path.basename(str(cfg["piper_voice"])).replace(".onnx", "")
     if cfg:

@@ -1,6 +1,6 @@
 {
  "schema": "bff.sessions/2",
- "generated": "2026-08-01T12:32:53",
+ "generated": "2026-08-01T13:15:19",
  "archive_root": "/Volumes/Cohab2024/BFF/logs-all",
  "derived_root": "/Volumes/Cohab2024/BFF/processed",
  "path_convention": "session/media paths relative to archive_root; processed/retranscription paths relative to derived_root",
@@ -9026,6 +9026,105 @@
    "replay_tier": "B"
   },
   {
+   "session_id": "session-20260718-124419",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260718-124419",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260718-124419/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T12:44:27.948325",
+   "end_iso": "2026-07-18T12:44:48.053558",
+   "start_epoch": 1784403867.948325,
+   "end_epoch": 1784403888.053558,
+   "wall_duration_s": 20.1,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260718-124505",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260718-124505",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260718-124505/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T12:45:13.438786",
+   "end_iso": "2026-07-18T12:46:19.473128",
+   "start_epoch": 1784403913.438786,
+   "end_epoch": 1784403979.473128,
+   "wall_duration_s": 66.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260718-124735",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260718-124735",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260718-124735/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T12:47:44.397519",
+   "end_iso": "2026-07-18T12:47:58.289436",
+   "start_epoch": 1784404064.397519,
+   "end_epoch": 1784404078.289436,
+   "wall_duration_s": 13.9,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
    "session_id": "session-20260718-130015",
    "group": "snapper",
    "session_dir": "snapper/session-20260718-130015",
@@ -9281,6 +9380,47 @@
    "replay_tier": "A"
   },
   {
+   "session_id": "session-20260718-141533",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260718-141533",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260718-141533/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T14:15:42.736939",
+   "end_iso": "2026-07-18T14:16:30.944160",
+   "start_epoch": 1784409342.736939,
+   "end_epoch": 1784409390.94416,
+   "wall_duration_s": 48.2,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 1,
+    "telemetry_span_epoch": [
+     1784409340.3932598,
+     1784409389.1310718
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
    "session_id": "session-20260718-141649",
    "group": "snapper",
    "session_dir": "snapper/session-20260718-141649",
@@ -9328,6 +9468,88 @@
     "telemetry_span_epoch": [
      1784409416.545175,
      1784409495.6686223
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260718-144100",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260718-144100",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260718-144100/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T14:41:08.666271",
+   "end_iso": "2026-07-18T14:41:08.666271",
+   "start_epoch": 1784410868.666271,
+   "end_epoch": 1784410868.666271,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 2,
+    "telemetry_span_epoch": [
+     1784410866.4494264,
+     1784410980.400668
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260718-144625",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260718-144625",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260718-144625/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T14:46:33.666442",
+   "end_iso": "2026-07-18T14:46:33.666442",
+   "start_epoch": 1784411193.666442,
+   "end_epoch": 1784411193.666442,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 6,
+    "telemetry_span_epoch": [
+     1784411972.8996718,
+     1784412302.6495194
     ],
     "has_video": true
    },
@@ -9595,6 +9817,25 @@
    "replay_tier": "A"
   },
   {
+   "session_id": "session-20260718-170038",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260718-170038",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
    "session_id": "session-20260718-170100",
    "group": "snapper",
    "session_dir": "snapper/session-20260718-170100",
@@ -9647,6 +9888,40 @@
     "has_video": true
    },
    "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260718-171136",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260718-171136",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260718-171136/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T17:11:44.612174",
+   "end_iso": "2026-07-18T17:12:27.264020",
+   "start_epoch": 1784419904.612174,
+   "end_epoch": 1784419947.26402,
+   "wall_duration_s": 42.7,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
   },
   {
    "session_id": "session-20260718-171629",
@@ -9702,6 +9977,40 @@
     "camera_path": "snapper/session-20260718-171629/camera_path.jsonl"
    },
    "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260718-173629",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260718-173629",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260718-173629/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T17:36:37.635916",
+   "end_iso": "2026-07-18T17:36:57.267714",
+   "start_epoch": 1784421397.635916,
+   "end_epoch": 1784421417.267714,
+   "wall_duration_s": 19.6,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
   },
   {
    "session_id": "session-20260719-053303",
@@ -9812,6 +10121,32 @@
     "telemetry_span_epoch": [
      1784465814.1001658,
      1784466174.1841545
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260719-060317",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260719-060317",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 1,
+    "telemetry_span_epoch": [
+     1784466205.1848114,
+     1784466207.3793085
     ],
     "has_video": true
    },
@@ -10251,6 +10586,96 @@
    "replay_tier": "A"
   },
   {
+   "session_id": "session-20260719-071842",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260719-071842",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260719-072027",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260719-072027",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260719-072027/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-19T07:20:30.336822",
+   "end_iso": "2026-07-19T07:20:58.909138",
+   "start_epoch": 1784470830.336822,
+   "end_epoch": 1784470858.909138,
+   "wall_duration_s": 28.6,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260719-072115",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260719-072115",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260719-072115/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-19T07:21:18.496102",
+   "end_iso": "2026-07-19T07:22:53.784768",
+   "start_epoch": 1784470878.496102,
+   "end_epoch": 1784470973.784768,
+   "wall_duration_s": 95.3,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 1,
+    "has_video": false
+   },
+   "replay_tier": "C"
+  },
+  {
    "session_id": "session-20260719-072233",
    "group": "snapper",
    "session_dir": "snapper/session-20260719-072233",
@@ -10411,6 +10836,44 @@
    "replay_tier": "B"
   },
   {
+   "session_id": "session-20260719-072844",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260719-072844",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260719-072844/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true,
+    "no_vlm": true
+   },
+   "start_iso": "2026-07-19T07:28:46.583059",
+   "end_iso": "2026-07-19T07:29:26.776846",
+   "start_epoch": 1784471326.583059,
+   "end_epoch": 1784471366.776846,
+   "wall_duration_s": 40.2,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 1,
+    "has_video": false
+   },
+   "replay_tier": "C"
+  },
+  {
    "session_id": "session-20260719-073031",
    "group": "snapper",
    "session_dir": "snapper/session-20260719-073031",
@@ -10519,6 +10982,41 @@
     "has_video": true
    },
    "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260719-171228",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260719-171228",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260719-171228/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true,
+    "no_vlm": false
+   },
+   "start_iso": "2026-07-19T17:12:38.015951",
+   "end_iso": "2026-07-19T17:12:38.015951",
+   "start_epoch": 1784506358.015951,
+   "end_epoch": 1784506358.015951,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
   },
   {
    "session_id": "session-20260720-111127",
@@ -10950,6 +11448,48 @@
     "telemetry_span_epoch": [
      1784575545.9030795,
      1784575594.3577619
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260720-122743",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-122743",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260720-122743/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true,
+    "no_vlm": false
+   },
+   "start_iso": "2026-07-20T12:27:52.408451",
+   "end_iso": "2026-07-20T12:27:52.408451",
+   "start_epoch": 1784575672.408451,
+   "end_epoch": 1784575672.408451,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 1,
+    "telemetry_span_epoch": [
+     1784575670.0067086,
+     1784575673.5113053
     ],
     "has_video": true
    },
@@ -11899,6 +12439,95 @@
    "replay_tier": "B"
   },
   {
+   "session_id": "session-20260720-140842",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-140842",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260720-140842/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true,
+    "no_vlm": false
+   },
+   "start_iso": "2026-07-20T14:08:51.318699",
+   "end_iso": "2026-07-20T14:08:51.318699",
+   "start_epoch": 1784581731.318699,
+   "end_epoch": 1784581731.318699,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260720-141020",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-141020",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260720-141020/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true,
+    "no_vlm": false
+   },
+   "start_iso": "2026-07-20T14:10:29.268547",
+   "end_iso": "2026-07-20T14:10:54.862214",
+   "start_epoch": 1784581829.268547,
+   "end_epoch": 1784581854.862214,
+   "wall_duration_s": 25.6,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260720-141413",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-141413",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
    "session_id": "session-20260720-143230",
    "group": "snapper",
    "session_dir": "snapper/session-20260720-143230",
@@ -12173,6 +12802,41 @@
    "replay_tier": "A"
   },
   {
+   "session_id": "session-20260720-171740",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-171740",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260720-171740/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "gemma4:e2b",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true,
+    "no_vlm": false
+   },
+   "start_iso": "2026-07-20T17:17:48.173240",
+   "end_iso": "2026-07-20T17:18:03.566493",
+   "start_epoch": 1784593068.17324,
+   "end_epoch": 1784593083.566493,
+   "wall_duration_s": 15.4,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
    "session_id": "session-20260720-171814",
    "group": "snapper",
    "session_dir": "snapper/session-20260720-171814",
@@ -12281,6 +12945,41 @@
     "has_video": true
    },
    "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260720-173923",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-173923",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260720-173923/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "gemma4:e2b",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true,
+    "no_vlm": false
+   },
+   "start_iso": "2026-07-20T17:39:31.171793",
+   "end_iso": "2026-07-20T17:39:31.171793",
+   "start_epoch": 1784594371.171793,
+   "end_epoch": 1784594371.171793,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
   },
   {
    "session_id": "session-20260720-174351",
@@ -13108,6 +13807,25 @@
    "replay_tier": "B"
   },
   {
+   "session_id": "session-20260720-194101",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-194101",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
    "session_id": "session-20260720-194149",
    "group": "snapper",
    "session_dir": "snapper/session-20260720-194149",
@@ -13305,6 +14023,25 @@
     "camera_path": "snapper/session-20260720-194446/camera_path.jsonl"
    },
    "replay_tier": "B"
+  },
+  {
+   "session_id": "session-20260720-194626",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-194626",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
   },
   {
    "session_id": "session-20260720-194648",
@@ -14852,6 +15589,25 @@
     "has_video": true
    },
    "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260720-203639",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-203639",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
   },
   {
    "session_id": "session-20260720-203724",
@@ -19902,6 +20658,40 @@
    "replay_tier": "B"
   },
   {
+   "session_id": "session-20260719-052335",
+   "group": "helper",
+   "session_dir": "helper/session-20260719-052335",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "helper/session-20260719-052335/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-19T05:23:39.265053",
+   "end_iso": "2026-07-19T05:23:39.265053",
+   "start_epoch": 1784463819.265053,
+   "end_epoch": 1784463819.265053,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
    "session_id": "session-20260719-072850",
    "group": "helper",
    "session_dir": "helper/session-20260719-072850",
@@ -20138,6 +20928,41 @@
    "replay_tier": "B"
   },
   {
+   "session_id": "session-20260720-192132",
+   "group": "helper",
+   "session_dir": "helper/session-20260720-192132",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "helper/session-20260720-192132/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true,
+    "no_vlm": false
+   },
+   "start_iso": "2026-07-20T19:21:36.349068",
+   "end_iso": "2026-07-20T19:21:36.349068",
+   "start_epoch": 1784600496.349068,
+   "end_epoch": 1784600496.349068,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
    "session_id": "session-20260720-222723",
    "group": "helper",
    "session_dir": "helper/session-20260720-222723",
@@ -20180,6 +21005,60 @@
    },
    "media": {},
    "replay_tier": "B"
+  },
+  {
+   "session_id": "session-20260720-223043",
+   "group": "helper",
+   "session_dir": "helper/session-20260720-223043",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "helper/session-20260720-223043/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true,
+    "no_vlm": false
+   },
+   "start_iso": "2026-07-20T22:30:53.234144",
+   "end_iso": "2026-07-20T22:30:53.234144",
+   "start_epoch": 1784611853.234144,
+   "end_epoch": 1784611853.234144,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260720-223216",
+   "group": "helper",
+   "session_dir": "helper/session-20260720-223216",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
   },
   {
    "session_id": "session-20260720-223304",
@@ -25187,6 +26066,72 @@
    "replay_tier": "B"
   },
   {
+   "session_id": "session-20260718-110201",
+   "group": "mac",
+   "session_dir": "mac/session-20260718-110201",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260718-110201/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T11:02:01.529128",
+   "end_iso": "2026-07-18T11:02:01.529128",
+   "start_epoch": 1784397721.529128,
+   "end_epoch": 1784397721.529128,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260718-110249",
+   "group": "mac",
+   "session_dir": "mac/session-20260718-110249",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260718-110249/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T11:03:06.096655",
+   "end_iso": "2026-07-18T11:03:06.096655",
+   "start_epoch": 1784397786.096655,
+   "end_epoch": 1784397786.096655,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
    "session_id": "session-20260718-110304",
    "group": "mac",
    "session_dir": "mac/session-20260718-110304",
@@ -25234,6 +26179,105 @@
    "replay_tier": "B"
   },
   {
+   "session_id": "session-20260718-110514",
+   "group": "mac",
+   "session_dir": "mac/session-20260718-110514",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260718-110514/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T11:05:19.419309",
+   "end_iso": "2026-07-18T11:05:19.419309",
+   "start_epoch": 1784397919.419309,
+   "end_epoch": 1784397919.419309,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260718-110606",
+   "group": "mac",
+   "session_dir": "mac/session-20260718-110606",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260718-110606/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T11:06:10.966660",
+   "end_iso": "2026-07-18T11:06:41.380534",
+   "start_epoch": 1784397970.96666,
+   "end_epoch": 1784398001.380534,
+   "wall_duration_s": 30.4,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260718-110645",
+   "group": "mac",
+   "session_dir": "mac/session-20260718-110645",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260718-110645/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T11:06:50.235049",
+   "end_iso": "2026-07-18T11:07:11.662597",
+   "start_epoch": 1784398010.235049,
+   "end_epoch": 1784398031.662597,
+   "wall_duration_s": 21.4,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
    "session_id": "session-20260718-110800",
    "group": "mac",
    "session_dir": "mac/session-20260718-110800",
@@ -25277,6 +26321,138 @@
    },
    "media": {},
    "replay_tier": "B"
+  },
+  {
+   "session_id": "session-20260718-111134",
+   "group": "mac",
+   "session_dir": "mac/session-20260718-111134",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260718-111134/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T11:11:39.134198",
+   "end_iso": "2026-07-18T11:12:07.739045",
+   "start_epoch": 1784398299.134198,
+   "end_epoch": 1784398327.739045,
+   "wall_duration_s": 28.6,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260718-111239",
+   "group": "mac",
+   "session_dir": "mac/session-20260718-111239",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260718-111239/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T11:12:44.484395",
+   "end_iso": "2026-07-18T11:13:57.148616",
+   "start_epoch": 1784398364.484395,
+   "end_epoch": 1784398437.148616,
+   "wall_duration_s": 72.7,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260718-111502",
+   "group": "mac",
+   "session_dir": "mac/session-20260718-111502",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260718-111502/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T11:15:07.320155",
+   "end_iso": "2026-07-18T11:15:07.320155",
+   "start_epoch": 1784398507.320155,
+   "end_epoch": 1784398507.320155,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260718-111812",
+   "group": "mac",
+   "session_dir": "mac/session-20260718-111812",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260718-111812/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T11:18:17.825294",
+   "end_iso": "2026-07-18T11:18:17.825294",
+   "start_epoch": 1784398697.825294,
+   "end_epoch": 1784398697.825294,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
   },
   {
    "session_id": "session-20260718-112200",
@@ -25367,6 +26543,72 @@
    },
    "media": {},
    "replay_tier": "B"
+  },
+  {
+   "session_id": "session-20260718-113246",
+   "group": "mac",
+   "session_dir": "mac/session-20260718-113246",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260718-113246/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T11:32:49.372449",
+   "end_iso": "2026-07-18T11:32:49.372449",
+   "start_epoch": 1784399569.372449,
+   "end_epoch": 1784399569.372449,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260718-113326",
+   "group": "mac",
+   "session_dir": "mac/session-20260718-113326",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260718-113326/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "whisper_model": "tiny",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true
+   },
+   "start_iso": "2026-07-18T11:33:34.705584",
+   "end_iso": "2026-07-18T11:33:34.705584",
+   "start_epoch": 1784399614.705584,
+   "end_epoch": 1784399614.705584,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {},
+   "replay_tier": "C"
   },
   {
    "session_id": "session-20260718-113500",
@@ -26459,6 +27701,48 @@
     "telemetry_span_epoch": [
      1784485810.378939,
      1784485986.776387
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260719-113755",
+   "group": "mac",
+   "session_dir": "mac/session-20260719-113755",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "mac/session-20260719-113755/session.jsonl",
+   "persona": "SNAPPER",
+   "voice": "en_GB-aru-medium",
+   "config": {
+    "ollama_model": "gemma4:e2b",
+    "vlm_model": "moondream",
+    "whisper_model": "tiny.en",
+    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
+    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
+    "require_wakeword": true,
+    "no_vlm": true
+   },
+   "start_iso": "2026-07-19T11:37:59.981918",
+   "end_iso": "2026-07-19T11:37:59.981918",
+   "start_epoch": 1784486279.981918,
+   "end_epoch": 1784486279.981918,
+   "wall_duration_s": 0.0,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 3,
+    "telemetry_span_epoch": [
+     1784486279.4487271,
+     1784486401.131712
     ],
     "has_video": true
    },
@@ -28576,210 +29860,6 @@
    "replay_tier": "B"
   },
   {
-   "session_id": "session-20260718-110201",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-110201",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-110201/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T11:02:01.529128",
-   "end_iso": "2026-07-18T11:02:01.529128",
-   "start_epoch": 1784397721.529128,
-   "end_epoch": 1784397721.529128,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-110201/retranscription.json"
-   },
-   "blocks": [],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260718-110249",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-110249",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-110249/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T11:03:06.096655",
-   "end_iso": "2026-07-18T11:03:06.096655",
-   "start_epoch": 1784397786.096655,
-   "end_epoch": 1784397786.096655,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-110249/retranscription.json"
-   },
-   "blocks": [],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260718-110514",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-110514",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-110514/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T11:05:19.419309",
-   "end_iso": "2026-07-18T11:05:19.419309",
-   "start_epoch": 1784397919.419309,
-   "end_epoch": 1784397919.419309,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-110514/retranscription.json"
-   },
-   "blocks": [],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260718-110606",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-110606",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-110606/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T11:06:10.966660",
-   "end_iso": "2026-07-18T11:06:41.380534",
-   "start_epoch": 1784397970.96666,
-   "end_epoch": 1784398001.380534,
-   "wall_duration_s": 30.4,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-110606/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T11:06:16",
-     "end_iso": "2026-07-18T11:06:16",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260718-110645",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-110645",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-110645/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T11:06:50.235049",
-   "end_iso": "2026-07-18T11:07:11.662597",
-   "start_epoch": 1784398010.235049,
-   "end_epoch": 1784398031.662597,
-   "wall_duration_s": 21.4,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-110645/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T11:07:02",
-     "end_iso": "2026-07-18T11:07:02",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
    "session_id": "session-20260718-111055",
    "group": "_review-unattributed-robot",
    "session_dir": "_review-unattributed-robot/session-20260718-111055",
@@ -28825,179 +29905,6 @@
    "replay_tier": "B"
   },
   {
-   "session_id": "session-20260718-111134",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-111134",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-111134/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T11:11:39.134198",
-   "end_iso": "2026-07-18T11:12:07.739045",
-   "start_epoch": 1784398299.134198,
-   "end_epoch": 1784398327.739045,
-   "wall_duration_s": 28.6,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-111134/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T11:11:44",
-     "end_iso": "2026-07-18T11:11:44",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260718-111239",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-111239",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-111239/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T11:12:44.484395",
-   "end_iso": "2026-07-18T11:13:57.148616",
-   "start_epoch": 1784398364.484395,
-   "end_epoch": 1784398437.148616,
-   "wall_duration_s": 72.7,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-111239/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T11:12:58",
-     "end_iso": "2026-07-18T11:13:44",
-     "wavs": 2
-    }
-   ],
-   "counts": {
-    "input_wavs": 1,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 2,
-    "speaker_bleed": 0,
-    "audio_s": 2.9
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260718-111502",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-111502",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-111502/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T11:15:07.320155",
-   "end_iso": "2026-07-18T11:15:07.320155",
-   "start_epoch": 1784398507.320155,
-   "end_epoch": 1784398507.320155,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-111502/retranscription.json"
-   },
-   "blocks": [],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260718-111812",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-111812",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-111812/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T11:18:17.825294",
-   "end_iso": "2026-07-18T11:18:17.825294",
-   "start_epoch": 1784398697.825294,
-   "end_epoch": 1784398697.825294,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-111812/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T11:18:24",
-     "end_iso": "2026-07-18T11:18:24",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
    "session_id": "session-20260718-112056",
    "group": "_review-unattributed-robot",
    "session_dir": "_review-unattributed-robot/session-20260718-112056",
@@ -29027,96 +29934,6 @@
      "block": 1,
      "start_iso": "2026-07-18T11:21:08",
      "end_iso": "2026-07-18T11:21:08",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260718-113246",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-113246",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-113246/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T11:32:49.372449",
-   "end_iso": "2026-07-18T11:32:49.372449",
-   "start_epoch": 1784399569.372449,
-   "end_epoch": 1784399569.372449,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-113246/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T11:32:54",
-     "end_iso": "2026-07-18T11:33:01",
-     "wavs": 2
-    }
-   ],
-   "counts": {
-    "input_wavs": 1,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 2,
-    "speaker_bleed": 0,
-    "audio_s": 3.8
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260718-113326",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-113326",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-113326/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T11:33:34.705584",
-   "end_iso": "2026-07-18T11:33:34.705584",
-   "start_epoch": 1784399614.705584,
-   "end_epoch": 1784399614.705584,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-113326/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T11:33:46",
-     "end_iso": "2026-07-18T11:33:46",
      "wavs": 1
     }
    ],
@@ -29223,699 +30040,6 @@
    "replay_tier": "B"
   },
   {
-   "session_id": "session-20260718-124419",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-124419",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-124419/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T12:44:27.948325",
-   "end_iso": "2026-07-18T12:44:48.053558",
-   "start_epoch": 1784403867.948325,
-   "end_epoch": 1784403888.053558,
-   "wall_duration_s": 20.1,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-124419/retranscription.json"
-   },
-   "blocks": [],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260718-124505",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-124505",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-124505/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T12:45:13.438786",
-   "end_iso": "2026-07-18T12:46:19.473128",
-   "start_epoch": 1784403913.438786,
-   "end_epoch": 1784403979.473128,
-   "wall_duration_s": 66.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-124505/retranscription.json"
-   },
-   "blocks": [],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260718-124735",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-124735",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-124735/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T12:47:44.397519",
-   "end_iso": "2026-07-18T12:47:58.289436",
-   "start_epoch": 1784404064.397519,
-   "end_epoch": 1784404078.289436,
-   "wall_duration_s": 13.9,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-124735/retranscription.json"
-   },
-   "blocks": [],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260718-141533",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-141533",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-141533/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T14:15:42.736939",
-   "end_iso": "2026-07-18T14:16:30.944160",
-   "start_epoch": 1784409342.736939,
-   "end_epoch": 1784409390.94416,
-   "wall_duration_s": 48.2,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-141533/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T14:16:17",
-     "end_iso": "2026-07-18T14:16:29",
-     "wavs": 2
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 2,
-    "speaker_bleed": 0,
-    "audio_s": 43.5
-   },
-   "media": {
-    "chunks": 1,
-    "telemetry_span_epoch": [
-     1784409340.3932598,
-     1784409389.1310718
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260718-144100",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-144100",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-144100/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T14:41:08.666271",
-   "end_iso": "2026-07-18T14:41:08.666271",
-   "start_epoch": 1784410868.666271,
-   "end_epoch": 1784410868.666271,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-144100/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T14:41:22",
-     "end_iso": "2026-07-18T14:43:00",
-     "wavs": 3
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 3,
-    "speaker_bleed": 0,
-    "audio_s": 113.6
-   },
-   "media": {
-    "chunks": 2,
-    "telemetry_span_epoch": [
-     1784410866.4494264,
-     1784410980.400668
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260718-144625",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-144625",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-144625/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T14:46:33.666442",
-   "end_iso": "2026-07-18T14:46:33.666442",
-   "start_epoch": 1784411193.666442,
-   "end_epoch": 1784411193.666442,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-144625/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T14:46:47",
-     "end_iso": "2026-07-18T14:46:47",
-     "wavs": 1
-    },
-    {
-     "block": 2,
-     "start_iso": "2026-07-18T15:00:33",
-     "end_iso": "2026-07-18T15:05:02",
-     "wavs": 6
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 7,
-    "speaker_bleed": 0,
-    "audio_s": 330.7
-   },
-   "media": {
-    "chunks": 6,
-    "telemetry_span_epoch": [
-     1784411972.8996718,
-     1784412302.6495194
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260718-170038",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-170038",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260718-171136",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-171136",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-171136/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T17:11:44.612174",
-   "end_iso": "2026-07-18T17:12:27.264020",
-   "start_epoch": 1784419904.612174,
-   "end_epoch": 1784419947.26402,
-   "wall_duration_s": 42.7,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-171136/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T17:11:47",
-     "end_iso": "2026-07-18T17:11:47",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.9
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260718-173629",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260718-173629",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260718-173629/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-18T17:36:37.635916",
-   "end_iso": "2026-07-18T17:36:57.267714",
-   "start_epoch": 1784421397.635916,
-   "end_epoch": 1784421417.267714,
-   "wall_duration_s": 19.6,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260718-173629/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-18T17:36:40",
-     "end_iso": "2026-07-18T17:36:48",
-     "wavs": 2
-    }
-   ],
-   "counts": {
-    "input_wavs": 1,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 2,
-    "speaker_bleed": 0,
-    "audio_s": 2.9
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260719-060317",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260719-060317",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260719-060317/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-19T06:03:27",
-     "end_iso": "2026-07-19T06:03:27",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 2.1
-   },
-   "media": {
-    "chunks": 1,
-    "telemetry_span_epoch": [
-     1784466205.1848114,
-     1784466207.3793085
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260719-071842",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260719-071842",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260719-072027",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260719-072027",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260719-072027/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-19T07:20:30.336822",
-   "end_iso": "2026-07-19T07:20:58.909138",
-   "start_epoch": 1784470830.336822,
-   "end_epoch": 1784470858.909138,
-   "wall_duration_s": 28.6,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260719-072027/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-19T07:20:48",
-     "end_iso": "2026-07-19T07:20:48",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260719-072115",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260719-072115",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260719-072115/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-19T07:21:18.496102",
-   "end_iso": "2026-07-19T07:22:53.784768",
-   "start_epoch": 1784470878.496102,
-   "end_epoch": 1784470973.784768,
-   "wall_duration_s": 95.3,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260719-072115/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-19T07:21:36",
-     "end_iso": "2026-07-19T07:22:53",
-     "wavs": 2
-    }
-   ],
-   "counts": {
-    "input_wavs": 1,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 2,
-    "speaker_bleed": 0,
-    "audio_s": 1.8
-   },
-   "media": {
-    "chunks": 1,
-    "has_video": false
-   },
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260719-072844",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260719-072844",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260719-072844/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true,
-    "no_vlm": true
-   },
-   "start_iso": "2026-07-19T07:28:46.583059",
-   "end_iso": "2026-07-19T07:29:26.776846",
-   "start_epoch": 1784471326.583059,
-   "end_epoch": 1784471366.776846,
-   "wall_duration_s": 40.2,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260719-072844/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-19T07:29:04",
-     "end_iso": "2026-07-19T07:29:04",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
-   },
-   "media": {
-    "chunks": 1,
-    "has_video": false
-   },
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260719-113755",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260719-113755",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260719-113755/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true,
-    "no_vlm": true
-   },
-   "start_iso": "2026-07-19T11:37:59.981918",
-   "end_iso": "2026-07-19T11:37:59.981918",
-   "start_epoch": 1784486279.981918,
-   "end_epoch": 1784486279.981918,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260719-113755/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-19T11:38:02",
-     "end_iso": "2026-07-19T11:40:01",
-     "wavs": 4
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 4,
-    "speaker_bleed": 0,
-    "audio_s": 122.5
-   },
-   "media": {
-    "chunks": 3,
-    "telemetry_span_epoch": [
-     1784486279.4487271,
-     1784486401.131712
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260719-171228",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260719-171228",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260719-171228/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true,
-    "no_vlm": false
-   },
-   "start_iso": "2026-07-19T17:12:38.015951",
-   "end_iso": "2026-07-19T17:12:38.015951",
-   "start_epoch": 1784506358.015951,
-   "end_epoch": 1784506358.015951,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260719-171228/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-19T17:12:50",
-     "end_iso": "2026-07-19T17:12:50",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
    "session_id": "session-20260720-064520",
    "group": "_review-unattributed-robot",
    "session_dir": "_review-unattributed-robot/session-20260720-064520",
@@ -29947,154 +30071,6 @@
      "block": 1,
      "start_iso": "2026-07-20T06:45:28",
      "end_iso": "2026-07-20T06:45:28",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260720-122743",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-122743",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260720-122743/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true,
-    "no_vlm": false
-   },
-   "start_iso": "2026-07-20T12:27:52.408451",
-   "end_iso": "2026-07-20T12:27:52.408451",
-   "start_epoch": 1784575672.408451,
-   "end_epoch": 1784575672.408451,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-122743/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-20T12:27:53",
-     "end_iso": "2026-07-20T12:27:53",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 3.5
-   },
-   "media": {
-    "chunks": 1,
-    "telemetry_span_epoch": [
-     1784575670.0067086,
-     1784575673.5113053
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260720-140842",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-140842",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260720-140842/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true,
-    "no_vlm": false
-   },
-   "start_iso": "2026-07-20T14:08:51.318699",
-   "end_iso": "2026-07-20T14:08:51.318699",
-   "start_epoch": 1784581731.318699,
-   "end_epoch": 1784581731.318699,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-140842/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-20T14:09:08",
-     "end_iso": "2026-07-20T14:09:08",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.9
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260720-141020",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-141020",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260720-141020/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true,
-    "no_vlm": false
-   },
-   "start_iso": "2026-07-20T14:10:29.268547",
-   "end_iso": "2026-07-20T14:10:54.862214",
-   "start_epoch": 1784581829.268547,
-   "end_epoch": 1784581854.862214,
-   "wall_duration_s": 25.6,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-141020/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-20T14:10:47",
-     "end_iso": "2026-07-20T14:10:47",
      "wavs": 1
     }
    ],
@@ -30149,25 +30125,6 @@
    "replay_tier": "A"
   },
   {
-   "session_id": "session-20260720-141413",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-141413",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
    "session_id": "session-20260720-143128",
    "group": "_review-unattributed-robot",
    "session_dir": "_review-unattributed-robot/session-20260720-143128",
@@ -30204,100 +30161,6 @@
     "has_video": true
    },
    "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260720-171740",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-171740",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260720-171740/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "gemma4:e2b",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true,
-    "no_vlm": false
-   },
-   "start_iso": "2026-07-20T17:17:48.173240",
-   "end_iso": "2026-07-20T17:18:03.566493",
-   "start_epoch": 1784593068.17324,
-   "end_epoch": 1784593083.566493,
-   "wall_duration_s": 15.4,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-171740/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-20T17:17:49",
-     "end_iso": "2026-07-20T17:17:49",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260720-173923",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-173923",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260720-173923/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "gemma4:e2b",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true,
-    "no_vlm": false
-   },
-   "start_iso": "2026-07-20T17:39:31.171793",
-   "end_iso": "2026-07-20T17:39:31.171793",
-   "start_epoch": 1784594371.171793,
-   "end_epoch": 1784594371.171793,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-173923/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-20T17:39:47",
-     "end_iso": "2026-07-20T17:39:47",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
-   },
-   "media": {},
-   "replay_tier": "B"
   },
   {
    "session_id": "session-20260720-185752",
@@ -30337,46 +30200,6 @@
     "camera_path": "_review-unattributed-robot/session-20260720-185752/camera_path.jsonl"
    },
    "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260720-192132",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-192132",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260720-192132/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true,
-    "no_vlm": false
-   },
-   "start_iso": "2026-07-20T19:21:36.349068",
-   "end_iso": "2026-07-20T19:21:36.349068",
-   "start_epoch": 1784600496.349068,
-   "end_epoch": 1784600496.349068,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-192132/retranscription.json"
-   },
-   "blocks": [],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
   },
   {
    "session_id": "session-20260720-192519",
@@ -30493,63 +30316,6 @@
    "replay_tier": "A"
   },
   {
-   "session_id": "session-20260720-194101",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-194101",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260720-194626",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-194626",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260720-203639",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-203639",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
    "session_id": "session-20260720-211156",
    "group": "_review-unattributed-robot",
    "session_dir": "_review-unattributed-robot/session-20260720-211156",
@@ -30601,65 +30367,6 @@
     "camera_path": "_review-unattributed-robot/session-20260720-213420/camera_path.jsonl"
    },
    "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260720-223043",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-223043",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260720-223043/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true,
-    "no_vlm": false
-   },
-   "start_iso": "2026-07-20T22:30:53.234144",
-   "end_iso": "2026-07-20T22:30:53.234144",
-   "start_epoch": 1784611853.234144,
-   "end_epoch": 1784611853.234144,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-223043/retranscription.json"
-   },
-   "blocks": [],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260720-223216",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-223216",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {},
-   "replay_tier": "C"
   },
   {
    "session_id": "session-20260721-123809",
@@ -32353,52 +32060,6 @@
     "recovered_speech": 3,
     "speaker_bleed": 0,
     "audio_s": 3.2
-   },
-   "media": {},
-   "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260719-052335",
-   "group": "_review-unknown",
-   "session_dir": "_review-unknown/session-20260719-052335",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unknown/session-20260719-052335/session.jsonl",
-   "persona": "SNAPPER",
-   "voice": "en_GB-aru-medium",
-   "config": {
-    "ollama_model": "gemma4:e2b",
-    "vlm_model": "moondream",
-    "whisper_model": "tiny.en",
-    "piper_voice": "speech/piper/en_GB-aru-medium.onnx",
-    "system_prompt": "you are SNAPPER a robot dog. you do not say woof, whir, tail wag. answer in 2 sentences or less.",
-    "require_wakeword": true
-   },
-   "start_iso": "2026-07-19T05:23:39.265053",
-   "end_iso": "2026-07-19T05:23:39.265053",
-   "start_epoch": 1784463819.265053,
-   "end_epoch": 1784463819.265053,
-   "wall_duration_s": 0.0,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unknown/session-20260719-052335/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-19T05:23:50",
-     "end_iso": "2026-07-19T05:23:50",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 0.8
    },
    "media": {},
    "replay_tier": "B"
