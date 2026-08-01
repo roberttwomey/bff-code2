@@ -5,9 +5,28 @@ Usage:  python render_report.py
 Regenerate the index first if the archive changed. Do not hand-edit the
 markdown - it is overwritten.
 """
-import json, os, collections
+import json, os, glob, collections, urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+BY_PHASE = os.environ.get("BFF_BY_PHASE",
+                          os.path.join(os.path.dirname(
+                              os.environ.get("BFF_ARCHIVE_ROOT",
+                                             "/Volumes/Cohab2024/BFF/logs-all")), "by-phase"))
+
+_by_phase_dirs = {}
+if os.path.isdir(BY_PHASE):
+    for p in glob.glob(os.path.join(BY_PHASE, "*", "KEY__*")):
+        # KEY__<session-id>[__<group>]
+        stem = os.path.basename(p)[len("KEY__"):]
+        sid = stem.split("__")[0]
+        _by_phase_dirs[sid] = p
+
+def sess_link(sid, text=None):
+    """Markdown link to the gathered files for a session, if the tree is built."""
+    label = text or f"`{sid}`"
+    p = _by_phase_dirs.get(sid)
+    if not p: return label
+    return f"[{label}](file://{urllib.parse.quote(p)})"
 d = json.load(open(os.path.join(HERE, "bff-replay-index.json")))
 cat = json.load(open(os.path.join(HERE, "bff-sessions.json")))
 ex, ss = d["exchanges"], cat["sessions"]
@@ -29,6 +48,10 @@ w("- **Companion index:** [`bff-replay-index.json`](bff-replay-index.json) — p
 w("  wav paths, video frame offsets. [`bff-sessions.json`](bff-sessions.json) catalogs all")
 w(f"  {sum(1 for s in ss if not s.get('is_variant'))} sessions at summary level. This report is generated from them.")
 w("")
+if _by_phase_dirs:
+    w(f"Session ids link to that session's gathered files under `{BY_PHASE}` —")
+    w("every transcript, wav, video, telemetry and subtitle track in one directory.")
+    w("")
 w("## Read this first")
 w("")
 w(d["transcript_note"])
@@ -75,7 +98,7 @@ for pid, title in PHASES:
         w("|---|---|---|---|---|---|")
         for e in rows:
             c = e.get("counts", {})
-            w(f"| {e['label']} | `{e['session_id']}` | {e.get('persona') or '–'} | "
+            w(f"| {e['label']} | {sess_link(e['session_id'])} | {e.get('persona') or '–'} | "
               f"{len(e.get('turns',[]))} | {c.get('user_turns',0)} | {c.get('assistant_turns',0)} |")
         w("")
         w("Transcript only — no audio was ever written for these, so there is nothing to")
@@ -90,7 +113,7 @@ for pid, title in PHASES:
             vb = sum(x["video"]["bytes"] for x in (m.get("chunks") or [])
                      if isinstance(x, dict) and x.get("video")) if isinstance(m.get("chunks"), list) else 0
             voice = (e.get("voice") or "–").replace("en_GB-", "").replace("-medium", "")
-            w(f"| {e['label']} | `{e['session_id']}` | {e.get('group','–')} | {voice} | {e['replay_tier']} | "
+            w(f"| {e['label']} | {sess_link(e['session_id'])} | {e.get('group','–')} | {voice} | {e['replay_tier']} | "
               f"{c.get('input_wavs',0)} | {c.get('response_wavs',0)} | {dash(c.get('empty_wavs'))} | "
               f"**{c.get('recovered_speech',0)}** | {dash(c.get('speaker_bleed'))} | "
               f"{dur(c.get('audio_s'))} | {mb(vb)} |")
@@ -104,7 +127,7 @@ for sid in ["session-20260129-144803", "session-20260129-164334"]:
     e = next((x for x in ex if x["session_id"] == sid), None)
     if not e: continue
     c = e.get("counts", {})
-    w(f"**`{sid}`** — machine `{e.get('group')}`, voice `{e.get('voice','?')}`, persona {e.get('persona')} · {e['label']}")
+    w(f"**{sess_link(sid)}** — machine `{e.get('group')}`, voice `{e.get('voice','?')}`, persona {e.get('persona')} · {e['label']}")
     w("")
     w(f"- Wall span `{e.get('start_iso','')[11:19]}` → `{e.get('end_iso','')[11:19]}` "
       f"({e.get('wall_duration_s',0)/3600:.2f} h)")
@@ -126,7 +149,7 @@ if pb:
     for e in pb:
         b = e["media"]["processed_bundle"]
         subs = ", ".join(f"`{k}`" for k in b if k.endswith(".srt")) or "–"
-        w(f"| {e['label']} | `{e['session_id']}` | {mb((b.get('video_clean.mp4') or {}).get('bytes'))} | "
+        w(f"| {e['label']} | {sess_link(e['session_id'])} | {mb((b.get('video_clean.mp4') or {}).get('bytes'))} | "
           f"{mb((b.get('video_overlay.mp4') or {}).get('bytes'))} | {subs} |")
     w("")
 

@@ -3,12 +3,15 @@
 Curated exchanges from the BFF development and performance archive, with an
 inventory of every recorded stream that survives for each one.
 
-- **Generated:** 2026-08-01T14:23:59
+- **Generated:** 2026-08-01T14:59:11
 - **Archive:** `/Volumes/Cohab2024/BFF/logs-all`
 - **Derived:** `/Volumes/Cohab2024/BFF/processed`
 - **Companion index:** [`bff-replay-index.json`](bff-replay-index.json) — per-turn timestamps,
   wav paths, video frame offsets. [`bff-sessions.json`](bff-sessions.json) catalogs all
   688 sessions at summary level. This report is generated from them.
+
+Session ids link to that session's gathered files under `/Volumes/Cohab2024/BFF/by-phase` —
+every transcript, wav, video, telemetry and subtitle track in one directory.
 
 ## Read this first
 
@@ -43,13 +46,13 @@ The clearest case is the Snapper IDEAS performance below: a 2.7-hour session who
 
 | Exchange | Session | Persona | Turns | User | Assistant |
 |---|---|---|---|---|---|
-| apple / cinnamon / sensory hallucination | `chat_session_19691231_191711` | SNAPPER | 20 | 13 | 7 |
-| Claremont McKenna keynote / carbon cost | `chat_session_20251105_232211` | SNAPPER | 14 | 13 | 1 |
-| first 'concrete floor' | `chat_session_20251106_194243` | SNAPPER | 23 | 15 | 8 |
-| 'I love you' | `chat_session_20251106_145039` | SNAPPER | 62 | 42 | 20 |
-| specific apple / Honeycrisp | `chat_session_20251106_194552` | SNAPPER | 9 | 6 | 3 |
-| earliest memory | `chat_session_20251101_184352` | SNAPPER | 23 | 15 | 8 |
-| 'better if you had a memory' | `chat_session_20251106_100247` | SNAPPER | 25 | 15 | 10 |
+| apple / cinnamon / sensory hallucination | [`chat_session_19691231_191711`](file:///Volumes/Cohab2024/BFF/by-phase/1-CMC-2025-11/KEY__chat_session_19691231_191711) | SNAPPER | 20 | 13 | 7 |
+| Claremont McKenna keynote / carbon cost | [`chat_session_20251105_232211`](file:///Volumes/Cohab2024/BFF/by-phase/1-CMC-2025-11/KEY__chat_session_20251105_232211) | SNAPPER | 14 | 13 | 1 |
+| first 'concrete floor' | [`chat_session_20251106_194243`](file:///Volumes/Cohab2024/BFF/by-phase/1-CMC-2025-11/KEY__chat_session_20251106_194243) | SNAPPER | 23 | 15 | 8 |
+| 'I love you' | [`chat_session_20251106_145039`](file:///Volumes/Cohab2024/BFF/by-phase/1-CMC-2025-11/KEY__chat_session_20251106_145039) | SNAPPER | 62 | 42 | 20 |
+| specific apple / Honeycrisp | [`chat_session_20251106_194552`](file:///Volumes/Cohab2024/BFF/by-phase/1-CMC-2025-11/KEY__chat_session_20251106_194552) | SNAPPER | 9 | 6 | 3 |
+| earliest memory | [`chat_session_20251101_184352`](file:///Volumes/Cohab2024/BFF/by-phase/1-CMC-2025-11/KEY__chat_session_20251101_184352) | SNAPPER | 23 | 15 | 8 |
+| 'better if you had a memory' | [`chat_session_20251106_100247`](file:///Volumes/Cohab2024/BFF/by-phase/1-CMC-2025-11/KEY__chat_session_20251106_100247) | SNAPPER | 25 | 15 | 10 |
 
 Transcript only — no audio was ever written for these, so there is nothing to
 re-transcribe. Turns are reconstructed from the v1 `chat_session` format, whose
@@ -60,63 +63,63 @@ turns can share one timestamp. Good for ordering, not for tight sync.
 
 | Exchange | Session | Machine | Voice | Tier | In | Out | Empty | **Recovered** | Bleed | Audio | Video |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 'rehearsal for life alongside intelligent machines' | `session-20251203-114233` | helper | alan | B | 28 | 9 | – | **0** | – | 3.4m | – |
-| 1b poet / 'a bright blue crayon' | `session-20251207-154426` | snapper | alan | B | 13 | 13 | – | **1** | 2 | 1.4m | – |
-| programming paradox / 'resonance' | `session-20251210-133949` | snapper | aru | B | 10 | 10 | – | **4** | – | 2.1m | – |
-| 'Yes, be.' | `session-20251211-140606` | mac | aru | B | 7 | 7 | – | **1** | – | 56s | – |
-| crisp apple / 'my friend Jesse' | `session-20251211-104816` | snapper | aru | B | 45 | 43 | 6 | **11** | – | 4.8m | – |
-| domestic capture - fox-like dog names | `session-20251207-081946` | snapper | aru | B | 63 | 0 | – | **3** | – | 2.4m | – |
-| domestic capture - breakfast / nature show | `session-20251207-072459` | snapper | alan | B | 6 | 0 | – | **0** | – | 17s | – |
-| quantum system 'Q' prompt | `session-20251219-100935` | mac | aru | B | 1 | 1 | 1 | **1** | – | 4s | – |
+| 'rehearsal for life alongside intelligent machines' | [`session-20251203-114233`](file:///Volumes/Cohab2024/BFF/by-phase/2-NeurIPS-2025-12/KEY__session-20251203-114233__helper) | helper | alan | B | 28 | 9 | – | **0** | – | 3.4m | – |
+| 1b poet / 'a bright blue crayon' | [`session-20251207-154426`](file:///Volumes/Cohab2024/BFF/by-phase/2-NeurIPS-2025-12/KEY__session-20251207-154426__snapper) | snapper | alan | B | 13 | 13 | – | **1** | 2 | 1.4m | – |
+| programming paradox / 'resonance' | [`session-20251210-133949`](file:///Volumes/Cohab2024/BFF/by-phase/2-NeurIPS-2025-12/KEY__session-20251210-133949__snapper) | snapper | aru | B | 10 | 10 | – | **4** | – | 2.1m | – |
+| 'Yes, be.' | [`session-20251211-140606`](file:///Volumes/Cohab2024/BFF/by-phase/2-NeurIPS-2025-12/KEY__session-20251211-140606__mac) | mac | aru | B | 7 | 7 | – | **1** | – | 56s | – |
+| crisp apple / 'my friend Jesse' | [`session-20251211-104816`](file:///Volumes/Cohab2024/BFF/by-phase/2-NeurIPS-2025-12/KEY__session-20251211-104816__snapper) | snapper | aru | B | 45 | 43 | 6 | **11** | – | 4.8m | – |
+| domestic capture - fox-like dog names | [`session-20251207-081946`](file:///Volumes/Cohab2024/BFF/by-phase/2-NeurIPS-2025-12/KEY__session-20251207-081946__snapper) | snapper | aru | B | 63 | 0 | – | **3** | – | 2.4m | – |
+| domestic capture - breakfast / nature show | [`session-20251207-072459`](file:///Volumes/Cohab2024/BFF/by-phase/2-NeurIPS-2025-12/KEY__session-20251207-072459__snapper) | snapper | alan | B | 6 | 0 | – | **0** | – | 17s | – |
+| quantum system 'Q' prompt | [`session-20251219-100935`](file:///Volumes/Cohab2024/BFF/by-phase/2-NeurIPS-2025-12/KEY__session-20251219-100935__mac) | mac | aru | B | 1 | 1 | 1 | **1** | – | 4s | – |
 
 ## Phase 3 — IDEAS performance (Jan 29 2026)
 
 | Exchange | Session | Machine | Voice | Tier | In | Out | Empty | **Recovered** | Bleed | Audio | Video |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 'named you Helper' / distributed self | `session-20260126-221545` | snapper | aru | B | 124 | 123 | 82 | **31** | – | 12.4m | – |
-| 'you clanker' | `session-20260126-221552` | snapper | aru | B | 60 | 60 | 16 | **29** | 13 | 4.1m | – |
-| shutdown loop | `session-20260126-224024` | snapper | aru | B | 12 | 11 | 2 | **6** | 1 | 50s | – |
-| 'Actually, I'm a human' | `session-20260127-193910` | helper | aru | B | 69 | 69 | 17 | **20** | 8 | 6.5m | – |
-| 'I will only ask you to be a machine' / burp | `session-20260128-100651` | helper | aru | B | 155 | 52 | 1 | **25** | 3 | 25.8m | – |
-| Helper scripted self-intro | `session-20260128-101724` | helper | aru | B | 20 | 20 | 17 | **3** | – | 3.4m | – |
-| 'I don't want you to compliment me' | `session-20260128-105613` | helper | aru | B | 151 | 21 | – | **33** | 12 | 9.7m | – |
-| Colors scene / 'would it be pleasurable' | `session-20260129-115828` | snapper | aru | B | 86 | 79 | 26 | **50** | 11 | 7.9m | – |
-| confabulated hand-on-head memory | `session-20260129-120117` | snapper | aru | B | 84 | 74 | 22 | **33** | – | 10.0m | – |
-| 'why do you keep mentioning my family' | `session-20260129-140838` | snapper | aru | B | 96 | 90 | 13 | **35** | 1 | 16.2m | – |
-| black box in a black box | `session-20260129-142720` | snapper | aru | B | 69 | 65 | 20 | **15** | 1 | 6.7m | – |
-| *** SNAPPER IDEAS performance (block 2 is the show) | `session-20260129-144803` | snapper | aru | B | 176 | 171 | 64 | **98** | 59 | 15.4m | – |
-| *** HELPER IDEAS performance + post-show Q&A | `session-20260129-164334` | helper | aru | B | 483 | 45 | 5 | **40** | 6 | 44.5m | – |
+| 'named you Helper' / distributed self | [`session-20260126-221545`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260126-221545__snapper) | snapper | aru | B | 124 | 123 | 82 | **31** | – | 12.4m | – |
+| 'you clanker' | [`session-20260126-221552`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260126-221552__snapper) | snapper | aru | B | 60 | 60 | 16 | **29** | 13 | 4.1m | – |
+| shutdown loop | [`session-20260126-224024`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260126-224024__snapper) | snapper | aru | B | 12 | 11 | 2 | **6** | 1 | 50s | – |
+| 'Actually, I'm a human' | [`session-20260127-193910`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260127-193910__helper) | helper | aru | B | 69 | 69 | 17 | **20** | 8 | 6.5m | – |
+| 'I will only ask you to be a machine' / burp | [`session-20260128-100651`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260128-100651__helper) | helper | aru | B | 155 | 52 | 1 | **25** | 3 | 25.8m | – |
+| Helper scripted self-intro | [`session-20260128-101724`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260128-101724__helper) | helper | aru | B | 20 | 20 | 17 | **3** | – | 3.4m | – |
+| 'I don't want you to compliment me' | [`session-20260128-105613`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260128-105613__helper) | helper | aru | B | 151 | 21 | – | **33** | 12 | 9.7m | – |
+| Colors scene / 'would it be pleasurable' | [`session-20260129-115828`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260129-115828__snapper) | snapper | aru | B | 86 | 79 | 26 | **50** | 11 | 7.9m | – |
+| confabulated hand-on-head memory | [`session-20260129-120117`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260129-120117__snapper) | snapper | aru | B | 84 | 74 | 22 | **33** | – | 10.0m | – |
+| 'why do you keep mentioning my family' | [`session-20260129-140838`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260129-140838__snapper) | snapper | aru | B | 96 | 90 | 13 | **35** | 1 | 16.2m | – |
+| black box in a black box | [`session-20260129-142720`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260129-142720__snapper) | snapper | aru | B | 69 | 65 | 20 | **15** | 1 | 6.7m | – |
+| *** SNAPPER IDEAS performance (block 2 is the show) | [`session-20260129-144803`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260129-144803__snapper) | snapper | aru | B | 176 | 171 | 64 | **98** | 59 | 15.4m | – |
+| *** HELPER IDEAS performance + post-show Q&A | [`session-20260129-164334`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260129-164334__helper) | helper | aru | B | 483 | 45 | 5 | **40** | 6 | 44.5m | – |
 
 ## Phase 4 — SIGGRAPH Spatial Storytelling (Jul 23 2026)
 
 | Exchange | Session | Machine | Voice | Tier | In | Out | Empty | **Recovered** | Bleed | Audio | Video |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Francis & Jasper meet Snapper | `session-20260201-190334` | snapper | aru | B | 35 | 33 | 6 | **25** | 1 | 5.5m | – |
-| 'what was the feeling of being activated' | `session-20260701-125318` | mac | aru | B | 10 | 10 | – | **2** | – | 1.8m | – |
-| 'have you seen my red ball' | `session-20260718-195946` | mac | aru | B | 3 | 3 | – | **2** | – | 44s | – |
-| embodied hallucination / Ace Hotel | `session-19691231-160201` | snapper | aru | A | 14 | 13 | – | **12** | – | 16.3m | 176MB |
-| naming denied (Jasper) | `session-20260720-194648` | snapper | aru | A | 49 | 43 | – | **15** | – | 30.7m | 315MB |
-| 'I feel dead inside' | `session-20260720-195543` | snapper | aru | A | 28 | 24 | – | **17** | – | 21.8m | 173MB |
-| apple as mirror | `session-20260720-204648` | snapper | aru | A | 13 | 12 | – | **6** | – | 19.8m | 87MB |
-| Pinocchio / 'bad dog' | `session-20260721-121342` | helper | alan | A | 6 | 5 | – | **7** | – | 7.8m | 67MB |
-| Companion scene (Jesse) | `session-20260721-124325` | helper | alan | A | 29 | 28 | – | **7** | – | 16.4m | 72MB |
-| McCarthy / Lovelace | `session-20260722-114251` | snapper | aru | A | 18 | 15 | – | **9** | – | 10.4m | 141MB |
-| Mirror / 'space between us' / interiority | `session-20260722-123623` | helper | alan | A | 39 | 38 | – | **9** | – | 20.7m | 87MB |
-| two dogs simultaneous | `session-20260722-123630` | snapper | aru | A | 23 | 23 | – | **7** | – | 15.6m | 125MB |
-| *** SIGGRAPH stage / magic | `session-20260723-092744` | snapper | aru | A | 70 | 64 | – | **25** | 1 | 95.2m | 1.5GB |
+| Francis & Jasper meet Snapper | [`session-20260201-190334`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260201-190334__snapper) | snapper | aru | B | 35 | 33 | 6 | **25** | 1 | 5.5m | – |
+| 'what was the feeling of being activated' | [`session-20260701-125318`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260701-125318__mac) | mac | aru | B | 10 | 10 | – | **2** | – | 1.8m | – |
+| 'have you seen my red ball' | [`session-20260718-195946`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260718-195946__mac) | mac | aru | B | 3 | 3 | – | **2** | – | 44s | – |
+| embodied hallucination / Ace Hotel | [`session-19691231-160201`](file:///Volumes/Cohab2024/BFF/by-phase/_unknown-clock/KEY__session-19691231-160201__snapper) | snapper | aru | A | 14 | 13 | – | **12** | – | 16.3m | 176MB |
+| naming denied (Jasper) | [`session-20260720-194648`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260720-194648__snapper) | snapper | aru | A | 49 | 43 | – | **15** | – | 30.7m | 315MB |
+| 'I feel dead inside' | [`session-20260720-195543`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260720-195543__snapper) | snapper | aru | A | 28 | 24 | – | **17** | – | 21.8m | 173MB |
+| apple as mirror | [`session-20260720-204648`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260720-204648__snapper) | snapper | aru | A | 13 | 12 | – | **6** | – | 19.8m | 87MB |
+| Pinocchio / 'bad dog' | [`session-20260721-121342`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260721-121342__helper) | helper | alan | A | 6 | 5 | – | **7** | – | 6.8m | 67MB |
+| Companion scene (Jesse) | [`session-20260721-124325`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260721-124325__helper) | helper | alan | A | 29 | 28 | – | **7** | – | 12.1m | 72MB |
+| McCarthy / Lovelace | [`session-20260722-114251`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260722-114251__snapper) | snapper | aru | A | 18 | 15 | – | **9** | – | 8.3m | 141MB |
+| Mirror / 'space between us' / interiority | [`session-20260722-123623`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260722-123623__helper) | helper | alan | A | 39 | 38 | – | **9** | – | 14.4m | 87MB |
+| two dogs simultaneous | [`session-20260722-123630`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260722-123630__snapper) | snapper | aru | A | 23 | 23 | – | **7** | – | 11.8m | 125MB |
+| *** SIGGRAPH stage / magic | [`session-20260723-092744`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260723-092744__snapper) | snapper | aru | A | 70 | 64 | – | **25** | 1 | 87.2m | 1.5GB |
 
 ## The two IDEAS performances
 
 Both dogs performed, simultaneously.
 
-**`session-20260129-144803`** — machine `snapper`, voice `en_GB-aru-medium`, persona SNAPPER · *** SNAPPER IDEAS performance (block 2 is the show)
+**[`session-20260129-144803`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260129-144803__snapper)** — machine `snapper`, voice `en_GB-aru-medium`, persona SNAPPER · *** SNAPPER IDEAS performance (block 2 is the show)
 
 - Wall span `14:48:03` → `17:29:10` (2.69 h)
 - Block 1: `14:48:10` → `14:56:19` — 188 wavs
 - Block 2: `17:21:34` → `17:29:32` — 167 wavs
 - 176 mic / 171 synth wavs, 98 recovered, 59 speaker bleed
 
-**`session-20260129-164334`** — machine `helper`, voice `en_GB-aru-medium`, persona HELPER · *** HELPER IDEAS performance + post-show Q&A
+**[`session-20260129-164334`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260129-164334__helper)** — machine `helper`, voice `en_GB-aru-medium`, persona HELPER · *** HELPER IDEAS performance + post-show Q&A
 
 - Wall span `16:43:34` → `18:20:31` (1.62 h)
 - Block 1: `16:43:37` → `18:20:42` — 545 wavs
@@ -129,11 +132,11 @@ than the raw per-chunk files.
 
 | Exchange | Session | Clean video | Overlay | Subtitles |
 |---|---|---|---|---|
-| Companion scene (Jesse) | `session-20260721-124325` | 80MB | 144MB | `speech.srt`, `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
-| McCarthy / Lovelace | `session-20260722-114251` | 149MB | 197MB | `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
-| Mirror / 'space between us' / interiority | `session-20260722-123623` | 100MB | 162MB | `speech.srt`, `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
-| two dogs simultaneous | `session-20260722-123630` | 133MB | 181MB | `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
-| *** SIGGRAPH stage / magic | `session-20260723-092744` | 1.6GB | 2.6GB | `speech.srt`, `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
+| Companion scene (Jesse) | [`session-20260721-124325`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260721-124325__helper) | 80MB | 144MB | `speech.srt`, `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
+| McCarthy / Lovelace | [`session-20260722-114251`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260722-114251__snapper) | 149MB | 197MB | `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
+| Mirror / 'space between us' / interiority | [`session-20260722-123623`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260722-123623__helper) | 100MB | 162MB | `speech.srt`, `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
+| two dogs simultaneous | [`session-20260722-123630`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260722-123630__snapper) | 133MB | 181MB | `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
+| *** SIGGRAPH stage / magic | [`session-20260723-092744`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260723-092744__snapper) | 1.6GB | 2.6GB | `speech.srt`, `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
 
 ## Replay tiers
 

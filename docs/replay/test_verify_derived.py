@@ -16,10 +16,11 @@ def wav(p):
     w = wave.open(p, "w"); w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000)
     w.writeframes(struct.pack("<h", 0) * 1600); w.close()
 
-def bundle(D, group, sid, infile_group=None):
+def bundle(D, group, sid, infile_group=None, wavs=None):
     p = os.path.join(D, "retranscribed", group, sid); os.makedirs(p, exist_ok=True)
     json.dump({"session_id": sid, "group": infile_group or group, "model": "x",
-               "blocks": [], "wavs": []}, open(os.path.join(p, "retranscription.json"), "w"))
+               "blocks": [], "wavs": wavs or []},
+              open(os.path.join(p, "retranscription.json"), "w"))
 
 def clog(D, group, sid, turns, audio):
     p = os.path.join(D, "complete-logs", group, sid); os.makedirs(p, exist_ok=True)
@@ -36,6 +37,14 @@ def build(T):
     bundle(D, "snapper", "session-20260101-000001", infile_group="mac")  # in-file mismatch
     bundle(D, "helper",  "session-20260101-000002")                     # wrong directory
     bundle(D, "snapper", "session-20260101-000004")                     # orphan
+    # a post-cutoff response wav that was never rate-corrected, and a startup.wav
+    # that wrongly was - the two directions of the sample-rate fix
+    wav(f"{R}/snapper/session-20260722-000005/turn-001-response.wav")
+    bundle(D, "snapper", "session-20260722-000005", wavs=[
+        {"file": "turn-001-response.wav", "kind": "response", "duration_s": 1.0},
+        {"file": "startup.wav", "kind": "startup", "duration_s": 1.0,
+         "rate_corrected": {"declared": 22050, "true": 48000}},
+    ])
     clog(D, "snapper", "session-20260101-000001", [1, 2],
          ["snapper/session-20260101-000001/turn-001-input.wav",
           "snapper/session-20260101-000001/NOPE.wav"])                  # unresolvable audio
@@ -51,6 +60,8 @@ EXPECT_FAIL = [
     "complete-log is in the group its session lives in",
     "complete-log turns are monotonic 1..n",
     "complete-log audio_path resolves",
+    "response wavs dated >= 20260721 are rate-corrected to 48 kHz",
+    "startup.wav is never rate-corrected",
 ]
 
 def main():
