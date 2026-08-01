@@ -468,8 +468,53 @@ class SessionTimeline:
         # on is the speaker, so snapper -> snapper.local is the honest label.
         self.device_name = device or f"{self.robot_name.lower()}.local"
 
+    def _get_retranscribed_map(self, session_dir: Path) -> dict:
+        m = {}
+        paths = []
+        if session_dir.is_dir():
+            paths.extend([
+                session_dir / "transcript" / "retranscription.json",
+                session_dir / "retranscription.json"
+            ])
+        for p in paths:
+            if p.exists():
+                try:
+                    data = json.loads(p.read_text(encoding="utf-8"))
+                    for w in data.get("wavs", []):
+                        txt = w.get("text")
+                        if txt:
+                            if w.get("file"):
+                                m[w["file"]] = txt
+                            if w.get("turn") and w.get("kind"):
+                                role = "user" if w["kind"] in ("user", "input") else "assistant"
+                                m[(w["turn"], role)] = txt
+                except Exception as ex:
+                    print(f"[Replay] Error reading retranscription.json: {ex}")
+
+        idx_path = Path(__file__).resolve().parent / "docs" / "replay" / "bff-replay-index.json"
+        if idx_path.exists():
+            try:
+                idx_data = json.loads(idx_path.read_text(encoding="utf-8"))
+                ex_match = next((x for x in idx_data.get("exchanges", [])
+                                if x["session_id"] == session_dir.name or x["session_id"] in str(session_dir)), None)
+                if ex_match and ex_match.get("turns"):
+                    for t in ex_match["turns"]:
+                        txt = t.get("text")
+                        kind = t.get("kind", "user")
+                        role = "user" if kind in ("user", "input") else "assistant"
+                        if txt:
+                            if t.get("turn"):
+                                m[(t["turn"], role)] = txt
+                            if t.get("file"):
+                                m[t["file"]] = txt
+            except Exception as ex:
+                print(f"[Replay] Error reading bff-replay-index.json: {ex}")
+
+        return m
+
     def _build(self, include_mic: bool, want_audio: bool):
         session = self.session_dir
+        retrans_map = self._get_retranscribed_map(session)
         events = _read_jsonl(session / "session.jsonl")
         if not events:
             events = _read_jsonl(session / "transcript" / "session.jsonl")
@@ -651,6 +696,19 @@ class SessionTimeline:
             et = parse_event_time(e.get("timestamp"))
             if et is None:
                 continue
+
+            # Prefer high-quality retranscribed text over live tiny.en logged_text
+            apath = e.get("audio_path", "")
+            base = os.path.basename(apath) if apath else ""
+            turn_key = (e.get("turn"), e.get("type"))
+            retrans_txt = retrans_map.get(base) or retrans_map.get(turn_key)
+            if retrans_txt:
+                if "text" in e:
+                    e["text"] = retrans_txt
+                if "reply" in e:
+                    e["reply"] = retrans_txt
+                if "text" not in e and "reply" not in e:
+                    e["text"] = retrans_txt
 
             # Display transcript text at the beginning of the utterance rather than the end
             if id(e) in event_start_times:
