@@ -606,23 +606,36 @@
     </style>
     {% if replay_mode %}
     <style>
-        /* Replay-only: a timeline scrubber pinned to the bottom of the window. */
-        body.replay-mode { padding-bottom: 68px; }
+        /* Replay-only: timeline scrubber & multi-session toolbar pinned to bottom. */
+        body.replay-mode { padding-bottom: 78px; }
+        body.replay-mode .lidar-panel {
+            height: calc(100% - 78px) !important;
+        }
         #replayBar {
-            position: fixed; left: 0; right: 0; bottom: 0; height: 68px;
-            z-index: 9999; display: flex; align-items: center; gap: 16px;
-            padding: 0 20px; box-sizing: border-box;
-            background: rgba(12, 12, 16, 0.92);
+            position: fixed; left: 0; right: 0; bottom: 0; height: 78px;
+            z-index: 10000 !important; display: flex; align-items: center; gap: 12px;
+            padding: 0 16px; box-sizing: border-box;
+            background: rgba(12, 12, 16, 0.96);
             border-top: 1px solid var(--panel-border);
             backdrop-filter: blur(8px); font-size: 0.75rem;
+            pointer-events: auto !important;
         }
-        #replayPlay {
-            flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%;
-            border: 1px solid var(--panel-border); background: rgba(255,255,255,0.06);
-            color: #fff; cursor: pointer; font-size: 1rem; line-height: 1;
-            display: flex; align-items: center; justify-content: center;
+        .replay-btn-group {
+            display: flex; align-items: center; gap: 6px; flex: 0 0 auto;
         }
-        #replayPlay:hover { background: rgba(255,255,255,0.14); }
+        .replay-btn {
+            height: 36px; padding: 0 10px; border-radius: 6px;
+            border: 1px solid var(--panel-border); background: rgba(255,255,255,0.12);
+            color: #fff; cursor: pointer; font-size: 0.78rem; font-weight: 500;
+            display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .replay-btn:hover { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.4); }
+        .replay-btn-play {
+            width: 38px; height: 38px; border-radius: 50%; padding: 0; font-size: 1rem;
+            background: rgba(0, 255, 102, 0.2); border-color: rgba(0, 255, 102, 0.5); color: #00ff66;
+        }
+        .replay-btn-play:hover { background: rgba(0, 255, 102, 0.35); }
         #replaySeek {
             flex: 1 1 auto; -webkit-appearance: none; appearance: none;
             height: 6px; border-radius: 3px; cursor: pointer;
@@ -637,12 +650,25 @@
             width: 14px; height: 14px; border-radius: 50%; border: none;
             background: #00ff66; cursor: pointer;
         }
+        #replayInfo {
+            display: flex; flex-direction: column; gap: 2px; flex: 0 1 auto; max-width: 320px; overflow: hidden;
+        }
+        .replay-meta-row { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; color: #aaa; }
+        .replay-phase-badge {
+            padding: 2px 6px; border-radius: 4px; background: rgba(0, 204, 255, 0.2);
+            color: #00ccff; font-weight: 600; font-size: 0.65rem; text-transform: uppercase;
+        }
+        #replaySessionSelect {
+            background: rgba(0,0,0,0.6); color: #fff; border: 1px solid var(--panel-border);
+            border-radius: 4px; padding: 3px 6px; font-size: 0.72rem; outline: none; cursor: pointer;
+            max-width: 300px; text-overflow: ellipsis; white-space: nowrap;
+        }
         #replayTime {
             flex: 0 0 auto; font-variant-numeric: tabular-nums; color: #fff;
-            letter-spacing: 0.05em; min-width: 104px; text-align: right;
+            letter-spacing: 0.05em; min-width: 90px; text-align: right; font-size: 0.75rem;
         }
         /* Lift the lidar controls handle so the scrubber doesn't cover it. */
-        #lidarPanel { bottom: 68px !important; }
+        #lidarPanel { bottom: 78px !important; }
     </style>
     {% endif %}
 </head>
@@ -650,6 +676,28 @@
 <body class="{% if replay_mode %}replay-mode{% endif %}">
 
     <div class="dashboard-container">
+        {% if replay_mode %}
+        <!-- Replay timeline scrubber & multi-session toolbar -->
+        <div id="replayBar">
+            <div class="replay-btn-group">
+                <button id="replayPrevSession" class="replay-btn" title="Previous Session (Shift+[ or P)">⏮ Sess</button>
+                <button id="replayPrevTurn" class="replay-btn" title="Previous Turn / Phrase ([)">⏮ Turn</button>
+                <button id="replayPlay" class="replay-btn replay-btn-play" title="Play / Pause (Space)">&#9658;</button>
+                <button id="replayNextTurn" class="replay-btn" title="Next Turn / Phrase (])">⏭ Turn</button>
+                <button id="replayNextSession" class="replay-btn" title="Next Session (Shift+] or N)">⏭ Sess</button>
+            </div>
+            <div id="replayInfo">
+                <div class="replay-meta-row">
+                    <span id="replayPhaseBadge" class="replay-phase-badge">PHASE</span>
+                    <span id="replayTurnsCount">Turn 0/0</span>
+                </div>
+                <select id="replaySessionSelect" title="Select Session"></select>
+            </div>
+            <input type="range" id="replaySeek" min="0" max="1000" value="0" step="1">
+            <span id="replayTime">0:00 / 0:00</span>
+        </div>
+        {% endif %}
+
         <div class="workspace">
             <!-- Left Column: Telemetry (Top) and Session Logs (Bottom) -->
             <div class="workspace-column side-column">
@@ -829,15 +877,6 @@
             </div>
         </div>
     </div>
-
-    {% if replay_mode %}
-    <!-- Replay timeline scrubber -->
-    <div id="replayBar">
-        <button id="replayPlay" title="Play / Pause">&#9658;</button>
-        <input type="range" id="replaySeek" min="0" max="1000" value="0" step="1">
-        <span id="replayTime">0:00 / 0:00</span>
-    </div>
-    {% endif %}
 
     <script>
         // SocketIO connectivity
@@ -1711,10 +1750,17 @@
 
         {% if replay_mode %}
         // ---------------------------------------------------------------- //
-        // Replay controls: one server-authoritative playhead, driven here.
+        // Replay controls: server-authoritative playhead & playlist manager
         // ---------------------------------------------------------------- //
         (function () {
             const playBtn = document.getElementById('replayPlay');
+            const prevTurnBtn = document.getElementById('replayPrevTurn');
+            const nextTurnBtn = document.getElementById('replayNextTurn');
+            const prevSessBtn = document.getElementById('replayPrevSession');
+            const nextSessBtn = document.getElementById('replayNextSession');
+            const phaseBadge = document.getElementById('replayPhaseBadge');
+            const turnsCountLabel = document.getElementById('replayTurnsCount');
+            const sessionSelect = document.getElementById('replaySessionSelect');
             const seek = document.getElementById('replaySeek');
             const timeLabel = document.getElementById('replayTime');
             const accumulateEl = document.getElementById('accumulateLidar');
@@ -1726,6 +1772,7 @@
             let duration = 0;
             let playing = false;
             let dragging = false;
+            let lastPlaylistHash = "";
 
             const fmt = (s) => {
                 s = Math.max(0, Math.floor(s || 0));
@@ -1739,7 +1786,7 @@
                     ' rgba(255,255,255,0.15) ' + pct + '%, rgba(255,255,255,0.15) 100%)';
             };
 
-            // Reset hooks the server fires before replaying state on a seek.
+            // Reset hooks the server fires before replaying state on a seek / session change.
             socket.on('chat_reset', () => {
                 consoleLogs.innerHTML = '<div class="console-welcome">...</div>';
                 renderedKeys.clear();
@@ -1765,11 +1812,47 @@
                     paintFill(frac);
                 }
                 timeLabel.textContent = fmt(st.playhead) + ' / ' + fmt(duration);
+
+                if (phaseBadge) {
+                    phaseBadge.textContent = st.phase || 'SESSION';
+                }
+                if (turnsCountLabel) {
+                    const currT = st.turn_index || 0;
+                    const totT = st.turns_count || 0;
+                    turnsCountLabel.textContent = `Turn ${currT}/${totT}`;
+                }
+
+                if (sessionSelect && st.playlist && Array.isArray(st.playlist)) {
+                    const hash = st.playlist.map(p => p.session_id).join('|');
+                    if (hash !== lastPlaylistHash) {
+                        lastPlaylistHash = hash;
+                        sessionSelect.innerHTML = '';
+                        st.playlist.forEach((p) => {
+                            const opt = document.createElement('option');
+                            opt.value = p.index;
+                            const title = p.label ? ` - ${p.label}` : '';
+                            opt.textContent = `[${p.index + 1}/${st.playlist.length}] ${p.phase}: ${p.session_id}${title}`;
+                            sessionSelect.appendChild(opt);
+                        });
+                    }
+                    if (sessionSelect.value !== String(st.playlist_index)) {
+                        sessionSelect.value = String(st.playlist_index);
+                    }
+                }
             });
 
             playBtn.addEventListener('click', () => {
                 socket.emit(playing ? 'replay_pause' : 'replay_play');
             });
+            if (prevSessBtn) prevSessBtn.addEventListener('click', () => socket.emit('replay_prev_session'));
+            if (prevTurnBtn) prevTurnBtn.addEventListener('click', () => socket.emit('replay_prev_turn'));
+            if (nextTurnBtn) nextTurnBtn.addEventListener('click', () => socket.emit('replay_next_turn'));
+            if (nextSessBtn) nextSessBtn.addEventListener('click', () => socket.emit('replay_next_session'));
+            if (sessionSelect) {
+                sessionSelect.addEventListener('change', (e) => {
+                    socket.emit('replay_select_session', { index: parseInt(e.target.value) });
+                });
+            }
 
             const seekTarget = () => (seek.value / 1000) * duration;
             seek.addEventListener('pointerdown', () => { dragging = true; });
@@ -1799,11 +1882,22 @@
                 });
             }
 
-            // Spacebar toggles play/pause (unless typing in a field).
+            // Keyboard shortcuts (Space: play/pause, [: prev turn, ]: next turn, Shift+[/P: prev sess, Shift+]/N: next sess)
             document.addEventListener('keydown', (e) => {
-                if (e.code === 'Space' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) {
+                if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+                if (e.code === 'Space') {
                     e.preventDefault();
                     socket.emit(playing ? 'replay_pause' : 'replay_play');
+                } else if (e.key === '[' || e.code === 'BracketLeft') {
+                    if (e.shiftKey) socket.emit('replay_prev_session');
+                    else socket.emit('replay_prev_turn');
+                } else if (e.key === ']' || e.code === 'BracketRight') {
+                    if (e.shiftKey) socket.emit('replay_next_session');
+                    else socket.emit('replay_next_turn');
+                } else if (e.key === 'p' || e.key === 'P') {
+                    socket.emit('replay_prev_session');
+                } else if (e.key === 'n' || e.key === 'N') {
+                    socket.emit('replay_next_session');
                 }
             });
         })();

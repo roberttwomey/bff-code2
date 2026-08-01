@@ -168,6 +168,71 @@ def resolve_session(name: str | None) -> Path | None:
     return sessions[0] if sessions else None
 
 
+def load_curated_playlist() -> list[dict]:
+    """Load the 41 curated sessions from docs/replay/bff-replay-index.json."""
+    index_path = Path(__file__).resolve().parent / "docs" / "replay" / "bff-replay-index.json"
+    playlist: list[dict] = []
+    if not index_path.exists():
+        return playlist
+    try:
+        data = json.loads(index_path.read_text(encoding="utf-8"))
+    except Exception:
+        return playlist
+
+    exchanges = data.get("exchanges", [])
+    captures_root = get_session_root()
+    archive_root_env = os.getenv("BFF_ARCHIVE_ROOT", "/Volumes/Cohab2024/BFF/logs-all")
+    archive_root = Path(archive_root_env).expanduser() if archive_root_env else None
+    by_phase_root = archive_root.parent / "by-phase" if archive_root and archive_root.parent.exists() else None
+
+    for idx, e in enumerate(exchanges):
+        sid = e.get("session_id", "")
+        phase = e.get("phase", "")
+        label = e.get("label", "")
+        machine = e.get("machine", "")
+        cand_path = None
+
+        # 1. Search in captures_root
+        if captures_root.exists():
+            p = captures_root / sid
+            if p.is_dir():
+                cand_path = p
+        # 2. Search in archive_root across subdirectories
+        if not cand_path and archive_root and archive_root.exists():
+            try:
+                for g in sorted(os.listdir(archive_root)):
+                    p = archive_root / g / sid
+                    if p.is_dir():
+                        cand_path = p
+                        break
+            except Exception:
+                pass
+        # 3. Search in by_phase_root
+        if not cand_path and by_phase_root and by_phase_root.exists():
+            try:
+                for ph_dir in by_phase_root.glob("*"):
+                    if ph_dir.is_dir():
+                        for match in ph_dir.glob(f"*{sid}*"):
+                            if match.is_dir():
+                                cand_path = match
+                                break
+            except Exception:
+                pass
+
+        playlist.append({
+            "index": idx,
+            "session_id": sid,
+            "phase": phase,
+            "label": label,
+            "machine": machine,
+            "path": cand_path,
+            "turns_count": len(e.get("turns", [])),
+        })
+
+    return playlist
+
+
+
 def parse_event_time(value) -> float | None:
     """session.jsonl carries ISO-8601 stamps (and, historically, compact
     YYYYMMDD-HHMMSS). Return a wall-clock epoch, or None."""
@@ -406,14 +471,54 @@ class SessionTimeline:
     def _build(self, include_mic: bool, want_audio: bool):
         session = self.session_dir
         events = _read_jsonl(session / "session.jsonl")
+        if not events:
+            events = _read_jsonl(session / "transcript" / "session.jsonl")
+        if not events:
+            events = _read_jsonl(session / "transcript" / "session-complete.jsonl")
+        if not events and session.is_file() and session.name.endswith(".jsonl"):
+            events = _read_jsonl(session)
+        if not events and (session / f"{session.name}.jsonl").exists():
+            events = _read_jsonl(session / f"{session.name}.jsonl")
+
+        # Check chat-sessions-v1 directory for legacy v1 logs
+        if not events:
+            v1_path = Path(__file__).resolve().parent / "docs" / "replay" / "chat-sessions-v1" / f"{session.name}.jsonl"
+            if v1_path.exists():
+                events = _read_jsonl(v1_path)
+
+        # Parse v1 chat_stream_request / chat_stream_response records if present
+        parsed_v1_events = []
+        seen_ms = 0
+        n_turn = 0
+        for r in events:
+            t_type = r.get("type")
+            if t_type == "chat_stream_request":
+                ms = r.get("messages") or []
+                for m in ms[seen_ms:]:
+                    if m.get("role") != "user": continue
+                    txt = (m.get("content") or "").strip()
+                    if not txt: continue
+                    if parsed_v1_events and parsed_v1_events[-1]["type"] == "user" and parsed_v1_events[-1]["text"] == txt:
+                        continue
+                    n_turn += 1
+                    parsed_v1_events.append({"type": "user", "turn": n_turn, "timestamp": r.get("timestamp"), "text": txt})
+                seen_ms = len(ms)
+            elif t_type == "chat_stream_response":
+                txt = (r.get("reply") or "").strip()
+                if not txt: continue
+                n_turn += 1
+                parsed_v1_events.append({"type": "assistant", "turn": n_turn, "timestamp": r.get("timestamp"), "text": txt, "model": r.get("model")})
+        if parsed_v1_events:
+            events.extend(parsed_v1_events)
+
         self._read_identity(events)
 
         chunk_dirs = sorted([d for d in session.glob("chunk_*") if d.is_dir()],
-                            key=lambda d: int(d.name.split('_')[1]))
-        if not chunk_dirs and _session_has_video(session):
+                            key=lambda d: int(d.name.split('_')[1])) if session.is_dir() else []
+        if not chunk_dirs and session.is_dir() and _session_has_video(session):
             chunk_dirs = [session]  # legacy single-directory session
 
-        cache = IndexCache(session)
+        cache = IndexCache(session if session.is_dir() else session.parent)
 
         # First pass: per-chunk anchor (first data timestamp, read cheaply) and
         # video metadata. A chunk's video/audio and telemetry all started
@@ -436,11 +541,7 @@ class SessionTimeline:
                     nfr = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0
                     vdur = (nfr / fps) if fps else 0.0
                 else:
-                    # A chunk truncated by a hard shutdown (no moov atom) can't be
-                    # decoded; drop it as a video source so we don't retry-open it
-                    # on every playhead tick. Its telemetry/lidar still index fine.
-                    print(f"[Replay] {cdir.name}/video.mp4 is unreadable "
-                          f"(truncated?); skipping its video.")
+                    print(f"[Replay] {cdir.name}/video.mp4 is unreadable (truncated?); skipping its video.")
                     video_path = None
                 cap.release()
             raw.append({"dir": cdir, "low_p": low_p, "lid_p": lid_p, "det_p": det_p,
@@ -452,7 +553,7 @@ class SessionTimeline:
             if rc["start_epoch"] is None and i > 0 and raw[i - 1]["start_epoch"] is not None:
                 rc["start_epoch"] = raw[i - 1]["start_epoch"] + raw[i - 1]["vdur"]
 
-        dialogue = self._collect_dialogue(session, events) if want_audio else []
+        dialogue = self._collect_dialogue(session, events) if (want_audio and session.is_dir()) else []
 
         anchors = [rc["start_epoch"] for rc in raw if rc["start_epoch"]]
         anchors += [c["start_epoch"] for c in dialogue]
@@ -461,6 +562,30 @@ class SessionTimeline:
                 et = parse_event_time(e.get("timestamp"))
                 if et:
                     anchors.append(et)
+
+        # Fallback to bff-replay-index.json curated turns if no timestamps were found
+        if not anchors:
+            idx_file = Path(__file__).resolve().parent / "docs" / "replay" / "bff-replay-index.json"
+            if idx_file.exists():
+                try:
+                    idx_data = json.loads(idx_file.read_text(encoding="utf-8"))
+                    ex_match = next((x for x in idx_data.get("exchanges", []) if x["session_id"] == session.name or x["session_id"] in str(session)), None)
+                    if ex_match and ex_match.get("turns"):
+                        for t in ex_match["turns"]:
+                            kind = t.get("kind", "user")
+                            role = "user" if kind == "user" else "assistant"
+                            events.append({
+                                "type": role,
+                                "timestamp": t.get("iso"),
+                                "text": t.get("text"),
+                                "model": t.get("model")
+                            })
+                            et = parse_event_time(t.get("iso")) or t.get("epoch")
+                            if et:
+                                anchors.append(float(et))
+                except Exception as ex:
+                    print(f"[Replay] Error reading index fallback: {ex}")
+
         if not anchors:
             raise RuntimeError("session has no usable timestamps to build a timeline")
         t0 = min(anchors)
@@ -523,6 +648,23 @@ class SessionTimeline:
 
         self.duration = max(end, 0.001)
 
+        # Collect phrase/turn timestamps (human, assistant, audio start times)
+        raw_turn_ts = []
+        for ev_item in self.events:
+            raw_turn_ts.append(ev_item["t"])
+        for d in dialogue:
+            if d.get("start_epoch") is not None:
+                raw_turn_ts.append(d["start_epoch"] - t0)
+        raw_turn_ts.sort()
+
+        self.turn_timestamps: list[float] = []
+        for t_val in raw_turn_ts:
+            if t_val < 0:
+                continue
+            if not self.turn_timestamps or (t_val - self.turn_timestamps[-1]) >= 0.25:
+                self.turn_timestamps.append(t_val)
+
+
     def _collect_dialogue(self, session: Path, events: list[dict]) -> list[dict]:
         """The spoken clips, each with an absolute start_epoch. Mirrors the
         timing rules in fix_recordings.py:
@@ -532,6 +674,22 @@ class SessionTimeline:
         """
         clips: list[dict] = []
         seen: set[str] = set()
+
+        def get_forced_rate(wav_path: Path, etype: str | None = None) -> int | None:
+            # Only post-20260721 Piper assistant response wavs report 22050 in header but hold 48000 Hz samples.
+            # Pre-20260721 response wavs and all user speech/wake/reset clips use their genuine WAV header rate.
+            m = re.search(r"(\d{8})", session.name)
+            date_str = m.group(1) if m else ""
+            is_post_cutoff = date_str >= "20260721"
+
+            if is_post_cutoff and (etype == "assistant" or wav_path.name.endswith("-response.wav")):
+                try:
+                    with wave.open(str(wav_path), "rb") as w:
+                        if w.getframerate() == 22050:
+                            return SPEECH_TRUE_RATE
+                except Exception:
+                    pass
+            return None
 
         def add(path: Path, start_epoch, forced_rate):
             if path.name in seen or not path.exists() or start_epoch is None:
@@ -544,16 +702,20 @@ class SessionTimeline:
             etype = e.get("type")
             apath = e.get("audio_path")
             if etype in ("assistant", "user", "reset") and apath:
-                wav = session / os.path.basename(apath)
+                base_name = os.path.basename(apath)
+                wav = session / base_name
+                if not wav.exists():
+                    wav = session / "speech" / base_name
                 if not wav.exists():
                     continue
-                dur = wav_duration(wav, SPEECH_TRUE_RATE)
+                frate = get_forced_rate(wav, etype)
+                dur = wav_duration(wav, frate)
                 if etype == "assistant":
                     end_epoch = parse_event_time(e.get("timestamp"))
                     start = (end_epoch - dur) if end_epoch is not None else None
                 else:  # user speech (incl. the utterance that triggered a reset)
                     start = wav.stat().st_mtime - dur
-                add(wav, start, SPEECH_TRUE_RATE)
+                add(wav, start, frate)
 
         for e in events:
             if e.get("type") != "reset":
@@ -561,14 +723,27 @@ class SessionTimeline:
             turn = e.get("turn")
             if turn is None:
                 continue
-            wav = session / f"turn-{int(turn):03d}-reset.wav"
-            add(wav, parse_event_time(e.get("timestamp")), SPEECH_TRUE_RATE)
+            base_name = f"turn-{int(turn):03d}-reset.wav"
+            wav = session / base_name
+            if not wav.exists():
+                wav = session / "speech" / base_name
+            if not wav.exists():
+                continue
+            frate = get_forced_rate(wav)
+            add(wav, parse_event_time(e.get("timestamp")), frate)
 
-        for wav in sorted(session.glob("*-wake.wav")):
-            add(wav, wav.stat().st_mtime, SPEECH_TRUE_RATE)
-        startup = session / "startup.wav"
-        if startup.exists():
-            add(startup, startup.stat().st_mtime, SPEECH_TRUE_RATE)
+        wake_wavs = list(session.glob("*-wake.wav"))
+        if (session / "speech").exists():
+            wake_wavs.extend((session / "speech").glob("*-wake.wav"))
+        for wav in sorted(wake_wavs):
+            frate = get_forced_rate(wav)
+            add(wav, wav.stat().st_mtime, frate)
+
+        for startup in (session / "startup.wav", session / "speech" / "startup.wav"):
+            if startup.exists():
+                frate = get_forced_rate(startup)
+                add(startup, startup.stat().st_mtime, frate)
+                break
 
         return clips
 
@@ -688,11 +863,13 @@ def index():
             lidar_settings = json.loads(settings_file.read_text(encoding='utf-8'))
         except Exception as e:
             print(f"[Replay] Error loading lidar_settings.json: {e}")
+    r_name = engine.timeline.robot_name if (engine and engine.timeline) else "SNAPPER"
+    d_name = engine.timeline.device_name if (engine and engine.timeline) else "snapper.local"
     return render_template(
         'dashboard.html',
         server_lidar_settings=lidar_settings,
-        robot_name=engine.timeline.robot_name,
-        device_name=engine.timeline.device_name,
+        robot_name=r_name,
+        device_name=d_name,
         replay_mode=True,
     )
 
@@ -785,14 +962,53 @@ def handle_set_accumulate(payload):
         engine.accumulate = bool((payload or {}).get('accumulate', False))
 
 
+@socketio.on('replay_next_turn')
+def handle_next_turn():
+    if engine:
+        engine.next_turn()
+
+
+@socketio.on('replay_prev_turn')
+def handle_prev_turn():
+    if engine:
+        engine.prev_turn()
+
+
+@socketio.on('replay_next_session')
+def handle_next_session():
+    if engine:
+        engine.next_session()
+
+
+@socketio.on('replay_prev_session')
+def handle_prev_session():
+    if engine:
+        engine.prev_session()
+
+
+@socketio.on('replay_select_session')
+def handle_select_session(payload):
+    if engine:
+        idx = (payload or {}).get('index')
+        if idx is not None:
+            engine.select_session(int(idx))
+
+
 # --------------------------------------------------------------------------- #
-# Playback engine - the one authoritative playhead
+# Playback engine - authoritative playhead & playlist manager
 # --------------------------------------------------------------------------- #
 class PlaybackEngine:
-    def __init__(self, timeline: SessionTimeline, loop: bool, want_audio: bool):
-        self.timeline = timeline
+    def __init__(self, playlist: list[dict], initial_index: int, target_rate: int,
+                 include_mic: bool, want_audio: bool, loop: bool):
+        self.playlist = playlist
+        self.playlist_index = initial_index if (playlist and 0 <= initial_index < len(playlist)) else 0
+        self.target_rate = target_rate
+        self.include_mic = include_mic
+        self.want_audio_setting = want_audio
         self.loop = loop
-        self.want_audio = want_audio and len(timeline.master_audio) > 0
+
+        self.timeline: SessionTimeline | None = None
+        self.want_audio = False
 
         self.playhead = 0.0
         self.playing = False
@@ -811,9 +1027,64 @@ class PlaybackEngine:
         self._cap_chunk = None
         self._last_state_emit = 0.0
 
+        if self.playlist and 0 <= self.playlist_index < len(self.playlist):
+            self._load_timeline_for_index(self.playlist_index)
+
+    def _load_timeline_for_index(self, index: int) -> bool:
+        if not self.playlist or index < 0 or index >= len(self.playlist):
+            return False
+        item = self.playlist[index]
+        s_path = item.get("path")
+        if not s_path or not Path(s_path).exists():
+            s_path = resolve_session(item.get("session_id"))
+        if not s_path or not Path(s_path).exists():
+            print(f"[Replay] Warning: Session directory for '{item.get('session_id')}' not found on disk.")
+            return False
+
+        print(f"\n[Replay] Switched to Session [{index+1}/{len(self.playlist)}]: "
+              f"{item.get('session_id')} ({item.get('phase')})")
+        t0 = time.time()
+        try:
+            tl = SessionTimeline(Path(s_path), self.target_rate,
+                                 include_mic=self.include_mic,
+                                 want_audio=self.want_audio_setting)
+        except Exception as e:
+            print(f"[Replay] Could not load timeline for {item.get('session_id')}: {e}")
+            return False
+
+        if self._cap is not None:
+            self._cap.release()
+            self._cap = None
+        self._cap_chunk = None
+
+        self.timeline = tl
+        self.playlist_index = index
+        self.want_audio = self.want_audio_setting and len(tl.master_audio) > 0
+        self.playhead = 0.0
+        self._low_i = 0
+        self._lidar_i = 0
+        self._event_i = 0
+        self._audio_cursor = 0
+
+        socketio.emit('chat_reset')
+        socketio.emit('lidar_reset')
+        socketio.emit('session_changed', {
+            'playlist_index': index,
+            'session_id': tl.session_dir.name,
+            'phase': item.get('phase', ''),
+            'label': item.get('label', ''),
+        })
+        self._resync_locked(0.0)
+        self._emit_state(force=True)
+        print(f"[Replay] Built in {time.time() - t0:.1f}s | duration={tl.duration:.1f}s "
+              f"turns={len(tl.turn_timestamps)} audio={'yes' if self.want_audio else 'none'}")
+        return True
+
     # -- external controls -------------------------------------------------- #
     def play(self):
         with self._lock:
+            if not self.timeline:
+                return
             if self.playhead >= self.timeline.duration - 1e-3:
                 self._request_seek(0.0)
             self.playing = True
@@ -830,12 +1101,76 @@ class PlaybackEngine:
             self._request_seek(t)
 
     def _request_seek(self, t: float):
-        self._seek_to = max(0.0, min(t, self.timeline.duration))
+        if self.timeline:
+            self._seek_to = max(0.0, min(t, self.timeline.duration))
 
     def resync(self):
         with self._lock:
-            self._resync_locked(self.playhead)
+            if self.timeline:
+                self._resync_locked(self.playhead)
         self._emit_state(force=True)
+
+    def next_turn(self):
+        with self._lock:
+            if not self.timeline or not self.timeline.turn_timestamps:
+                self._next_session_locked()
+                return
+            ts = self.timeline.turn_timestamps
+            target = next((t for t in ts if t > self.playhead + 0.1), None)
+            if target is not None:
+                self._request_seek(target)
+            else:
+                self._next_session_locked()
+
+    def prev_turn(self):
+        with self._lock:
+            if not self.timeline or not self.timeline.turn_timestamps:
+                self._prev_session_locked()
+                return
+            ts = self.timeline.turn_timestamps
+            prevs = [t for t in ts if t < self.playhead - 0.8]
+            if prevs:
+                self._request_seek(prevs[-1])
+            elif self.playhead > 0.8 and ts:
+                self._request_seek(ts[0])
+            else:
+                self._prev_session_locked()
+
+    def next_session(self):
+        with self._lock:
+            self._next_session_locked()
+
+    def _next_session_locked(self):
+        if not self.playlist:
+            return
+        nxt = (self.playlist_index + 1) % len(self.playlist)
+        was_playing = self.playing
+        if self._load_timeline_for_index(nxt):
+            if was_playing:
+                self.playing = True
+                self._audio_start()
+
+    def prev_session(self):
+        with self._lock:
+            self._prev_session_locked()
+
+    def _prev_session_locked(self):
+        if not self.playlist:
+            return
+        prev_idx = (self.playlist_index - 1 + len(self.playlist)) % len(self.playlist)
+        was_playing = self.playing
+        if self._load_timeline_for_index(prev_idx):
+            if was_playing:
+                self.playing = True
+                self._audio_start()
+
+    def select_session(self, index: int):
+        with self._lock:
+            was_playing = self.playing
+            if self._load_timeline_for_index(index):
+                if was_playing:
+                    self.playing = True
+                    self._audio_start()
 
     # -- worker ------------------------------------------------------------- #
     def start(self):
@@ -860,10 +1195,6 @@ class PlaybackEngine:
                 elif self.playing:
                     self._advance(dt_wall)
                 self._update_video()
-            # A seek's resync (rebuilding an accumulated cloud can read hundreds
-            # of scans) may take seconds while the lock is held. Rebase the clock
-            # so that stall isn't charged to the next tick as elapsed playback -
-            # otherwise a seek-while-playing lurches the playhead forward.
             if seeked:
                 last = time.monotonic()
             self._emit_state()
@@ -872,11 +1203,16 @@ class PlaybackEngine:
     # -- forward playback --------------------------------------------------- #
     def _advance(self, dt_wall: float):
         tl = self.timeline
+        if not tl:
+            return
         new_head = min(self.playhead + dt_wall, tl.duration)
         self._dispatch_forward(new_head)
         self.playhead = new_head
         if self.playhead >= tl.duration - 1e-3:
-            if self.loop:
+            if self.playlist and self.playlist_index < len(self.playlist) - 1 and not self.loop:
+                print(f"[Replay] Session {tl.session_dir.name} finished. Auto-advancing to next session...")
+                self._next_session_locked()
+            elif self.loop:
                 self._apply_seek(0.0)
                 self.playing = True
             else:
@@ -885,6 +1221,8 @@ class PlaybackEngine:
 
     def _dispatch_forward(self, t_to: float):
         tl = self.timeline
+        if not tl:
+            return
         # telemetry - emit the newest sample crossed
         newest = -1
         while self._low_i < len(tl.low_t) and tl.low_t[self._low_i] <= t_to:
@@ -894,7 +1232,7 @@ class PlaybackEngine:
             payload = tl.read_lowstate(newest)
             if payload:
                 self._emit_lowstate(payload)
-        # lidar - emit scans crossed (cap the burst after a lag/fast-forward)
+        # lidar - emit scans crossed
         crossed = []
         while self._lidar_i < len(tl.lid_t) and tl.lid_t[self._lidar_i] <= t_to:
             crossed.append(self._lidar_i)
@@ -920,6 +1258,8 @@ class PlaybackEngine:
     # -- seeking / resync --------------------------------------------------- #
     def _apply_seek(self, target: float):
         tl = self.timeline
+        if not tl:
+            return
         self.playhead = target
         self._low_i = bisect.bisect_right(tl.low_t, target)
         self._lidar_i = bisect.bisect_right(tl.lid_t, target)
@@ -934,6 +1274,8 @@ class PlaybackEngine:
     def _resync_locked(self, t: float):
         """Rebuild the client's view (telemetry, lidar, chat) at time t."""
         tl = self.timeline
+        if not tl:
+            return
         j = tl.lowstate_index_at(t)
         if j >= 0:
             payload = tl.read_lowstate(j)
@@ -954,9 +1296,11 @@ class PlaybackEngine:
     def _update_video(self):
         global latest_frame, latest_detections, latest_detection_time
         tl = self.timeline
+        if not tl:
+            return
         t = self.playhead
         chunk = tl.chunk_at(t)
-        if chunk is not None:
+        if chunk is not None and chunk.video_path:
             if self._cap_chunk is not chunk:
                 if self._cap is not None:
                     self._cap.release()
@@ -971,7 +1315,7 @@ class PlaybackEngine:
                 target_ms = max(0.0, (t - chunk.offset) * 1000.0)
                 frame = None
                 guard = 0
-                while self._cap.get(cv2.CAP_PROP_POS_MSEC) <= target_ms and guard < 240:
+                while self._cap and self._cap.get(cv2.CAP_PROP_POS_MSEC) <= target_ms and guard < 240:
                     ret, f = self._cap.read()
                     guard += 1
                     if not ret:
@@ -993,11 +1337,13 @@ class PlaybackEngine:
         socketio.emit('telemetry_data', payload)
 
     def _audio_start(self):
-        if self.want_audio:
+        if self.want_audio and self.timeline:
             self._audio_cursor = int(self.playhead * self.timeline.target_rate)
             socketio.emit('audio_start', {'sample_rate': self.timeline.target_rate})
 
     def _emit_audio(self, t_to: float):
+        if not self.timeline:
+            return
         rate = self.timeline.target_rate
         target_sample = int(t_to * rate)
         master = self.timeline.master_audio
@@ -1018,10 +1364,30 @@ class PlaybackEngine:
         if not force and now - self._last_state_emit < 0.1:
             return
         self._last_state_emit = now
+        tl = self.timeline
+        curr = self.playlist[self.playlist_index] if (self.playlist and 0 <= self.playlist_index < len(self.playlist)) else {}
+        turn_idx = 0
+        if tl and tl.turn_timestamps:
+            turn_idx = bisect.bisect_right(tl.turn_timestamps, self.playhead)
+
         socketio.emit('replay_state', {
-            'playhead': self.playhead,
-            'duration': self.timeline.duration,
+            'playhead': self.playhead if tl else 0.0,
+            'duration': tl.duration if tl else 0.0,
             'playing': self.playing,
+            'playlist_index': self.playlist_index,
+            'playlist_total': len(self.playlist),
+            'session_id': tl.session_dir.name if tl else curr.get('session_id', ''),
+            'phase': curr.get('phase', ''),
+            'label': curr.get('label', ''),
+            'turn_index': turn_idx,
+            'turns_count': len(tl.turn_timestamps) if tl else 0,
+            'playlist': [{
+                'index': i['index'],
+                'session_id': i['session_id'],
+                'phase': i['phase'],
+                'label': i['label'],
+                'available': i['path'] is not None
+            } for i in self.playlist] if self.playlist else [],
         })
 
 
@@ -1032,54 +1398,82 @@ def main():
     global engine
     parser = argparse.ArgumentParser(description="BFF recorded-session timeline replay")
     parser.add_argument("--session", type=str, default=None,
-                        help="Session dir name or path (default: newest with video)")
+                        help="Session dir name, index (1-41), or path (default: 41 curated sessions)")
+    parser.add_argument("--all", action="store_true", help="Play all 41 curated sessions sequentially from session 1")
     parser.add_argument("--port", type=int, default=None, help="Dashboard port")
     parser.add_argument("--no-audio", action="store_true", help="Disable audio playback")
     parser.add_argument("--mic-audio", action="store_true",
                         help="Also mix in the robot-mic ambient (chunk_*/audio.wav)")
     parser.add_argument("--target-rate", type=int, default=DEFAULT_TARGET_RATE,
                         help="Mixed-audio delivery rate (default: %(default)s)")
-    parser.add_argument("--loop", action="store_true", help="Loop at the end")
+    parser.add_argument("--loop", action="store_true", help="Loop current session at the end")
     parser.add_argument("--autoplay", action="store_true", help="Start playing immediately")
     args = parser.parse_args()
 
     if args.port is None:
         args.port = int(os.getenv("BFF_DASHBOARD_PORT", "8080"))
 
-    session_dir = resolve_session(args.session)
-    if not session_dir:
-        print("[Replay] Error: no capture session found. "
-              "Pass --session or set BFF_LOG_ROOT.")
+    # Load 41 curated playlist
+    playlist = load_curated_playlist()
+    initial_index = 0
+
+    if args.session:
+        target_str = str(args.session).strip()
+        # Check if integer index 1..N
+        if target_str.isdigit():
+            val = int(target_str) - 1
+            if 0 <= val < len(playlist):
+                initial_index = val
+        else:
+            # Check matching session_id substring in playlist
+            match_idx = next((i for i, item in enumerate(playlist) if target_str.lower() in item["session_id"].lower()), None)
+            if match_idx is not None:
+                initial_index = match_idx
+            else:
+                # Custom session directory path
+                cand = resolve_session(args.session)
+                if cand:
+                    custom_item = {
+                        "index": len(playlist),
+                        "session_id": cand.name,
+                        "phase": "custom",
+                        "label": cand.name,
+                        "machine": "",
+                        "path": cand,
+                        "turns_count": 0,
+                    }
+                    playlist.append(custom_item)
+                    initial_index = len(playlist) - 1
+    elif not playlist:
+        # Fallback if index json not found
+        default_cand = resolve_session(None)
+        if default_cand:
+            playlist = [{
+                "index": 0,
+                "session_id": default_cand.name,
+                "phase": "custom",
+                "label": default_cand.name,
+                "machine": "",
+                "path": default_cand,
+                "turns_count": 0,
+            }]
+
+    if not playlist:
+        print("[Replay] Error: no capture session or playlist found. Pass --session or set BFF_LOG_ROOT.")
         sys.exit(1)
 
-    print(f"[Replay] Building timeline for: {session_dir}")
-    print("[Replay] (first run indexes the logs; later runs use the cache)")
     want_audio = not args.no_audio
-    t0 = time.time()
-    try:
-        timeline = SessionTimeline(session_dir, args.target_rate,
-                                   include_mic=args.mic_audio, want_audio=want_audio)
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        print(f"[Replay] Error: could not build timeline: {e}")
-        sys.exit(1)
-
-    print(f"[Replay] built in {time.time() - t0:.1f}s  "
-          f"device={timeline.device_name} robot={timeline.robot_name}")
-    print(f"[Replay] duration={timeline.duration:.1f}s  chunks={len(timeline.chunks)}  "
-          f"lowstate={len(timeline.low_t)}  lidar={len(timeline.lid_t)}  "
-          f"detections={len(timeline.detections)}  events={len(timeline.events)}  "
-          f"audio={'%.1fs' % (len(timeline.master_audio) / args.target_rate) if len(timeline.master_audio) else 'none'}")
-
-    engine = PlaybackEngine(timeline, loop=args.loop, want_audio=want_audio)
+    engine = PlaybackEngine(playlist, initial_index=initial_index, target_rate=args.target_rate,
+                            include_mic=args.mic_audio, want_audio=want_audio, loop=args.loop)
     engine.start()
     if args.autoplay:
         engine.play()
 
+    curr_item = playlist[engine.playlist_index]
     print("\n=======================================================")
     print(f"BFF Replay serving at: http://localhost:{args.port}")
-    print(f"Replaying: {session_dir.name}  ({timeline.duration:.1f}s)")
+    print(f"Playlist: {len(playlist)} curated sessions")
+    print(f"Initial Session [{engine.playlist_index+1}/{len(playlist)}]: {curr_item['session_id']} ({curr_item.get('phase')})")
     print("=======================================================\n")
 
     def _stop_on_signal(signum, _frame):
@@ -1097,3 +1491,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
