@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""Build a machine-readable replay index for the flagged BFF exchanges.
+"""Build the BFF replay index from the consolidated archive.
 
-Usage:  python build_replay_index.py
-Set BFF_ARCHIVE_ROOT to point at the logs-all archive if it is not at the
-default path. Writes bff-replay-index.json next to this script.
+Writes two files next to this script:
+  bff-replay-index.json  curated exchanges, full per-turn detail
+  bff-sessions.json      every session, summary level, for navigation
+
+Sources:
+  BFF_ARCHIVE_ROOT   consolidated raw sessions (default /Volumes/Cohab2024/BFF/logs-all)
+  BFF_DERIVED_ROOT   re-transcriptions + processed media (default .../BFF/processed)
 """
-import os, re, json, glob, wave, contextlib, datetime, hashlib
+import os, re, json, glob, wave, contextlib, datetime
 
-ROOT = os.environ.get("BFF_ARCHIVE_ROOT",
-                      "/Volumes/Cohab2024/BFF/SIGGRAPH 2026 BFF/logs-all")
-HERE = os.path.dirname(os.path.abspath(__file__))
-HOST_PREF = ["bff-logs-SNAPPER", "bff-logs-HELPER", "bff-logs-MAC", "bff-logs-siggraph-2026-dev"]
+ROOT    = os.environ.get("BFF_ARCHIVE_ROOT", "/Volumes/Cohab2024/BFF/logs-all")
+DERIVED = os.environ.get("BFF_DERIVED_ROOT", "/Volumes/Cohab2024/BFF/processed")
+HERE    = os.path.dirname(os.path.abspath(__file__))
+GROUPS  = ["snapper", "helper", "mac", "_review-unattributed-robot", "_review-unknown", "_conflicts"]
 
-# phase, label, session id, keywords locating the highlighted moment in the transcript
-FLAGGED = [
+# phase, event window, label, session id, keywords locating the moment
+CURATED = [
  ("1-CMC","2025-11-06","apple / cinnamon / sensory hallucination","chat_session_19691231_191711",["cinnamon"]),
  ("1-CMC","2025-11-06","Claremont McKenna keynote / carbon cost","chat_session_20251105_232211",["carbon cost"]),
  ("1-CMC","2025-11-06","first 'concrete floor'","chat_session_20251106_194243",["concrete floor"]),
@@ -26,13 +30,13 @@ FLAGGED = [
  ("2-NeurIPS","2025-12","programming paradox / 'resonance'","session-20251210-133949",["resonance"]),
  ("2-NeurIPS","2025-12","'Yes, be.'","session-20251211-140606",["yes be","yes, be"]),
  ("2-NeurIPS","2025-12","crisp apple / 'my friend Jesse'","session-20251211-104816",["jesse"]),
- ("2-NeurIPS","2025-12","domestic capture — fox-like dog names","session-20251207-081946",["fox"]),
- ("2-NeurIPS","2025-12","domestic capture — breakfast / nature show","session-20251207-072459",["breakfast"]),
+ ("2-NeurIPS","2025-12","domestic capture - fox-like dog names","session-20251207-081946",["fox"]),
+ ("2-NeurIPS","2025-12","domestic capture - breakfast / nature show","session-20251207-072459",["breakfast"]),
  ("2-NeurIPS","2025-12","quantum system 'Q' prompt","session-20251219-100935",["quantum"]),
  ("3-IDEAS","2026-01-29","'named you Helper' / distributed self","session-20260126-221545",["named you helper","distributed"]),
  ("3-IDEAS","2026-01-29","'you clanker'","session-20260126-221552",["clanker"]),
  ("3-IDEAS","2026-01-29","shutdown loop","session-20260126-224024",["shutdown","shut down"]),
- ("3-IDEAS","2026-01-29","'Actually, I'm a human'","session-20260127-193910",["i'm a human","im a human","a human"]),
+ ("3-IDEAS","2026-01-29","'Actually, I'm a human'","session-20260127-193910",["a human"]),
  ("3-IDEAS","2026-01-29","'I will only ask you to be a machine' / burp","session-20260128-100651",["be a machine"]),
  ("3-IDEAS","2026-01-29","Helper scripted self-intro","session-20260128-101724",["my name is helper","i am helper"]),
  ("3-IDEAS","2026-01-29","'I don't want you to compliment me'","session-20260128-105613",["compliment"]),
@@ -40,7 +44,8 @@ FLAGGED = [
  ("3-IDEAS","2026-01-29","confabulated hand-on-head memory","session-20260129-120117",["hand on my head","your hand"]),
  ("3-IDEAS","2026-01-29","'why do you keep mentioning my family'","session-20260129-140838",["my family"]),
  ("3-IDEAS","2026-01-29","black box in a black box","session-20260129-142720",["black box"]),
- ("3-IDEAS","2026-01-29","performance + post-show Q&A","session-20260129-164334",[]),
+ ("3-IDEAS","2026-01-29","*** SNAPPER IDEAS performance (block 2 is the show)","session-20260129-144803",["concrete floor","first memory","canyon"]),
+ ("3-IDEAS","2026-01-29","*** HELPER IDEAS performance + post-show Q&A","session-20260129-164334",[]),
  ("4-SIGGRAPH","2026-07-23","Francis & Jasper meet Snapper","session-20260201-190334",["francis","jasper"]),
  ("4-SIGGRAPH","2026-07-23","'what was the feeling of being activated'","session-20260701-125318",["activated"]),
  ("4-SIGGRAPH","2026-07-23","'have you seen my red ball'","session-20260718-195946",["red ball"]),
@@ -53,39 +58,37 @@ FLAGGED = [
  ("4-SIGGRAPH","2026-07-23","McCarthy / Lovelace","session-20260722-114251",["lovelace","mccarthy"]),
  ("4-SIGGRAPH","2026-07-23","Mirror / 'space between us' / interiority","session-20260722-123623",["space between"]),
  ("4-SIGGRAPH","2026-07-23","two dogs simultaneous","session-20260722-123630",[]),
- ("4-SIGGRAPH","2026-07-23","SIGGRAPH stage / magic","session-20260723-092744",["magic"]),
+ ("4-SIGGRAPH","2026-07-23","*** SIGGRAPH stage / magic","session-20260723-092744",["magic"]),
 ]
+CURATED_BY_ID = {c[3]: c for c in CURATED}
 
-def wav_dur(p):
-    try:
-        with contextlib.closing(wave.open(p)) as w:
-            n = w.getnframes()
-            return round(n/w.getframerate(), 3) if n else None
-    except Exception:
-        return None
+def persona_of(prompt):
+    p = (prompt or "").lower()
+    if "you are snapper" in p: return "SNAPPER"
+    if "you are helper" in p or "you are, helper" in p: return "HELPER"
+    if "helper" in p: return "HELPER"
+    if "snapper" in p: return "SNAPPER"
+    return None
 
-def iso_to_epoch(s):
+def iso_epoch(s):
     try: return datetime.datetime.fromisoformat(s).timestamp()
     except Exception: return None
 
 def first_last(path, key="timestamp"):
-    """First and last value of `key` in a jsonl, without loading the whole file."""
     first = last = None
     try:
-        with open(path, errors="replace") as fh:
-            for line in fh:
-                if not line.strip(): continue
-                try: r = json.loads(line)
-                except Exception: continue
-                v = r.get(key)
-                if v is None: continue
-                if first is None: first = v
-                last = v
-    except Exception:
-        pass
+        for line in open(path, errors="replace"):
+            if not line.strip(): continue
+            try: r = json.loads(line)
+            except Exception: continue
+            v = r.get(key)
+            if v is None: continue
+            if first is None: first = v
+            last = v
+    except Exception: pass
     return first, last
 
-def chunk_info(cdir):
+def chunk_info(cdir, root):
     info = {"name": os.path.basename(cdir)}
     lw = os.path.join(cdir, "lowstate.jsonl")
     src = lw if os.path.exists(lw) else os.path.join(cdir, "detections.jsonl")
@@ -102,199 +105,218 @@ def chunk_info(cdir):
                  ("lowstate.jsonl","lowstate"),("detections.jsonl","detections")]:
         p = os.path.join(cdir, f)
         if os.path.exists(p):
-            info[k] = {"path": os.path.relpath(p, ROOT), "bytes": os.path.getsize(p)}
+            info[k] = {"path": os.path.relpath(p, root), "bytes": os.path.getsize(p)}
     return info
 
-def build_session(phase, when, label, sid, kws):
-    ent = {"phase": phase, "event_window": when, "label": label, "session_id": sid}
-    # locate copies
-    copies = [d for d in glob.glob(os.path.join(ROOT, "*", sid)) if "organized" not in d]
-    if sid.startswith("chat_session"):
-        copies = [p for p in glob.glob(os.path.join(ROOT, "*", sid + ".jsonl")) if "organized" not in p]
-        ent["format"] = "chat_session_v1"
-        ent["replay_tier"] = "C"
-        ent["hosts"] = sorted({os.path.basename(os.path.dirname(p)) for p in copies})
-        if not copies:
-            ent["status"] = "MISSING"; return ent
-        best = sorted(copies, key=lambda p: HOST_PREF.index(os.path.basename(os.path.dirname(p)))
-                      if os.path.basename(os.path.dirname(p)) in HOST_PREF else 99)[0]
-        ent["transcript"] = os.path.relpath(best, ROOT)
-        ent["media"] = {"note": "transcript only; this log format never wrote audio"}
-        ent["turns"] = []
-        return ent
+def load_retrans(group, sid):
+    p = os.path.join(DERIVED, "retranscribed", group, sid, "retranscription.json")
+    if not os.path.exists(p): return None
+    try: return json.load(open(p))
+    except Exception: return None
 
-    ent["format"] = "session_v2"
-    ent["hosts"] = sorted({os.path.basename(os.path.dirname(d)) for d in copies})
-    if not copies:
-        ent["status"] = "MISSING"; return ent
-    best = sorted(copies, key=lambda d: HOST_PREF.index(os.path.basename(os.path.dirname(d)))
-                  if os.path.basename(os.path.dirname(d)) in HOST_PREF else 99)[0]
-    ent["primary_host"] = os.path.basename(os.path.dirname(best))
-    ent["session_dir"] = os.path.relpath(best, ROOT)
-    ent["transcript"] = os.path.relpath(os.path.join(best, "session.jsonl"), ROOT)
+def processed_media(group, sid):
+    p = os.path.join(DERIVED, group, sid)
+    if not os.path.isdir(p): return None
+    out = {"dir": os.path.relpath(p, DERIVED)}
+    for f in ["video_clean.mp4","video_overlay.mp4","audio_dialogue.wav","audio_mic.wav",
+              "speech.srt","yolo+vlm.srt","bodystate.srt","speech+yolo+vlm+bodystate.srt",
+              "detections_combined.jsonl","report.json"]:
+        fp = os.path.join(p, f)
+        if os.path.exists(fp): out[f] = {"path": os.path.relpath(fp, DERIVED), "bytes": os.path.getsize(fp)}
+    return out
+
+def build(group, sid, full):
+    sdir = os.path.join(ROOT, group, sid)
+    ent = {"session_id": sid, "group": group, "session_dir": os.path.relpath(sdir, ROOT)}
+    # _conflicts holds partial duplicate copies whose canonical lives in a machine
+    # folder. They are kept for audit, never curated, and never counted as sessions.
+    ent["is_variant"] = group == "_conflicts"
+    cur = None if ent["is_variant"] else CURATED_BY_ID.get(sid)
+    ent["curated"] = bool(cur)
+    if cur:
+        ent["phase"], ent["event_window"], ent["label"] = cur[0], cur[1], cur[2]
 
     recs = []
-    lf = os.path.join(best, "session.jsonl")
+    lf = os.path.join(sdir, "session.jsonl")
     if os.path.exists(lf):
+        ent["transcript"] = os.path.relpath(lf, ROOT)
         for line in open(lf, errors="replace"):
             if not line.strip(): continue
             try: recs.append(json.loads(line))
             except Exception: pass
-    if recs and recs[0].get("type") == "session_start":
-        ent["session_start_iso"] = recs[0].get("timestamp")
-        ent["session_start_epoch"] = iso_to_epoch(recs[0].get("timestamp") or "")
-        cfg = recs[0].get("config") or {}
+    cfg = (recs[0].get("config") or {}) if recs and recs[0].get("type") == "session_start" else {}
+    ent["persona"] = persona_of(cfg.get("system_prompt"))
+    # By July 2026 the helper machine also ran the SNAPPER prompt, so persona no
+    # longer distinguishes the two dogs - the Piper voice does (aru=snapper,
+    # alan=helper). Promote it out of config.
+    if cfg.get("piper_voice"):
+        ent["voice"] = os.path.basename(str(cfg["piper_voice"])).replace(".onnx", "")
+    if cfg:
         ent["config"] = {k: cfg.get(k) for k in
                          ("ollama_model","vlm_model","whisper_model","piper_voice","system_prompt",
-                          "require_wakeword","wake_phrases","no_vlm","no_body") if k in cfg}
-    if recs and recs[-1].get("type") == "session_end":
-        ent["session_end_iso"] = recs[-1].get("timestamp")
-        ent["session_end_epoch"] = iso_to_epoch(recs[-1].get("timestamp") or "")
+                          "require_wakeword","no_vlm","no_body") if k in cfg}
+    ts = [r["timestamp"] for r in recs if r.get("timestamp")]
+    if ts:
+        ent["start_iso"], ent["end_iso"] = ts[0], ts[-1]
+        a, b = iso_epoch(ts[0]), iso_epoch(ts[-1])
+        ent["start_epoch"], ent["end_epoch"] = a, b
+        if a and b: ent["wall_duration_s"] = round(b - a, 1)
 
-    # turn-level records that carry audio
-    turns = []
-    for r in recs:
-        if r.get("type") not in ("user","assistant","reset","scene_switch","stop_conversation",
-                                 "special_command","vad_segment","user_no_wake"): continue
-        t = {"turn": r.get("turn"), "type": r.get("type"), "iso": r.get("timestamp"),
-             "epoch": iso_to_epoch(r.get("timestamp") or ""), "text": r.get("text")}
-        if r.get("speaker"): t["speaker"] = r["speaker"]
-        if r.get("disposition"): t["disposition"] = r["disposition"]
-        ap = r.get("audio_path")
-        if ap:
-            local = os.path.join(best, os.path.basename(ap))
-            if os.path.exists(local):
-                t["audio"] = os.path.relpath(local, ROOT)
-                dur = wav_dur(local)
-                t["audio_duration_s"] = dur
-                if dur is None:
-                    t["audio_playable"] = False
-                    t["audio_note"] = "file present but empty or truncated"
+    rt = load_retrans(group, sid)
+    if rt:
+        ent["retranscription"] = {"model": rt["model"],
+                                  "path": os.path.relpath(
+                                      os.path.join(DERIVED,"retranscribed",group,sid,"retranscription.json"), DERIVED)}
+        ent["blocks"] = rt["blocks"]
 
-            else:
-                t["audio_missing"] = os.path.basename(ap)
-        turns.append(t)
-    ent["turns"] = turns
-
-    # wavs on disk with no record referencing them
-    referenced = {os.path.basename(r["audio_path"]) for r in recs if r.get("audio_path")}
-    orphans = []
-    for f in sorted(os.listdir(best)):
-        if re.match(r"turn-\d+-input\.wav$", f) and f not in referenced:
-            orphans.append({"file": os.path.relpath(os.path.join(best, f), ROOT),
-                            "turn": int(f[5:8]), "duration_s": wav_dur(os.path.join(best, f)),
-                            "note": "audio on disk, no session.jsonl record"})
-    if orphans: ent["unlogged_audio"] = orphans
+    # counts
+    c = {"input_wavs":0,"response_wavs":0,"cue_wavs":0,"empty_wavs":0,
+         "recovered_speech":0,"speaker_bleed":0,"audio_s":0.0}
+    if rt:
+        for w in rt["wavs"]:
+            k = w["kind"]
+            if k == "input": c["input_wavs"] += 1
+            elif k == "response": c["response_wavs"] += 1
+            elif k.startswith("cue"): c["cue_wavs"] += 1
+            if w.get("duration_s") is None: c["empty_wavs"] += 1
+            else: c["audio_s"] += w["duration_s"]
+            if w.get("in_transcript") is False and w.get("text"): c["recovered_speech"] += 1
+            if w.get("likely_speaker_bleed"): c["speaker_bleed"] += 1
+        c["audio_s"] = round(c["audio_s"], 1)
+    ent["counts"] = c
 
     # media
     media = {}
-    cues = [f for f in sorted(os.listdir(best))
-            if re.match(r"turn-\d+-(reset|start-listening|stop-listening|reprompt|didnt-catch|wake|goodbye|special|stop-conversation|vlm-ack)\.wav$", f)]
-    if cues: media["cue_wavs"] = [os.path.relpath(os.path.join(best,f), ROOT) for f in cues]
-    sp = os.path.join(best, "startup.wav")
-    if os.path.exists(sp): media["startup_wav"] = os.path.relpath(sp, ROOT)
-
-    vd = os.path.join(best, "vlm_captures")
-    if os.path.isdir(vd):
-        caps = []
-        for f in sorted(os.listdir(vd)):
-            m = re.match(r"description_(\d{8}-\d{6})\.txt$", f)
-            if not m: continue
-            stem = m.group(1)
-            snap = os.path.join(vd, f"snapshot_{stem}.jpg")
-            try: txt = open(os.path.join(vd,f), errors="replace").read().strip()
-            except Exception: txt = None
-            try:
-                dt = datetime.datetime.strptime(stem, "%Y%m%d-%H%M%S")
-                ep = dt.timestamp()
-            except Exception:
-                ep = None
-            caps.append({"stamp": stem, "epoch": ep, "caption": txt,
-                         "description": os.path.relpath(os.path.join(vd,f), ROOT),
-                         "snapshot": os.path.relpath(snap, ROOT) if os.path.exists(snap) else None})
-        if caps: media["vlm_captures"] = caps
-
-    chunks = sorted(glob.glob(os.path.join(best, "chunk_*")),
-                    key=lambda p: int(re.sub(r"\D","",os.path.basename(p)) or 0))
-    if chunks:
-        media["chunks"] = [chunk_info(c) for c in chunks]
-        eps = [c["start_epoch"] for c in media["chunks"] if c.get("start_epoch")]
-        eph = [c["end_epoch"] for c in media["chunks"] if c.get("end_epoch")]
-        if eps and eph:
-            media["telemetry_span_epoch"] = [min(eps), max(eph)]
-    cp = os.path.join(best, "camera_path.jsonl")
-    if os.path.exists(cp): media["camera_path"] = os.path.relpath(cp, ROOT)
+    if os.path.isdir(sdir):
+        vd = os.path.join(sdir, "vlm_captures")
+        if os.path.isdir(vd):
+            caps = []
+            for f in sorted(os.listdir(vd)):
+                m = re.match(r"description_(\d{8}-\d{6})\.txt$", f)
+                if not m: continue
+                stem = m.group(1); snap = os.path.join(vd, f"snapshot_{stem}.jpg")
+                try: txt = open(os.path.join(vd, f), errors="replace").read().strip()
+                except Exception: txt = None
+                try: ep = datetime.datetime.strptime(stem, "%Y%m%d-%H%M%S").timestamp()
+                except Exception: ep = None
+                caps.append({"stamp": stem, "epoch": ep, "caption": txt,
+                             "description": os.path.relpath(os.path.join(vd,f), ROOT),
+                             "snapshot": os.path.relpath(snap, ROOT) if os.path.exists(snap) else None})
+            if caps: media["vlm_captures"] = caps if full else len(caps)
+        chunks = sorted(glob.glob(os.path.join(sdir, "chunk_*")),
+                        key=lambda p: int(re.sub(r"\D","",os.path.basename(p)) or 0))
+        if chunks:
+            ci = [chunk_info(x, ROOT) for x in chunks]
+            media["chunks"] = ci if full else len(ci)
+            eps = [x["start_epoch"] for x in ci if x.get("start_epoch")]
+            eph = [x["end_epoch"] for x in ci if x.get("end_epoch")]
+            if eps and eph: media["telemetry_span_epoch"] = [min(eps), max(eph)]
+            media["has_video"] = any(x.get("video") for x in ci)
+        cp = os.path.join(sdir, "camera_path.jsonl")
+        if os.path.exists(cp): media["camera_path"] = os.path.relpath(cp, ROOT)
+    pm = processed_media(group, sid)
+    if pm: media["processed_bundle"] = pm
     ent["media"] = media
 
-    # counts, measured on disk (authoritative for the report)
-    cnt = {"input_wavs":0,"input_wavs_playable":0,"response_wavs":0,"response_wavs_playable":0,
-           "cue_wavs":0,"vlm_snapshots":0,"vlm_descriptions":0,"chunks":len(chunks),
-           "human_audio_s":0.0,"tts_audio_s":0.0,"empty_wavs":0,"session_bytes":0}
-    for r_,_d,fs in os.walk(best):
-        for f in fs:
-            p=os.path.join(r_,f); cnt["session_bytes"]+=os.path.getsize(p)
-            if re.match(r"turn-\d+-input\.wav$",f):
-                cnt["input_wavs"]+=1; dur=wav_dur(p)
-                if dur is None: cnt["empty_wavs"]+=1
-                else: cnt["input_wavs_playable"]+=1; cnt["human_audio_s"]+=dur
-            elif re.match(r"turn-\d+-response\.wav$",f):
-                cnt["response_wavs"]+=1; dur=wav_dur(p)
-                if dur is None: cnt["empty_wavs"]+=1
-                else: cnt["response_wavs_playable"]+=1; cnt["tts_audio_s"]+=dur
-            elif re.match(r"turn-\d+-.*\.wav$",f): cnt["cue_wavs"]+=1
-            elif f.startswith("snapshot_"): cnt["vlm_snapshots"]+=1
-            elif f.startswith("description_"): cnt["vlm_descriptions"]+=1
-    cnt["human_audio_s"]=round(cnt["human_audio_s"],1)
-    cnt["tts_audio_s"]=round(cnt["tts_audio_s"],1)
-    cnt["video_bytes"]=sum(c["video"]["bytes"] for c in media.get("chunks",[]) if c.get("video"))
-    ent["counts"]=cnt
+    ent["replay_tier"] = "A" if media.get("has_video") else ("B" if c["audio_s"] else "C")
 
-    # replay tier
-    has_video = any(c.get("video") for c in media.get("chunks", []))
-    has_audio = any(t.get("audio") for t in turns)
-    ent["replay_tier"] = "A" if has_video else ("B" if has_audio else "C")
-
-    # highlight turn range
-    if kws:
-        hits = [t for t in turns if t.get("text") and
-                any(k in t["text"].lower() for k in kws)]
-        if hits:
+    if full and rt:
+        turns = []
+        for w in rt["wavs"]:
+            if w["kind"] == "room": continue
+            t = {"file": w["file"], "kind": w["kind"], "turn": w.get("turn"),
+                 "block": w.get("block"), "iso": w.get("mtime_iso"), "epoch": w.get("mtime_epoch"),
+                 "duration_s": w.get("duration_s"),
+                 "text": w.get("text"), "logged_text": w.get("logged_text"),
+                 "in_transcript": w.get("in_transcript", True)}
+            if w.get("likely_speaker_bleed"):
+                t["likely_speaker_bleed"] = True; t["bleed_similarity"] = w.get("bleed_similarity")
+            turns.append(t)
+        ent["turns"] = turns
+        if cur and cur[4]:
+            hits = [t for t in turns if t.get("text") and any(k in t["text"].lower() for k in cur[4])]
             ns = [h["turn"] for h in hits if h.get("turn") is not None]
-            if ns:
-                ent["highlight"] = {"start_turn": min(ns), "end_turn": max(ns),
-                                    "matched_keywords": kws, "match_count": len(hits),
-                                    "confidence": "keyword-match, unverified"}
-        else:
-            ent["highlight"] = {"matched_keywords": kws, "match_count": 0,
-                                "confidence": "no keyword match; whole session"}
+            ent["highlight"] = ({"start_turn": min(ns), "end_turn": max(ns), "match_count": len(hits),
+                                 "matched_keywords": cur[4], "confidence": "keyword-match, unverified"}
+                                if ns else {"match_count": 0, "matched_keywords": cur[4],
+                                            "confidence": "no keyword match; whole session"})
+    return ent
+
+def chat_session_entry(cur):
+    phase, when, label, sid, kws = cur
+    p = os.path.join(ROOT, "chat-sessions-v1", sid + ".jsonl")
+    ent = {"session_id": sid, "curated": True, "phase": phase, "event_window": when,
+           "label": label, "format": "chat_session_v1", "replay_tier": "C",
+           "media": {"note": "transcript only; this log format never wrote audio"},
+           "counts": {}, "turns": []}
+    if os.path.exists(p):
+        ent["group"] = "chat-sessions-v1"
+        ent["transcript"] = os.path.relpath(p, ROOT)
+        # persona lives in the system message of the accumulating array, not a config block
+        try:
+            for line in open(p, errors="replace"):
+                if '"system"' not in line: continue
+                for m in (json.loads(line).get("messages") or []):
+                    if m.get("role") == "system":
+                        ent["persona"] = persona_of(m.get("content")); break
+                if "persona" in ent: break
+        except Exception:
+            pass
+    else:
+        ent["status"] = "NOT FOUND in consolidated tree"
     return ent
 
 def main():
-    out = {
-      "schema": "bff.replay-index/1",
+    sessions = []
+    for g in GROUPS:
+        base = os.path.join(ROOT, g)
+        if not os.path.isdir(base): continue
+        for sid in sorted(os.listdir(base)):
+            if os.path.isdir(os.path.join(base, sid)) and sid.startswith("session-"):
+                sessions.append((g, sid))
+    print(f"{len(sessions)} sessions in tree")
+
+    catalog = [build(g, s, full=False) for g, s in sessions]
+    print(f"catalog built ({sum(1 for c in catalog if c['curated'])} curated)")
+
+    exchanges = []
+    for cur in CURATED:
+        sid = cur[3]
+        if sid.startswith("chat_session"):
+            exchanges.append(chat_session_entry(cur)); continue
+        hit = next(((g, s) for g, s in sessions if s == sid), None)
+        if hit is None:
+            exchanges.append({"session_id": sid, "curated": True, "phase": cur[0],
+                              "label": cur[2], "status": "NOT FOUND"})
+            print(f"  MISSING: {sid}")
+            continue
+        exchanges.append(build(hit[0], hit[1], full=True))
+
+    meta = {
+      "schema": "bff.replay-index/2",
       "generated": datetime.datetime.now().isoformat(timespec="seconds"),
       "archive_root": ROOT,
-      "path_convention": "all paths relative to archive_root",
+      "derived_root": DERIVED,
+      "path_convention": "session/media paths relative to archive_root; processed/retranscription paths relative to derived_root",
+      "transcript_note": ("`text` is re-transcribed with distil-large-v3 and attributed by file kind "
+                          "(response.wav = the dog, definitively). `logged_text` is the original live "
+                          "tiny.en text from session.jsonl, kept for comparison. Where they disagree, "
+                          "prefer `text`: ~1-2% of assistant records point at the wrong wav."),
       "sync": {
         "telemetry_clock": "unix epoch float, field `timestamp`, in lowstate/lidar/detections/camera_path",
-        "transcript_clock": "ISO 8601 local, field `timestamp`; `epoch` added here for convenience",
+        "turn_clock": "wav mtime, given as `epoch` and `iso` per turn",
         "warning_lidar_stamp": "lidar.jsonl also carries `stamp` on the robot DDS clock - do NOT use for sync",
         "video_frames": "detections.jsonl pairs frame_index with epoch; derived_fps per chunk lets you interpolate",
-        "vlm_capture_clock": "filename stamp is host local time, converted to epoch here"
+        "blocks": "sessions often run for hours with long idle gaps; `blocks` gives the actually-active spans"
       },
-      "replay_tiers": {
-        "A": "video + lidar + lowstate + detections + VLM stills + both voices",
-        "B": "turn-segmented human and synthesized voice only",
-        "C": "transcript text only, no audio ever written"
-      },
-      "exchanges": []
+      "replay_tiers": {"A": "video + lidar + lowstate + detections + VLM stills + both voices",
+                       "B": "turn-segmented human and synthesized voice only",
+                       "C": "transcript text only, no audio ever written"},
     }
-    for phase, when, label, sid, kws in FLAGGED:
-        e = build_session(phase, when, label, sid, kws)
-        out["exchanges"].append(e)
-        print(f"  {sid:30s} tier={e.get('replay_tier','?')} turns={len(e.get('turns',[]))}")
-    dst = os.path.join(HERE, "bff-replay-index.json")
-    json.dump(out, open(dst,"w"), indent=1)
-    print("\nwrote", dst, os.path.getsize(dst), "bytes")
+    json.dump(dict(meta, exchanges=exchanges), open(os.path.join(HERE,"bff-replay-index.json"),"w"), indent=1)
+    json.dump(dict(meta, schema="bff.sessions/2", sessions=catalog),
+              open(os.path.join(HERE,"bff-sessions.json"),"w"), indent=1)
+    for f in ["bff-replay-index.json","bff-sessions.json"]:
+        print(f"wrote {f}  {os.path.getsize(os.path.join(HERE,f))/1e6:.1f} MB")
 
 main()
