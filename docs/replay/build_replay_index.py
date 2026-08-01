@@ -265,9 +265,57 @@ def chat_session_entry(cur):
                 if "persona" in ent: break
         except Exception:
             pass
+        ent["turns"] = chat_session_turns(p, kws)
+        ent["counts"] = {"user_turns": sum(1 for t in ent["turns"] if t["kind"] == "user"),
+                         "assistant_turns": sum(1 for t in ent["turns"] if t["kind"] == "assistant")}
+        if kws:
+            hits = [t for t in ent["turns"] if t.get("text") and
+                    any(k in t["text"].lower() for k in kws)]
+            ns = [h["turn"] for h in hits]
+            ent["highlight"] = ({"start_turn": min(ns), "end_turn": max(ns), "match_count": len(hits),
+                                 "matched_keywords": kws, "confidence": "keyword-match, unverified"}
+                                if ns else {"match_count": 0, "matched_keywords": kws,
+                                            "confidence": "no keyword match; whole session"})
     else:
         ent["status"] = "NOT FOUND in consolidated tree"
     return ent
+
+def chat_session_turns(path, kws):
+    """Reconstruct turns from the v1 chat_session format.
+
+    A chat_stream_request carries the whole accumulating messages array; the
+    chat_stream_response that follows carries the reply. Walking them in order
+    and diffing against the previous array recovers per-turn timestamps, which
+    the flat array alone does not give. The logger also wrote each user message
+    twice, so consecutive duplicates are collapsed.
+    """
+    turns = []; seen = 0; n = 0
+    try:
+        recs = [json.loads(l) for l in open(path, errors="replace") if l.strip()]
+    except Exception:
+        return turns
+    for r in recs:
+        t = r.get("type")
+        if t == "chat_stream_request":
+            ms = r.get("messages") or []
+            for m in ms[seen:]:
+                if m.get("role") != "user": continue
+                txt = (m.get("content") or "").strip()
+                if not txt: continue
+                if turns and turns[-1]["kind"] == "user" and turns[-1]["text"] == txt:
+                    continue  # the logger duplicated every user message
+                n += 1
+                turns.append({"turn": n, "kind": "user", "iso": r.get("timestamp"),
+                              "epoch": iso_epoch(r.get("timestamp") or ""), "text": txt})
+            seen = len(ms)
+        elif t == "chat_stream_response":
+            txt = (r.get("reply") or "").strip()
+            if not txt: continue
+            n += 1
+            turns.append({"turn": n, "kind": "assistant", "iso": r.get("timestamp"),
+                          "epoch": iso_epoch(r.get("timestamp") or ""), "text": txt,
+                          "model": r.get("model")})
+    return turns
 
 def main():
     sessions = []

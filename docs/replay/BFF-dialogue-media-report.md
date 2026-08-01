@@ -3,7 +3,7 @@
 Curated exchanges from the BFF development and performance archive, with an
 inventory of every recorded stream that survives for each one.
 
-- **Generated:** 2026-08-01T13:15:19
+- **Generated:** 2026-08-01T13:20:02
 - **Archive:** `/Volumes/Cohab2024/BFF/logs-all`
 - **Derived:** `/Volumes/Cohab2024/BFF/processed`
 - **Companion index:** [`bff-replay-index.json`](bff-replay-index.json) — per-turn timestamps,
@@ -41,17 +41,20 @@ The clearest case is the Snapper IDEAS performance below: a 2.7-hour session who
 
 ## Phase 1 — CMC WIN keynote (Nov 2025)
 
-| Exchange | Session | Persona |
-|---|---|---|
-| apple / cinnamon / sensory hallucination | `chat_session_19691231_191711` | SNAPPER |
-| Claremont McKenna keynote / carbon cost | `chat_session_20251105_232211` | SNAPPER |
-| first 'concrete floor' | `chat_session_20251106_194243` | SNAPPER |
-| 'I love you' | `chat_session_20251106_145039` | SNAPPER |
-| specific apple / Honeycrisp | `chat_session_20251106_194552` | SNAPPER |
-| earliest memory | `chat_session_20251101_184352` | SNAPPER |
-| 'better if you had a memory' | `chat_session_20251106_100247` | SNAPPER |
+| Exchange | Session | Persona | Turns | User | Assistant |
+|---|---|---|---|---|---|
+| apple / cinnamon / sensory hallucination | `chat_session_19691231_191711` | SNAPPER | 20 | 13 | 7 |
+| Claremont McKenna keynote / carbon cost | `chat_session_20251105_232211` | SNAPPER | 14 | 13 | 1 |
+| first 'concrete floor' | `chat_session_20251106_194243` | SNAPPER | 23 | 15 | 8 |
+| 'I love you' | `chat_session_20251106_145039` | SNAPPER | 62 | 42 | 20 |
+| specific apple / Honeycrisp | `chat_session_20251106_194552` | SNAPPER | 9 | 6 | 3 |
+| earliest memory | `chat_session_20251101_184352` | SNAPPER | 23 | 15 | 8 |
+| 'better if you had a memory' | `chat_session_20251106_100247` | SNAPPER | 25 | 15 | 10 |
 
-Transcript only — no audio was ever written for these.
+Transcript only — no audio was ever written for these, so there is nothing to
+re-transcribe. Turns are reconstructed from the v1 `chat_session` format, whose
+timestamps are request/response times rather than utterance times: several user
+turns can share one timestamp. Good for ordering, not for tight sync.
 
 ## Phase 2 — NeurIPS (Dec 2025)
 

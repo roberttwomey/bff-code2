@@ -71,12 +71,17 @@ for pid, title in PHASES:
     w(f"## {title}")
     w("")
     if pid == "1-CMC":
-        w("| Exchange | Session | Persona |")
-        w("|---|---|---|")
+        w("| Exchange | Session | Persona | Turns | User | Assistant |")
+        w("|---|---|---|---|---|---|")
         for e in rows:
-            w(f"| {e['label']} | `{e['session_id']}` | {e.get('persona') or '–'} |")
+            c = e.get("counts", {})
+            w(f"| {e['label']} | `{e['session_id']}` | {e.get('persona') or '–'} | "
+              f"{len(e.get('turns',[]))} | {c.get('user_turns',0)} | {c.get('assistant_turns',0)} |")
         w("")
-        w("Transcript only — no audio was ever written for these.")
+        w("Transcript only — no audio was ever written for these, so there is nothing to")
+        w("re-transcribe. Turns are reconstructed from the v1 `chat_session` format, whose")
+        w("timestamps are request/response times rather than utterance times: several user")
+        w("turns can share one timestamp. Good for ordering, not for tight sync.")
     else:
         w("| Exchange | Session | Machine | Voice | Tier | In | Out | Empty | **Recovered** | Bleed | Audio | Video |")
         w("|---|---|---|---|---|---|---|---|---|---|---|---|")
