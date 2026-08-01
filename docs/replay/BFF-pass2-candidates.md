@@ -1,6 +1,6 @@
 # BFF — Pass 2: candidates from unrecorded speech
 
-- **Generated:** 2026-08-01T14:24:00
+- **Generated:** 2026-08-01T14:29:03
 - **Source:** [`bff-replay-index-pass2.json`](bff-replay-index-pass2.json)
 - **Pass 1 is untouched:** [`bff-replay-index.json`](bff-replay-index.json)
 
@@ -23,7 +23,7 @@ material.
 | …in sessions pass 1 never curated | **167** across 66 sessions |
 | …in already-curated sessions | 80 |
 
-By phase: **3-IDEAS** 169, **unknown-clock** 43, **4-SIGGRAPH** 19, **2-NeurIPS** 16
+By phase: **3-IDEAS** 191, **unknown-clock** 21, **4-SIGGRAPH** 19, **2-NeurIPS** 16
 
 `unknown-clock` are sessions whose Jetson RTC was unset (1969 timestamps); they
 cannot be binned by date. Phase 1 (CMC) is absent by construction — it predates any

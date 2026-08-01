@@ -49,18 +49,26 @@ def load_all():
             except Exception: pass
     return out
 
-def phase_of(sid):
-    """Phase from the session date. 1969 means the Jetson RTC was unset - those
-    sessions have no usable date and must not be binned by it. CMC (phase 1) is
-    excluded by construction: it predates any audio being written at all."""
+def _bin(datestr):
+    if datestr < "20251130": return "pre-audio(unexpected)"
+    if datestr < "20260101": return "2-NeurIPS"
+    if datestr < "20260301": return "3-IDEAS"
+    return "4-SIGGRAPH"
+
+def phase_of(sid, epoch=None):
+    """Phase from the session date. 1969 means the Jetson RTC was unset, so the id
+    carries no usable date - fall back to the wav's mtime, which is real wall clock
+    unless the filesystem timestamp was written with the same bad clock. When both
+    are 1969 the session genuinely cannot be dated and stays unknown-clock."""
     m=re.search(r"(\d{8})", sid)
     if not m: return "unknown-clock"
     d=m.group(1)
-    if d.startswith("1969"): return "unknown-clock"
-    if d < "20251130": return "pre-audio(unexpected)"
-    if d < "20260101": return "2-NeurIPS"
-    if d < "20260301": return "3-IDEAS"
-    return "4-SIGGRAPH"
+    if d.startswith("1969"):
+        if epoch:
+            md=datetime.datetime.fromtimestamp(epoch).strftime("%Y%m%d")
+            if not md.startswith("1969"): return _bin(md)
+        return "unknown-clock"
+    return _bin(d)
 
 def score(text, kinds_before):
     s=0.0; why=[]; hit=[]
@@ -99,7 +107,7 @@ def main():
             if sc < 5.0: continue
             nxt=wavs[i+1] if i+1 < len(wavs) else None
             cands.append({
-              "score": round(sc,1), "phase": phase_of(sid), "group": group,
+              "score": round(sc,1), "phase": phase_of(sid, w.get("mtime_epoch")), "group": group,
               "session_id": sid, "block": w.get("block"),
               "file": w["file"], "kind": w["kind"],
               "iso": w.get("mtime_iso"), "epoch": w.get("mtime_epoch"),

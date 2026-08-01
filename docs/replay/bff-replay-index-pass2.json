@@ -1,6 +1,6 @@
 {
  "schema": "bff.replay-index.pass2/1",
- "generated": "2026-08-01T14:24:00",
+ "generated": "2026-08-01T14:29:03",
  "derived_root": "/Volumes/Cohab2024/BFF/processed",
  "archive_root": "/Volumes/Cohab2024/BFF/logs-all",
  "what_this_is": "Candidate moments drawn ONLY from speech absent from the original session.jsonl logs. Pass-1 curation could not have seen these. Scores are heuristic (motif hits, length, reflective register, whether it answers a logged human line) - a ranking aid, not a judgement. Nothing here is verified by listening.",
@@ -94,8 +94,8 @@
   "recovered_scanned": 2507,
   "candidates": 247,
   "by_phase": {
-   "3-IDEAS": 169,
-   "unknown-clock": 43,
+   "3-IDEAS": 191,
+   "unknown-clock": 21,
    "4-SIGGRAPH": 19,
    "2-NeurIPS": 16
   },
@@ -1277,7 +1277,7 @@
   },
   {
    "score": 8.0,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -1304,7 +1304,7 @@
   },
   {
    "score": 8.0,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -1681,7 +1681,7 @@
   },
   {
    "score": 7.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -1837,7 +1837,7 @@
   },
   {
    "score": 7.0,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -2808,7 +2808,7 @@
   },
   {
    "score": 6.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -2834,7 +2834,7 @@
   },
   {
    "score": 6.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -2860,7 +2860,7 @@
   },
   {
    "score": 6.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -2886,7 +2886,7 @@
   },
   {
    "score": 6.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -2912,7 +2912,7 @@
   },
   {
    "score": 6.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -2938,7 +2938,7 @@
   },
   {
    "score": 6.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -2964,7 +2964,7 @@
   },
   {
    "score": 6.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -2990,7 +2990,7 @@
   },
   {
    "score": 6.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -3016,7 +3016,7 @@
   },
   {
    "score": 6.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -3042,7 +3042,7 @@
   },
   {
    "score": 6.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -4230,7 +4230,7 @@
   },
   {
    "score": 6.0,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -4254,7 +4254,7 @@
   },
   {
    "score": 6.0,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -4774,7 +4774,7 @@
   },
   {
    "score": 5.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -4799,7 +4799,7 @@
   },
   {
    "score": 5.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -4824,7 +4824,7 @@
   },
   {
    "score": 5.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -4849,7 +4849,7 @@
   },
   {
    "score": 5.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -4874,7 +4874,7 @@
   },
   {
    "score": 5.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
@@ -4899,7 +4899,7 @@
   },
   {
    "score": 5.5,
-   "phase": "unknown-clock",
+   "phase": "3-IDEAS",
    "group": "snapper",
    "session_id": "session-19691231-160048",
    "block": 2,
