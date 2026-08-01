@@ -1,6 +1,6 @@
 # BFF — Pass 2: candidates from unrecorded speech
 
-- **Generated:** 2026-08-01T14:22:39
+- **Generated:** 2026-08-01T14:24:00
 - **Source:** [`bff-replay-index-pass2.json`](bff-replay-index-pass2.json)
 - **Pass 1 is untouched:** [`bff-replay-index.json`](bff-replay-index.json)
 

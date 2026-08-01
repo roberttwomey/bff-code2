@@ -1,6 +1,6 @@
 {
  "schema": "bff.sessions/2",
- "generated": "2026-08-01T14:22:39",
+ "generated": "2026-08-01T14:23:59",
  "archive_root": "/Volumes/Cohab2024/BFF/logs-all",
  "derived_root": "/Volumes/Cohab2024/BFF/processed",
  "path_convention": "session/media paths relative to archive_root; processed/retranscription paths relative to derived_root",
@@ -12686,6 +12686,44 @@
    "replay_tier": "B"
   },
   {
+   "session_id": "session-20260720-141346",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-141346",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260720-141346/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-20T14:13:53",
+     "end_iso": "2026-07-20T14:13:53",
+     "wavs": 1
+    }
+   ],
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 1,
+    "speaker_bleed": 0,
+    "audio_s": 5.7
+   },
+   "media": {
+    "chunks": 1,
+    "telemetry_span_epoch": [
+     1784582027.750595,
+     1784582033.4508295
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
    "session_id": "session-20260720-141413",
    "group": "snapper",
    "session_dir": "snapper/session-20260720-141413",
@@ -12703,6 +12741,44 @@
    },
    "media": {},
    "replay_tier": "C"
+  },
+  {
+   "session_id": "session-20260720-143128",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-143128",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260720-143128/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-20T14:32:29",
+     "end_iso": "2026-07-20T14:32:30",
+     "wavs": 2
+    }
+   ],
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 2,
+    "speaker_bleed": 0,
+    "audio_s": 55.2
+   },
+   "media": {
+    "chunks": 2,
+    "telemetry_span_epoch": [
+     1784583089.410268,
+     1784583150.6436574
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
   },
   {
    "session_id": "session-20260720-143230",
@@ -30778,82 +30854,6 @@
    },
    "media": {},
    "replay_tier": "B"
-  },
-  {
-   "session_id": "session-20260720-141346",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-141346",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-141346/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-20T14:13:53",
-     "end_iso": "2026-07-20T14:13:53",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 5.7
-   },
-   "media": {
-    "chunks": 1,
-    "telemetry_span_epoch": [
-     1784582027.750595,
-     1784582033.4508295
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260720-143128",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-143128",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-143128/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-20T14:32:29",
-     "end_iso": "2026-07-20T14:32:30",
-     "wavs": 2
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 2,
-    "speaker_bleed": 0,
-    "audio_s": 55.2
-   },
-   "media": {
-    "chunks": 2,
-    "telemetry_span_epoch": [
-     1784583089.410268,
-     1784583150.6436574
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
   },
   {
    "session_id": "session-20260720-211156",

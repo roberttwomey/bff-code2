@@ -1,6 +1,6 @@
 {
  "schema": "bff.replay-index.pass2/1",
- "generated": "2026-08-01T14:22:39",
+ "generated": "2026-08-01T14:24:00",
  "derived_root": "/Volumes/Cohab2024/BFF/processed",
  "archive_root": "/Volumes/Cohab2024/BFF/logs-all",
  "what_this_is": "Candidate moments drawn ONLY from speech absent from the original session.jsonl logs. Pass-1 curation could not have seen these. Scores are heuristic (motif hits, length, reflective register, whether it answers a logged human line) - a ranking aid, not a judgement. Nothing here is verified by listening.",

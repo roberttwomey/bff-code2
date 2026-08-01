@@ -3,7 +3,7 @@
 Curated exchanges from the BFF development and performance archive, with an
 inventory of every recorded stream that survives for each one.
 
-- **Generated:** 2026-08-01T14:22:39
+- **Generated:** 2026-08-01T14:23:59
 - **Archive:** `/Volumes/Cohab2024/BFF/logs-all`
 - **Derived:** `/Volumes/Cohab2024/BFF/processed`
 - **Companion index:** [`bff-replay-index.json`](bff-replay-index.json) — per-turn timestamps,
@@ -147,11 +147,11 @@ than the raw per-chunk files.
 
 | Group | Sessions | SNAPPER | HELPER | Unattributed |
 |---|---|---|---|---|
-| `_review-unattributed-robot` | 12 | 9 | 0 | 3 |
+| `_review-unattributed-robot` | 10 | 9 | 0 | 1 |
 | `_review-unknown` | 40 | 33 | 0 | 7 |
 | `helper` | 125 | 31 | 85 | 9 |
 | `mac` | 147 | 144 | 0 | 3 |
-| `snapper` | 364 | 297 | 0 | 67 |
+| `snapper` | 366 | 297 | 0 | 69 |
 | **total** | **688** | | | |
 
 ## Syncing notes

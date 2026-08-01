@@ -1,6 +1,6 @@
 {
  "schema": "bff.replay-index/2",
- "generated": "2026-08-01T14:22:39",
+ "generated": "2026-08-01T14:23:59",
  "archive_root": "/Volumes/Cohab2024/BFF/logs-all",
  "derived_root": "/Volumes/Cohab2024/BFF/processed",
  "path_convention": "session/media paths relative to archive_root; processed/retranscription paths relative to derived_root",
