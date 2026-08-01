@@ -3,7 +3,7 @@
 Curated exchanges from the BFF development and performance archive, with an
 inventory of every recorded stream that survives for each one.
 
-- **Generated:** 2026-08-01T13:20:02
+- **Generated:** 2026-08-01T14:03:52
 - **Archive:** `/Volumes/Cohab2024/BFF/logs-all`
 - **Derived:** `/Volumes/Cohab2024/BFF/processed`
 - **Companion index:** [`bff-replay-index.json`](bff-replay-index.json) — per-turn timestamps,

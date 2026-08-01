@@ -1,6 +1,6 @@
 {
  "schema": "bff.sessions/2",
- "generated": "2026-08-01T13:20:02",
+ "generated": "2026-08-01T14:03:52",
  "archive_root": "/Volumes/Cohab2024/BFF/logs-all",
  "derived_root": "/Volumes/Cohab2024/BFF/processed",
  "path_convention": "session/media paths relative to archive_root; processed/retranscription paths relative to derived_root",
@@ -9046,6 +9046,11 @@
    "start_epoch": 1784403867.948325,
    "end_epoch": 1784403888.053558,
    "wall_duration_s": 20.1,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260718-124419/retranscription.json"
+   },
+   "blocks": [],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
@@ -9079,6 +9084,11 @@
    "start_epoch": 1784403913.438786,
    "end_epoch": 1784403979.473128,
    "wall_duration_s": 66.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260718-124505/retranscription.json"
+   },
+   "blocks": [],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
@@ -9112,6 +9122,11 @@
    "start_epoch": 1784404064.397519,
    "end_epoch": 1784404078.289436,
    "wall_duration_s": 13.9,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260718-124735/retranscription.json"
+   },
+   "blocks": [],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
@@ -9401,14 +9416,26 @@
    "start_epoch": 1784409342.736939,
    "end_epoch": 1784409390.94416,
    "wall_duration_s": 48.2,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260718-141533/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T14:16:17",
+     "end_iso": "2026-07-18T14:16:29",
+     "wavs": 2
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 2,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 43.5
    },
    "media": {
     "chunks": 1,
@@ -9495,14 +9522,26 @@
    "start_epoch": 1784410868.666271,
    "end_epoch": 1784410868.666271,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260718-144100/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T14:41:22",
+     "end_iso": "2026-07-18T14:43:00",
+     "wavs": 3
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 3,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 113.6
    },
    "media": {
     "chunks": 2,
@@ -9536,14 +9575,32 @@
    "start_epoch": 1784411193.666442,
    "end_epoch": 1784411193.666442,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260718-144625/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T14:46:47",
+     "end_iso": "2026-07-18T14:46:47",
+     "wavs": 1
+    },
+    {
+     "block": 2,
+     "start_iso": "2026-07-18T15:00:33",
+     "end_iso": "2026-07-18T15:05:02",
+     "wavs": 6
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 7,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 330.7
    },
    "media": {
     "chunks": 6,
@@ -9911,17 +9968,29 @@
    "start_epoch": 1784419904.612174,
    "end_epoch": 1784419947.26402,
    "wall_duration_s": 42.7,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260718-171136/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T17:11:47",
+     "end_iso": "2026-07-18T17:11:47",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.9
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260718-171629",
@@ -10000,17 +10069,29 @@
    "start_epoch": 1784421397.635916,
    "end_epoch": 1784421417.267714,
    "wall_duration_s": 19.6,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260718-173629/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T17:36:40",
+     "end_iso": "2026-07-18T17:36:48",
+     "wavs": 2
+    }
+   ],
    "counts": {
-    "input_wavs": 0,
+    "input_wavs": 1,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 2,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 2.9
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260719-053303",
@@ -10133,14 +10214,26 @@
    "is_variant": false,
    "curated": false,
    "persona": null,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260719-060317/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-19T06:03:27",
+     "end_iso": "2026-07-19T06:03:27",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 2.1
    },
    "media": {
     "chunks": 1,
@@ -10626,17 +10719,29 @@
    "start_epoch": 1784470830.336822,
    "end_epoch": 1784470858.909138,
    "wall_duration_s": 28.6,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260719-072027/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-19T07:20:48",
+     "end_iso": "2026-07-19T07:20:48",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260719-072115",
@@ -10660,20 +10765,32 @@
    "start_epoch": 1784470878.496102,
    "end_epoch": 1784470973.784768,
    "wall_duration_s": 95.3,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260719-072115/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-19T07:21:36",
+     "end_iso": "2026-07-19T07:22:53",
+     "wavs": 2
+    }
+   ],
    "counts": {
-    "input_wavs": 0,
+    "input_wavs": 1,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 2,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 1.8
    },
    "media": {
     "chunks": 1,
     "has_video": false
    },
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260719-072233",
@@ -10858,20 +10975,32 @@
    "start_epoch": 1784471326.583059,
    "end_epoch": 1784471366.776846,
    "wall_duration_s": 40.2,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260719-072844/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-19T07:29:04",
+     "end_iso": "2026-07-19T07:29:04",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {
     "chunks": 1,
     "has_video": false
    },
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260719-073031",
@@ -11006,17 +11135,29 @@
    "start_epoch": 1784506358.015951,
    "end_epoch": 1784506358.015951,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260719-171228/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-19T17:12:50",
+     "end_iso": "2026-07-19T17:12:50",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260720-111127",
@@ -11476,14 +11617,26 @@
    "start_epoch": 1784575672.408451,
    "end_epoch": 1784575672.408451,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260720-122743/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-20T12:27:53",
+     "end_iso": "2026-07-20T12:27:53",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 3.5
    },
    "media": {
     "chunks": 1,
@@ -12461,17 +12614,29 @@
    "start_epoch": 1784581731.318699,
    "end_epoch": 1784581731.318699,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260720-140842/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-20T14:09:08",
+     "end_iso": "2026-07-20T14:09:08",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.9
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260720-141020",
@@ -12496,17 +12661,29 @@
    "start_epoch": 1784581829.268547,
    "end_epoch": 1784581854.862214,
    "wall_duration_s": 25.6,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260720-141020/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-20T14:10:47",
+     "end_iso": "2026-07-20T14:10:47",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260720-141413",
@@ -12824,17 +13001,29 @@
    "start_epoch": 1784593068.17324,
    "end_epoch": 1784593083.566493,
    "wall_duration_s": 15.4,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260720-171740/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-20T17:17:49",
+     "end_iso": "2026-07-20T17:17:49",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260720-171814",
@@ -12969,17 +13158,29 @@
    "start_epoch": 1784594371.171793,
    "end_epoch": 1784594371.171793,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260720-173923/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-20T17:39:47",
+     "end_iso": "2026-07-20T17:39:47",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260720-174351",
@@ -20679,17 +20880,29 @@
    "start_epoch": 1784463819.265053,
    "end_epoch": 1784463819.265053,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/helper/session-20260719-052335/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-19T05:23:50",
+     "end_iso": "2026-07-19T05:23:50",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260719-072850",
@@ -20950,6 +21163,11 @@
    "start_epoch": 1784600496.349068,
    "end_epoch": 1784600496.349068,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/helper/session-20260720-192132/retranscription.json"
+   },
+   "blocks": [],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
@@ -21029,6 +21247,11 @@
    "start_epoch": 1784611853.234144,
    "end_epoch": 1784611853.234144,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/helper/session-20260720-223043/retranscription.json"
+   },
+   "blocks": [],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
@@ -26086,6 +26309,11 @@
    "start_epoch": 1784397721.529128,
    "end_epoch": 1784397721.529128,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260718-110201/retranscription.json"
+   },
+   "blocks": [],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
@@ -26119,6 +26347,11 @@
    "start_epoch": 1784397786.096655,
    "end_epoch": 1784397786.096655,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260718-110249/retranscription.json"
+   },
+   "blocks": [],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
@@ -26199,6 +26432,11 @@
    "start_epoch": 1784397919.419309,
    "end_epoch": 1784397919.419309,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260718-110514/retranscription.json"
+   },
+   "blocks": [],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
@@ -26232,17 +26470,29 @@
    "start_epoch": 1784397970.96666,
    "end_epoch": 1784398001.380534,
    "wall_duration_s": 30.4,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260718-110606/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T11:06:16",
+     "end_iso": "2026-07-18T11:06:16",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260718-110645",
@@ -26265,17 +26515,29 @@
    "start_epoch": 1784398010.235049,
    "end_epoch": 1784398031.662597,
    "wall_duration_s": 21.4,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260718-110645/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T11:07:02",
+     "end_iso": "2026-07-18T11:07:02",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260718-110800",
@@ -26343,17 +26605,29 @@
    "start_epoch": 1784398299.134198,
    "end_epoch": 1784398327.739045,
    "wall_duration_s": 28.6,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260718-111134/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T11:11:44",
+     "end_iso": "2026-07-18T11:11:44",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260718-111239",
@@ -26376,17 +26650,29 @@
    "start_epoch": 1784398364.484395,
    "end_epoch": 1784398437.148616,
    "wall_duration_s": 72.7,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260718-111239/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T11:12:58",
+     "end_iso": "2026-07-18T11:13:44",
+     "wavs": 2
+    }
+   ],
    "counts": {
-    "input_wavs": 0,
+    "input_wavs": 1,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 2,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 2.9
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260718-111502",
@@ -26409,6 +26695,11 @@
    "start_epoch": 1784398507.320155,
    "end_epoch": 1784398507.320155,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260718-111502/retranscription.json"
+   },
+   "blocks": [],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
@@ -26442,17 +26733,29 @@
    "start_epoch": 1784398697.825294,
    "end_epoch": 1784398697.825294,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260718-111812/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T11:18:24",
+     "end_iso": "2026-07-18T11:18:24",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260718-112200",
@@ -26565,17 +26868,29 @@
    "start_epoch": 1784399569.372449,
    "end_epoch": 1784399569.372449,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260718-113246/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T11:32:54",
+     "end_iso": "2026-07-18T11:33:01",
+     "wavs": 2
+    }
+   ],
    "counts": {
-    "input_wavs": 0,
+    "input_wavs": 1,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 2,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 3.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260718-113326",
@@ -26598,17 +26913,29 @@
    "start_epoch": 1784399614.705584,
    "end_epoch": 1784399614.705584,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260718-113326/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-18T11:33:46",
+     "end_iso": "2026-07-18T11:33:46",
+     "wavs": 1
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 0.8
    },
    "media": {},
-   "replay_tier": "C"
+   "replay_tier": "B"
   },
   {
    "session_id": "session-20260718-113500",
@@ -27729,14 +28056,26 @@
    "start_epoch": 1784486279.981918,
    "end_epoch": 1784486279.981918,
    "wall_duration_s": 0.0,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/mac/session-20260719-113755/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-19T11:38:02",
+     "end_iso": "2026-07-19T11:40:01",
+     "wavs": 4
+    }
+   ],
    "counts": {
     "input_wavs": 0,
     "response_wavs": 0,
     "cue_wavs": 0,
     "empty_wavs": 0,
-    "recovered_speech": 0,
+    "recovered_speech": 4,
     "speaker_bleed": 0,
-    "audio_s": 0.0
+    "audio_s": 122.5
    },
    "media": {
     "chunks": 3,
