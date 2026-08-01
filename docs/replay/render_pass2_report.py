@@ -1,0 +1,71 @@
+#!/usr/bin/env python3
+"""Render the pass-2 candidate report from bff-replay-index-pass2.json."""
+import json, os, collections
+
+HERE=os.path.dirname(os.path.abspath(__file__))
+d=json.load(open(os.path.join(HERE,"bff-replay-index-pass2.json")))
+p1=json.load(open(os.path.join(HERE,"bff-replay-index.json")))
+curated={e["session_id"] for e in p1["exchanges"]}
+c=d["candidates"]
+new=[x for x in c if x["session_id"] not in curated]
+inside=[x for x in c if x["session_id"] in curated]
+
+L=[];w=L.append
+w("# BFF — Pass 2: candidates from unrecorded speech")
+w("")
+w(f"- **Generated:** {d['generated']}")
+w("- **Source:** [`bff-replay-index-pass2.json`](bff-replay-index-pass2.json)")
+w("- **Pass 1 is untouched:** [`bff-replay-index.json`](bff-replay-index.json)")
+w("")
+w(d["what_this_is"])
+w("")
+w("## Why this pass exists")
+w("")
+w("The pass-1 exchanges were chosen by reading the live `tiny.en` transcripts. But")
+w(f"**{d['counts']['recovered_scanned']} wav files contained speech that appears in no**")
+w("**`session.jsonl` record at all** — overwhelmingly the dog's own replies, since a")
+w("response wav was written whether or not the assistant record ever got logged. None")
+w("of that was visible when the exchanges were picked. This pass looks only at that")
+w("material.")
+w("")
+w(f"| | |")
+w(f"|---|---|")
+w(f"| Re-transcription bundles scanned | {d['counts']['bundles']} |")
+w(f"| Recovered utterances examined | {d['counts']['recovered_scanned']} |")
+w(f"| Candidates above threshold | {d['counts']['candidates']} |")
+w(f"| …in sessions pass 1 never curated | **{len(new)}** across {len({x['session_id'] for x in new})} sessions |")
+w(f"| …in already-curated sessions | {len(inside)} |")
+w("")
+w("By phase: " + ", ".join(f"**{k}** {v}" for k,v in sorted(d['counts']['by_phase'].items(), key=lambda x:-x[1])))
+w("")
+w("`unknown-clock` are sessions whose Jetson RTC was unset (1969 timestamps); they")
+w("cannot be binned by date. Phase 1 (CMC) is absent by construction — it predates any")
+w("audio being written, so there is nothing to recover.")
+w("")
+w("By motif: " + ", ".join(f"`{k}` {v}" for k,v in sorted(d['counts']['by_motif'].items(), key=lambda x:-x[1])))
+w("")
+w("## Top candidates from sessions pass 1 never looked at")
+w("")
+for x in new[:20]:
+    w(f"### {x['score']:.1f} · `{x['session_id']}` · {x['phase']} · {x['iso'][11:19]}")
+    w("")
+    if x.get("preceding_logged_human"):
+        w(f"> **human** (logged): {x['preceding_logged_human'][:180]}")
+    w(f"> **dog** (recovered): {x['text'][:400]}")
+    w("")
+    w(f"- motifs: {', '.join(x['motifs']) or '–'} · audio: `{x['audio']}` · block {x.get('block')}")
+    w("")
+
+w("## Caveats")
+w("")
+w("1. **Scores are heuristic, not judgement.** Motif hits, length, first-person register,")
+w("   and whether the line answers a logged human turn. A ranking aid only.")
+w("2. **Nothing here has been listened to.** Same status as the pass-1 `highlight` blocks.")
+w("3. **These are `distil-large-v3` transcriptions of short, often noisy clips.** Names and")
+w("   single words are unreliable — see the `Hubba`/`Helper` case in the notes below.")
+w("4. **Speaker attribution is by file kind**, so a `response.wav` is the dog by construction.")
+w("   That is more reliable than the original logs, which recorded much of the dog's own")
+w("   speech as `user` turns via mic bleed.")
+w("")
+open(os.path.join(HERE,"BFF-pass2-candidates.md"),"w").write("\n".join(L)+"\n")
+print("wrote BFF-pass2-candidates.md", len("\n".join(L)), "chars")
