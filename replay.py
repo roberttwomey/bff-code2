@@ -63,6 +63,21 @@ dotenv.load_dotenv()
 # fix_recordings.py corrects. We read them at the true rate.
 SPEECH_TRUE_RATE = 48000
 
+
+def get_speech_forced_rate(wav_path: Path, etype: str | None = None) -> int | None:
+    """Piper assistant response wavs write a 22050 Hz header over 48000 Hz audio samples.
+    User microphone speech recordings (turn-NNN-input.wav) and cue clips use their genuine header rate.
+    """
+    if etype == "assistant" or wav_path.name.endswith("-response.wav"):
+        try:
+            with wave.open(str(wav_path), "rb") as w:
+                if w.getframerate() == 22050:
+                    return SPEECH_TRUE_RATE
+        except Exception:
+            pass
+    return None
+
+
 # The single rate the mixed replay audio is delivered at. The browser's
 # AudioContext resamples per chunk to the output device anyway; 24 kHz keeps the
 # in-memory master mix small without audibly hurting speech.
@@ -676,20 +691,6 @@ class SessionTimeline:
             if ev and d.get("start_epoch") is not None:
                 event_start_times[id(ev)] = d["start_epoch"]
 
-        def get_forced_rate(wav_path: Path, etype: str | None = None) -> int | None:
-            # Only post-20260721 Piper assistant response wavs report 22050 in header but hold 48000 Hz samples.
-            m = re.search(r"(\d{8})", session.name)
-            date_str = m.group(1) if m else ""
-            is_post_cutoff = date_str >= "20260721"
-            if is_post_cutoff and (etype == "assistant" or wav_path.name.endswith("-response.wav")):
-                try:
-                    with wave.open(str(wav_path), "rb") as w:
-                        if w.getframerate() == 22050:
-                            return SPEECH_TRUE_RATE
-                except Exception:
-                    pass
-            return None
-
         for e in events:
             if e.get("type") not in ("user", "assistant", "assistant_chunk"):
                 continue
@@ -719,7 +720,7 @@ class SessionTimeline:
                 if not wav.exists():
                     wav = session / "speech" / base_name
                 if wav.exists():
-                    frate = get_forced_rate(wav, "assistant")
+                    frate = get_speech_forced_rate(wav, "assistant")
                     dur = wav_duration(wav, frate)
                     et = et - dur
 
@@ -769,22 +770,6 @@ class SessionTimeline:
         clips: list[dict] = []
         seen: set[str] = set()
 
-        def get_forced_rate(wav_path: Path, etype: str | None = None) -> int | None:
-            # Only post-20260721 Piper assistant response wavs report 22050 in header but hold 48000 Hz samples.
-            # Pre-20260721 response wavs and all user speech/wake/reset clips use their genuine WAV header rate.
-            m = re.search(r"(\d{8})", session.name)
-            date_str = m.group(1) if m else ""
-            is_post_cutoff = date_str >= "20260721"
-
-            if is_post_cutoff and (etype == "assistant" or wav_path.name.endswith("-response.wav")):
-                try:
-                    with wave.open(str(wav_path), "rb") as w:
-                        if w.getframerate() == 22050:
-                            return SPEECH_TRUE_RATE
-                except Exception:
-                    pass
-            return None
-
         def add(path: Path, start_epoch, forced_rate, event=None):
             if path.name in seen or not path.exists() or start_epoch is None:
                 return
@@ -802,7 +787,7 @@ class SessionTimeline:
                     wav = session / "speech" / base_name
                 if not wav.exists():
                     continue
-                frate = get_forced_rate(wav, etype)
+                frate = get_speech_forced_rate(wav, etype)
                 dur = wav_duration(wav, frate)
                 if etype == "assistant":
                     end_epoch = parse_event_time(e.get("timestamp"))
@@ -823,19 +808,19 @@ class SessionTimeline:
                 wav = session / "speech" / base_name
             if not wav.exists():
                 continue
-            frate = get_forced_rate(wav)
+            frate = get_speech_forced_rate(wav)
             add(wav, parse_event_time(e.get("timestamp")), frate)
 
         wake_wavs = list(session.glob("*-wake.wav"))
         if (session / "speech").exists():
             wake_wavs.extend((session / "speech").glob("*-wake.wav"))
         for wav in sorted(wake_wavs):
-            frate = get_forced_rate(wav)
+            frate = get_speech_forced_rate(wav)
             add(wav, wav.stat().st_mtime, frate)
 
         for startup in (session / "startup.wav", session / "speech" / "startup.wav"):
             if startup.exists():
-                frate = get_forced_rate(startup)
+                frate = get_speech_forced_rate(startup)
                 add(startup, startup.stat().st_mtime, frate)
                 break
 
