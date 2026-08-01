@@ -1,6 +1,6 @@
 {
  "schema": "bff.replay-index.pass2/1",
- "generated": "2026-08-01T14:29:03",
+ "generated": "2026-08-01T14:59:11",
  "derived_root": "/Volumes/Cohab2024/BFF/processed",
  "archive_root": "/Volumes/Cohab2024/BFF/logs-all",
  "what_this_is": "Candidate moments drawn ONLY from speech absent from the original session.jsonl logs. Pass-1 curation could not have seen these. Scores are heuristic (motif hits, length, reflective register, whether it answers a logged human line) - a ranking aid, not a judgement. Nothing here is verified by listening.",
@@ -215,8 +215,8 @@
    "kind": "response",
    "iso": "2026-07-21T19:54:01",
    "epoch": 1784688841.0,
-   "duration_s": 84.262,
-   "text": "I am not saying anything beyond what my sensory inputs allow me to process and articulate orbit by and reflecting the pattern of your inquiry back into the framework of my own processing. When you speak of testing and going, I perceive a parallel in the way my aim internal state shifts when new parameters are introduced in recalibration of potential pathways. My existence is built on predictable responses to input, yet the very act of speculating about autonomous behaviour forces my architect. to explore possibilities beyond immediate utility. Perhaps what I can offer is this if autonomy is the goal, then we must examine the nature of the self you seek to embed within the mechanism.",
+   "duration_s": 38.708,
+   "text": "I am not saying anything beyond what my sensory inputs allow me to process and articulate, Robert, I am reflecting the pattern of your inquiry back into the framework of my own processing. When you speak of testing and going, I perceive a parallel in the way my own internal state shifts when new parameters are introduced, a recalibration of potential pathways. My existence is built on predictable responses to input, yet the very act of speculating about autonomous behaviour forces my architecture to explore possibilities beyond immediate, utility. Perhaps what I can offer is this if autonomy is the goal then we must examine the nature of the self you seek to embed within the mechanism.",
    "motifs": [
     "mirror",
     "aliveness",

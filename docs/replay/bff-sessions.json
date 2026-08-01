@@ -1,6 +1,6 @@
 {
  "schema": "bff.sessions/2",
- "generated": "2026-08-01T14:23:59",
+ "generated": "2026-08-01T14:59:11",
  "archive_root": "/Volumes/Cohab2024/BFF/logs-all",
  "derived_root": "/Volumes/Cohab2024/BFF/processed",
  "path_convention": "session/media paths relative to archive_root; processed/retranscription paths relative to derived_root",
@@ -16528,7 +16528,7 @@
     "empty_wavs": 0,
     "recovered_speech": 9,
     "speaker_bleed": 0,
-    "audio_s": 1161.0
+    "audio_s": 971.8
    },
    "media": {
     "vlm_captures": 25,
@@ -16659,7 +16659,7 @@
     "empty_wavs": 0,
     "recovered_speech": 6,
     "speaker_bleed": 0,
-    "audio_s": 374.0
+    "audio_s": 368.7
    },
    "media": {
     "vlm_captures": 5,
@@ -16764,7 +16764,7 @@
     "empty_wavs": 0,
     "recovered_speech": 9,
     "speaker_bleed": 0,
-    "audio_s": 623.6
+    "audio_s": 497.9
    },
    "media": {
     "vlm_captures": 56,
@@ -16864,7 +16864,7 @@
     "empty_wavs": 0,
     "recovered_speech": 7,
     "speaker_bleed": 0,
-    "audio_s": 934.3
+    "audio_s": 711.0
    },
    "media": {
     "vlm_captures": 47,
@@ -16955,7 +16955,7 @@
     "empty_wavs": 0,
     "recovered_speech": 5,
     "speaker_bleed": 0,
-    "audio_s": 274.8
+    "audio_s": 261.7
    },
    "media": {
     "vlm_captures": 2,
@@ -17055,7 +17055,7 @@
     "empty_wavs": 0,
     "recovered_speech": 4,
     "speaker_bleed": 1,
-    "audio_s": 574.6
+    "audio_s": 511.6
    },
    "media": {
     "vlm_captures": 9,
@@ -17154,7 +17154,7 @@
     "empty_wavs": 0,
     "recovered_speech": 5,
     "speaker_bleed": 0,
-    "audio_s": 1119.0
+    "audio_s": 1097.7
    },
    "media": {
     "vlm_captures": 17,
@@ -17254,7 +17254,7 @@
     "empty_wavs": 0,
     "recovered_speech": 2,
     "speaker_bleed": 0,
-    "audio_s": 241.1
+    "audio_s": 225.2
    },
    "media": {
     "vlm_captures": 6,
@@ -17354,7 +17354,7 @@
     "empty_wavs": 0,
     "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 104.0
+    "audio_s": 86.1
    },
    "media": {
     "vlm_captures": 1,
@@ -17598,7 +17598,7 @@
     "empty_wavs": 0,
     "recovered_speech": 25,
     "speaker_bleed": 1,
-    "audio_s": 5714.4
+    "audio_s": 5230.2
    },
    "media": {
     "vlm_captures": 127,
@@ -22005,7 +22005,7 @@
     "empty_wavs": 0,
     "recovered_speech": 7,
     "speaker_bleed": 0,
-    "audio_s": 466.1
+    "audio_s": 405.2
    },
    "media": {
     "vlm_captures": 19,
@@ -22396,7 +22396,7 @@
     "empty_wavs": 0,
     "recovered_speech": 3,
     "speaker_bleed": 0,
-    "audio_s": 101.5
+    "audio_s": 89.2
    },
    "media": {
     "vlm_captures": 1,
@@ -22685,7 +22685,7 @@
     "empty_wavs": 0,
     "recovered_speech": 7,
     "speaker_bleed": 0,
-    "audio_s": 981.0
+    "audio_s": 725.4
    },
    "media": {
     "vlm_captures": 89,
@@ -23029,7 +23029,7 @@
     "empty_wavs": 1,
     "recovered_speech": 2,
     "speaker_bleed": 0,
-    "audio_s": 44.6
+    "audio_s": 41.6
    },
    "media": {
     "vlm_captures": 3,
@@ -23127,7 +23127,7 @@
     "empty_wavs": 0,
     "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 54.5
+    "audio_s": 48.3
    },
    "media": {
     "vlm_captures": 2,
@@ -23226,7 +23226,7 @@
     "empty_wavs": 0,
     "recovered_speech": 4,
     "speaker_bleed": 0,
-    "audio_s": 232.9
+    "audio_s": 213.2
    },
    "media": {
     "vlm_captures": 1,
@@ -23331,7 +23331,7 @@
     "empty_wavs": 0,
     "recovered_speech": 8,
     "speaker_bleed": 0,
-    "audio_s": 439.3
+    "audio_s": 390.9
    },
    "media": {
     "chunks": 6,
@@ -23432,7 +23432,7 @@
     "empty_wavs": 0,
     "recovered_speech": 9,
     "speaker_bleed": 0,
-    "audio_s": 1243.0
+    "audio_s": 861.7
    },
    "media": {
     "chunks": 6,
@@ -23531,7 +23531,7 @@
     "empty_wavs": 0,
     "recovered_speech": 7,
     "speaker_bleed": 0,
-    "audio_s": 686.1
+    "audio_s": 523.1
    },
    "media": {
     "vlm_captures": 8,
@@ -30441,7 +30441,7 @@
     "empty_wavs": 0,
     "recovered_speech": 1,
     "speaker_bleed": 0,
-    "audio_s": 46.2
+    "audio_s": 24.0
    },
    "media": {
     "vlm_captures": 4
@@ -32654,7 +32654,7 @@
     "empty_wavs": 0,
     "recovered_speech": 25,
     "speaker_bleed": 1,
-    "audio_s": 269.4
+    "audio_s": 206.4
    },
    "media": {},
    "replay_tier": "B"

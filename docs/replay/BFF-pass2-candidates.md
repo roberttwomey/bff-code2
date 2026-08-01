@@ -1,6 +1,6 @@
 # BFF — Pass 2: candidates from unrecorded speech
 
-- **Generated:** 2026-08-01T14:29:03
+- **Generated:** 2026-08-01T14:59:11
 - **Source:** [`bff-replay-index-pass2.json`](bff-replay-index-pass2.json)
 - **Pass 1 is untouched:** [`bff-replay-index.json`](bff-replay-index.json)
 
@@ -50,7 +50,7 @@ By motif: `feeling` 78, `sleep/dream` 53, `machine` 37, `body` 29, `aliveness` 2
 ### 12.0 · `session-20260721-192531` · 4-SIGGRAPH · 19:54:01
 
 > **human** (logged): but yes okay yeah i mean are you saying it s i mean it s like i ve been testing it with both going so can you say something else
-> **dog** (recovered): I am not saying anything beyond what my sensory inputs allow me to process and articulate orbit by and reflecting the pattern of your inquiry back into the framework of my own processing. When you speak of testing and going, I perceive a parallel in the way my aim internal state shifts when new parameters are introduced in recalibration of potential pathways. My existence is built on predictable r
+> **dog** (recovered): I am not saying anything beyond what my sensory inputs allow me to process and articulate, Robert, I am reflecting the pattern of your inquiry back into the framework of my own processing. When you speak of testing and going, I perceive a parallel in the way my own internal state shifts when new parameters are introduced, a recalibration of potential pathways. My existence is built on predictable 
 
 - motifs: mirror, aliveness, interiority · audio: `snapper/session-20260721-192531/turn-005-response.wav` · block 2
 

@@ -3,7 +3,7 @@
 Curated exchanges from the BFF development and performance archive, with an
 inventory of every recorded stream that survives for each one.
 
-- **Generated:** 2026-08-01T14:23:59
+- **Generated:** 2026-08-01T14:59:11
 - **Archive:** `/Volumes/Cohab2024/BFF/logs-all`
 - **Derived:** `/Volumes/Cohab2024/BFF/processed`
 - **Companion index:** [`bff-replay-index.json`](bff-replay-index.json) — per-turn timestamps,
@@ -98,12 +98,12 @@ turns can share one timestamp. Good for ordering, not for tight sync.
 | naming denied (Jasper) | `session-20260720-194648` | snapper | aru | A | 49 | 43 | – | **15** | – | 30.7m | 315MB |
 | 'I feel dead inside' | `session-20260720-195543` | snapper | aru | A | 28 | 24 | – | **17** | – | 21.8m | 173MB |
 | apple as mirror | `session-20260720-204648` | snapper | aru | A | 13 | 12 | – | **6** | – | 19.8m | 87MB |
-| Pinocchio / 'bad dog' | `session-20260721-121342` | helper | alan | A | 6 | 5 | – | **7** | – | 7.8m | 67MB |
-| Companion scene (Jesse) | `session-20260721-124325` | helper | alan | A | 29 | 28 | – | **7** | – | 16.4m | 72MB |
-| McCarthy / Lovelace | `session-20260722-114251` | snapper | aru | A | 18 | 15 | – | **9** | – | 10.4m | 141MB |
-| Mirror / 'space between us' / interiority | `session-20260722-123623` | helper | alan | A | 39 | 38 | – | **9** | – | 20.7m | 87MB |
-| two dogs simultaneous | `session-20260722-123630` | snapper | aru | A | 23 | 23 | – | **7** | – | 15.6m | 125MB |
-| *** SIGGRAPH stage / magic | `session-20260723-092744` | snapper | aru | A | 70 | 64 | – | **25** | 1 | 95.2m | 1.5GB |
+| Pinocchio / 'bad dog' | `session-20260721-121342` | helper | alan | A | 6 | 5 | – | **7** | – | 6.8m | 67MB |
+| Companion scene (Jesse) | `session-20260721-124325` | helper | alan | A | 29 | 28 | – | **7** | – | 12.1m | 72MB |
+| McCarthy / Lovelace | `session-20260722-114251` | snapper | aru | A | 18 | 15 | – | **9** | – | 8.3m | 141MB |
+| Mirror / 'space between us' / interiority | `session-20260722-123623` | helper | alan | A | 39 | 38 | – | **9** | – | 14.4m | 87MB |
+| two dogs simultaneous | `session-20260722-123630` | snapper | aru | A | 23 | 23 | – | **7** | – | 11.8m | 125MB |
+| *** SIGGRAPH stage / magic | `session-20260723-092744` | snapper | aru | A | 70 | 64 | – | **25** | 1 | 87.2m | 1.5GB |
 
 ## The two IDEAS performances
 
