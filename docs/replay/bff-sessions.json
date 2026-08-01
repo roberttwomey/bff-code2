@@ -1,6 +1,6 @@
 {
  "schema": "bff.sessions/2",
- "generated": "2026-08-01T14:03:52",
+ "generated": "2026-08-01T14:22:39",
  "archive_root": "/Volumes/Cohab2024/BFF/logs-all",
  "derived_root": "/Volumes/Cohab2024/BFF/processed",
  "path_convention": "session/media paths relative to archive_root; processed/retranscription paths relative to derived_root",
@@ -13679,6 +13679,45 @@
    "replay_tier": "A"
   },
   {
+   "session_id": "session-20260720-185752",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-185752",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260720-185752/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-20T18:58:53",
+     "end_iso": "2026-07-20T19:01:38",
+     "wavs": 4
+    }
+   ],
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 4,
+    "speaker_bleed": 0,
+    "audio_s": 224.5
+   },
+   "media": {
+    "chunks": 4,
+    "telemetry_span_epoch": [
+     1784599073.6377296,
+     1784599298.1993527
+    ],
+    "has_video": true,
+    "camera_path": "snapper/session-20260720-185752/camera_path.jsonl"
+   },
+   "replay_tier": "A"
+  },
+  {
    "session_id": "session-20260720-190138",
    "group": "snapper",
    "session_dir": "snapper/session-20260720-190138",
@@ -13957,6 +13996,120 @@
     ],
     "has_video": true,
     "camera_path": "snapper/session-20260720-190838/camera_path.jsonl"
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260720-192519",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-192519",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260720-192519/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-20T19:26:21",
+     "end_iso": "2026-07-20T19:27:19",
+     "wavs": 2
+    }
+   ],
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 2,
+    "speaker_bleed": 0,
+    "audio_s": 117.9
+   },
+   "media": {
+    "chunks": 2,
+    "telemetry_span_epoch": [
+     1784600721.3801317,
+     1784600839.6805842
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260720-192855",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-192855",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260720-192855/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-20T19:29:56",
+     "end_iso": "2026-07-20T19:30:20",
+     "wavs": 2
+    }
+   ],
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 2,
+    "speaker_bleed": 0,
+    "audio_s": 83.9
+   },
+   "media": {
+    "chunks": 2,
+    "telemetry_span_epoch": [
+     1784600936.5804799,
+     1784601020.5487452
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260720-193027",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-193027",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260720-193027/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-20T19:31:28",
+     "end_iso": "2026-07-20T19:31:51",
+     "wavs": 2
+    }
+   ],
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 2,
+    "speaker_bleed": 0,
+    "audio_s": 82.9
+   },
+   "media": {
+    "chunks": 2,
+    "telemetry_span_epoch": [
+     1784601028.2376587,
+     1784601111.1468918
+    ],
+    "has_video": true
    },
    "replay_tier": "A"
   },
@@ -16036,6 +16189,175 @@
    "replay_tier": "A"
   },
   {
+   "session_id": "session-20260720-213420",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260720-213420",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 5,
+    "telemetry_span_epoch": [
+     1784608462.3434162,
+     1784608708.3324072
+    ],
+    "has_video": true,
+    "camera_path": "snapper/session-20260720-213420/camera_path.jsonl"
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260721-123809",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260721-123809",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260721-123809/retranscription.json"
+   },
+   "blocks": [
+    {
+     "block": 1,
+     "start_iso": "2026-07-21T12:38:54",
+     "end_iso": "2026-07-21T12:38:54",
+     "wavs": 1
+    }
+   ],
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 1,
+    "speaker_bleed": 0,
+    "audio_s": 43.8
+   },
+   "media": {
+    "chunks": 1,
+    "telemetry_span_epoch": [
+     1784662690.1056466,
+     1784662734.006991
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260721-125121",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260721-125121",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 3,
+    "telemetry_span_epoch": [
+     1784663482.840563,
+     1784663653.836298
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260721-184824",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260721-184824",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 3,
+    "telemetry_span_epoch": [
+     1784684905.385807,
+     1784685347.38682
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260721-185552",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260721-185552",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 6,
+    "telemetry_span_epoch": [
+     1784685353.937776,
+     1784685688.938368
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260721-191915",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260721-191915",
+   "is_variant": false,
+   "curated": false,
+   "persona": null,
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 6,
+    "telemetry_span_epoch": [
+     1784686816.842263,
+     1784687104.842796
+    ],
+    "has_video": true
+   },
+   "replay_tier": "A"
+  },
+  {
    "session_id": "session-20260721-192456",
    "group": "snapper",
    "session_dir": "snapper/session-20260721-192456",
@@ -16184,6 +16506,38 @@
       "bytes": 2781
      }
     }
+   },
+   "replay_tier": "A"
+  },
+  {
+   "session_id": "session-20260722-085714",
+   "group": "snapper",
+   "session_dir": "snapper/session-20260722-085714",
+   "is_variant": false,
+   "curated": false,
+   "transcript": "snapper/session-20260722-085714/session.jsonl",
+   "persona": null,
+   "retranscription": {
+    "model": "distil-large-v3",
+    "path": "retranscribed/snapper/session-20260722-085714/retranscription.json"
+   },
+   "blocks": [],
+   "counts": {
+    "input_wavs": 0,
+    "response_wavs": 0,
+    "cue_wavs": 0,
+    "empty_wavs": 0,
+    "recovered_speech": 0,
+    "speaker_bleed": 0,
+    "audio_s": 0.0
+   },
+   "media": {
+    "chunks": 6,
+    "telemetry_span_epoch": [
+     1784736799.6789188,
+     1784737088.675607
+    ],
+    "has_video": true
    },
    "replay_tier": "A"
   },
@@ -30502,159 +30856,6 @@
    "replay_tier": "A"
   },
   {
-   "session_id": "session-20260720-185752",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-185752",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-185752/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-20T18:58:53",
-     "end_iso": "2026-07-20T19:01:38",
-     "wavs": 4
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 4,
-    "speaker_bleed": 0,
-    "audio_s": 224.5
-   },
-   "media": {
-    "chunks": 4,
-    "telemetry_span_epoch": [
-     1784599073.6377296,
-     1784599298.1993527
-    ],
-    "has_video": true,
-    "camera_path": "_review-unattributed-robot/session-20260720-185752/camera_path.jsonl"
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260720-192519",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-192519",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-192519/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-20T19:26:21",
-     "end_iso": "2026-07-20T19:27:19",
-     "wavs": 2
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 2,
-    "speaker_bleed": 0,
-    "audio_s": 117.9
-   },
-   "media": {
-    "chunks": 2,
-    "telemetry_span_epoch": [
-     1784600721.3801317,
-     1784600839.6805842
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260720-192855",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-192855",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-192855/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-20T19:29:56",
-     "end_iso": "2026-07-20T19:30:20",
-     "wavs": 2
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 2,
-    "speaker_bleed": 0,
-    "audio_s": 83.9
-   },
-   "media": {
-    "chunks": 2,
-    "telemetry_span_epoch": [
-     1784600936.5804799,
-     1784601020.5487452
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260720-193027",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-193027",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260720-193027/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-20T19:31:28",
-     "end_iso": "2026-07-20T19:31:51",
-     "wavs": 2
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 2,
-    "speaker_bleed": 0,
-    "audio_s": 82.9
-   },
-   "media": {
-    "chunks": 2,
-    "telemetry_span_epoch": [
-     1784601028.2376587,
-     1784601111.1468918
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
    "session_id": "session-20260720-211156",
    "group": "_review-unattributed-robot",
    "session_dir": "_review-unattributed-robot/session-20260720-211156",
@@ -30679,207 +30880,6 @@
     "has_video": false
    },
    "replay_tier": "C"
-  },
-  {
-   "session_id": "session-20260720-213420",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260720-213420",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {
-    "chunks": 5,
-    "telemetry_span_epoch": [
-     1784608462.3434162,
-     1784608708.3324072
-    ],
-    "has_video": true,
-    "camera_path": "_review-unattributed-robot/session-20260720-213420/camera_path.jsonl"
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260721-123809",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260721-123809",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260721-123809/retranscription.json"
-   },
-   "blocks": [
-    {
-     "block": 1,
-     "start_iso": "2026-07-21T12:38:54",
-     "end_iso": "2026-07-21T12:38:54",
-     "wavs": 1
-    }
-   ],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 1,
-    "speaker_bleed": 0,
-    "audio_s": 43.8
-   },
-   "media": {
-    "chunks": 1,
-    "telemetry_span_epoch": [
-     1784662690.1056466,
-     1784662734.006991
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260721-125121",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260721-125121",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {
-    "chunks": 3,
-    "telemetry_span_epoch": [
-     1784663482.840563,
-     1784663653.836298
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260721-184824",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260721-184824",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {
-    "chunks": 3,
-    "telemetry_span_epoch": [
-     1784684905.385807,
-     1784685347.38682
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260721-185552",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260721-185552",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {
-    "chunks": 6,
-    "telemetry_span_epoch": [
-     1784685353.937776,
-     1784685688.938368
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260721-191915",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260721-191915",
-   "is_variant": false,
-   "curated": false,
-   "persona": null,
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {
-    "chunks": 6,
-    "telemetry_span_epoch": [
-     1784686816.842263,
-     1784687104.842796
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
-  },
-  {
-   "session_id": "session-20260722-085714",
-   "group": "_review-unattributed-robot",
-   "session_dir": "_review-unattributed-robot/session-20260722-085714",
-   "is_variant": false,
-   "curated": false,
-   "transcript": "_review-unattributed-robot/session-20260722-085714/session.jsonl",
-   "persona": null,
-   "retranscription": {
-    "model": "distil-large-v3",
-    "path": "retranscribed/_review-unattributed-robot/session-20260722-085714/retranscription.json"
-   },
-   "blocks": [],
-   "counts": {
-    "input_wavs": 0,
-    "response_wavs": 0,
-    "cue_wavs": 0,
-    "empty_wavs": 0,
-    "recovered_speech": 0,
-    "speaker_bleed": 0,
-    "audio_s": 0.0
-   },
-   "media": {
-    "chunks": 6,
-    "telemetry_span_epoch": [
-     1784736799.6789188,
-     1784737088.675607
-    ],
-    "has_video": true
-   },
-   "replay_tier": "A"
   },
   {
    "session_id": "session-20260125-160431",
