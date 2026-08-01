@@ -622,6 +622,28 @@ class SessionTimeline:
         # The per-chunk indices are already time-ordered and chunks are sorted,
         # so the concatenated arrays are globally sorted.
         self.detections.sort(key=lambda x: x["t"])
+        dialogue = self._collect_dialogue(session, events) if (want_audio and session.is_dir()) else []
+
+        # Map event object id -> start_epoch (beginning of utterance)
+        event_start_times = {}
+        for d in dialogue:
+            ev = d.get("event")
+            if ev and d.get("start_epoch") is not None:
+                event_start_times[id(ev)] = d["start_epoch"]
+
+        def get_forced_rate(wav_path: Path, etype: str | None = None) -> int | None:
+            # Only post-20260721 Piper assistant response wavs report 22050 in header but hold 48000 Hz samples.
+            m = re.search(r"(\d{8})", session.name)
+            date_str = m.group(1) if m else ""
+            is_post_cutoff = date_str >= "20260721"
+            if is_post_cutoff and (etype == "assistant" or wav_path.name.endswith("-response.wav")):
+                try:
+                    with wave.open(str(wav_path), "rb") as w:
+                        if w.getframerate() == 22050:
+                            return SPEECH_TRUE_RATE
+                except Exception:
+                    pass
+            return None
 
         for e in events:
             if e.get("type") not in ("user", "assistant", "assistant_chunk"):
@@ -629,6 +651,20 @@ class SessionTimeline:
             et = parse_event_time(e.get("timestamp"))
             if et is None:
                 continue
+
+            # Display transcript text at the beginning of the utterance rather than the end
+            if id(e) in event_start_times:
+                et = event_start_times[id(e)]
+            elif e.get("type") == "assistant" and e.get("audio_path"):
+                base_name = os.path.basename(e["audio_path"])
+                wav = session / base_name
+                if not wav.exists():
+                    wav = session / "speech" / base_name
+                if wav.exists():
+                    frate = get_forced_rate(wav, "assistant")
+                    dur = wav_duration(wav, frate)
+                    et = et - dur
+
             self.events.append({"t": et - t0, "record": e})
             end = max(end, et - t0)
         self.events.sort(key=lambda x: x["t"])
@@ -691,12 +727,12 @@ class SessionTimeline:
                     pass
             return None
 
-        def add(path: Path, start_epoch, forced_rate):
+        def add(path: Path, start_epoch, forced_rate, event=None):
             if path.name in seen or not path.exists() or start_epoch is None:
                 return
             seen.add(path.name)
             clips.append({"path": path, "start_epoch": start_epoch,
-                          "forced_rate": forced_rate})
+                          "forced_rate": forced_rate, "event": event})
 
         for e in events:
             etype = e.get("type")
@@ -715,7 +751,7 @@ class SessionTimeline:
                     start = (end_epoch - dur) if end_epoch is not None else None
                 else:  # user speech (incl. the utterance that triggered a reset)
                     start = wav.stat().st_mtime - dur
-                add(wav, start, frate)
+                add(wav, start, frate, event=e)
 
         for e in events:
             if e.get("type") != "reset":
