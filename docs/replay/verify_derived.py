@@ -11,7 +11,7 @@ already happened twice. This checks the invariants that catch it.
 Exit status 0 if every check passes, 1 otherwise, so it can gate a commit.
 Env: BFF_ARCHIVE_ROOT, BFF_DERIVED_ROOT.
 """
-import os, sys, json, argparse
+import os, re, sys, json, argparse
 
 ROOT    = os.environ.get("BFF_ARCHIVE_ROOT", "/Volumes/Cohab2024/BFF/logs-all")
 DERIVED = os.environ.get("BFF_DERIVED_ROOT", "/Volumes/Cohab2024/BFF/processed")
@@ -19,6 +19,13 @@ HERE    = os.path.dirname(os.path.abspath(__file__))
 RETRANS = os.path.join(DERIVED, "retranscribed")
 COMPLETE= os.path.join(DERIVED, "complete-logs")
 SKIP    = {"_model-comparison"}
+
+# Piper wavs written from this date declare 22050 Hz but hold 48000 Hz samples,
+# so they must be transcribed at 48 kHz and carry a `rate_corrected` block.
+# startup.wav is written by a different path and is genuinely 22050 - converting
+# it makes transcription markedly worse, so it must NOT be marked. Both
+# directions are checked: the first pass at this fix got the second one wrong.
+RATE_CUTOFF = "20260721"
 
 class Report:
     def __init__(self, quiet): self.quiet=quiet; self.failed=0; self.checks=0
@@ -71,6 +78,34 @@ def main():
     R.check("retranscription bundle is in the group its session lives in", misdir, total=len(bundles))
     R.check("retranscription in-file `group` matches its directory", misfield, total=len(bundles))
     R.check("no orphaned retranscription bundles", orphan, total=len(bundles))
+
+    # 1b. sample-rate correction, both directions
+    unmarked, wrongly_marked = [], []
+    nresp = nstartup = 0
+    for g in sorted(os.listdir(RETRANS)):
+        gp = os.path.join(RETRANS, g)
+        if not os.path.isdir(gp) or g in SKIP: continue
+        for sid in sorted(os.listdir(gp)):
+            f = os.path.join(gp, sid, "retranscription.json")
+            if not os.path.exists(f): continue
+            m = re.search(r"session-(\d{8})", sid)
+            if not m: continue
+            try: d = json.load(open(f))
+            except Exception: continue
+            for w in d.get("wavs", []):
+                base = os.path.basename(w.get("file", ""))
+                if base == "startup.wav":
+                    nstartup += 1
+                    if w.get("rate_corrected"):
+                        wrongly_marked.append(f"{g}/{sid}/{base} — startup.wav is genuinely 22050")
+                elif base.endswith("-response.wav") and w.get("duration_s") is not None:
+                    if m.group(1) < RATE_CUTOFF: continue
+                    nresp += 1
+                    if not w.get("rate_corrected"):
+                        unmarked.append(f"{g}/{sid}/{base}")
+    R.check(f"response wavs dated >= {RATE_CUTOFF} are rate-corrected to 48 kHz",
+            unmarked, total=nresp)
+    R.check("startup.wav is never rate-corrected", wrongly_marked, total=nstartup)
 
     # 2. every session with audio has a bundle
     nobundle=[f"{canonical[sid]}/{sid} ({wav_count(os.path.join(ROOT,canonical[sid],sid))} wavs)"
