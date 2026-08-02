@@ -64,17 +64,64 @@ dotenv.load_dotenv()
 SPEECH_TRUE_RATE = 48000
 
 
-def get_speech_forced_rate(wav_path: Path, etype: str | None = None) -> int | None:
-    """Piper assistant response wavs write a 22050 Hz header over 48000 Hz audio samples.
-    User microphone speech recordings (turn-NNN-input.wav) and cue clips use their genuine header rate.
+_RATE_CACHE: dict[str, set[str]] = {}
+
+
+def _corrected_wavs(session_dir: Path) -> set[str]:
+    """Names of the response wavs whose declared rate is a lie, per the archive.
+
+    Which Piper wavs mislabel their rate is NOT a function of the session date.
+    Most pre-2026-07-21 wavs are genuinely 22050; most later ones hold 48000 under
+    a 22050 header; and the 1969-clock sessions (unset RTC) are mixed - 41 are
+    really 48000 and 367 are not. No date rule can express that, and guessing
+    wrong plays the audio at 2.18x the correct speed in either direction.
+
+    The re-transcription pass settled it per file by transcribing both ways and
+    scoring against the logged text. Its verdict is recorded as `rate_corrected`
+    in retranscription.json, which is what this reads.
     """
-    if etype == "assistant" or wav_path.name.endswith("-response.wav"):
+    key = str(session_dir)
+    if key in _RATE_CACHE:
+        return _RATE_CACHE[key]
+    names: set[str] = set()
+    for p in (session_dir / "transcript" / "retranscription.json",
+              session_dir / "retranscription.json"):
+        if not p.exists():
+            continue
         try:
-            with wave.open(str(wav_path), "rb") as w:
-                if w.getframerate() == 22050:
-                    return SPEECH_TRUE_RATE
-        except Exception:
-            pass
+            data = json.loads(p.read_text(encoding="utf-8"))
+        except Exception as ex:
+            print(f"[Replay] could not read {p}: {ex}")
+            continue
+        for w in data.get("wavs", []):
+            if w.get("rate_corrected") and w.get("file"):
+                names.add(os.path.basename(w["file"]))
+        break
+    _RATE_CACHE[key] = names
+    return names
+
+
+def get_speech_forced_rate(wav_path: Path, etype: str | None = None,
+                           session_dir: Path | None = None) -> int | None:
+    """The true sample rate for a speech wav, or None to trust its header.
+
+    Only wavs the archive has positively identified as mislabelled are forced;
+    everything else plays at its declared rate. Falling back to the header when
+    no re-transcription bundle is present is the safe default - it is what the
+    file itself claims, rather than a guess.
+    """
+    if not (etype == "assistant" or wav_path.name.endswith("-response.wav")):
+        return None
+    if session_dir is None:
+        return None
+    if wav_path.name not in _corrected_wavs(session_dir):
+        return None
+    try:
+        with wave.open(str(wav_path), "rb") as w:
+            if w.getframerate() != SPEECH_TRUE_RATE:
+                return SPEECH_TRUE_RATE
+    except Exception:
+        pass
     return None
 
 
@@ -484,6 +531,12 @@ class SessionTimeline:
         self.device_name = device or f"{self.robot_name.lower()}.local"
 
     def _get_retranscribed_map(self, session_dir: Path) -> dict:
+        """Load the distil-large-v3 text keyed by wav name and (turn, role).
+
+        Not used for display - see the note in the event loop. Kept because it is
+        the natural hook for an optional "show what was audible" toggle, which is
+        a different question from "show what the model saw".
+        """
         m = {}
         paths = []
         if session_dir.is_dir():
@@ -529,7 +582,6 @@ class SessionTimeline:
 
     def _build(self, include_mic: bool, want_audio: bool):
         session = self.session_dir
-        retrans_map = self._get_retranscribed_map(session)
         events = _read_jsonl(session / "session.jsonl")
         if not events:
             events = _read_jsonl(session / "transcript" / "session.jsonl")
@@ -698,18 +750,13 @@ class SessionTimeline:
             if et is None:
                 continue
 
-            # Prefer high-quality retranscribed text over live tiny.en logged_text
-            apath = e.get("audio_path", "")
-            base = os.path.basename(apath) if apath else ""
-            turn_key = (e.get("turn"), e.get("type"))
-            retrans_txt = retrans_map.get(base) or retrans_map.get(turn_key)
-            if retrans_txt:
-                if "text" in e:
-                    e["text"] = retrans_txt
-                if "reply" in e:
-                    e["reply"] = retrans_txt
-                if "text" not in e and "reply" not in e:
-                    e["text"] = retrans_txt
+            # Deliberately NOT overridden with the re-transcription. The logged
+            # text is what the model actually had in context at that moment, so
+            # it is what a replay of the moment should show. The re-transcription
+            # is a better record of what was *audible* - it recovers speech the
+            # live system dropped - which is why the key-phrase analysis uses it,
+            # but replaying it here inserts turns the dog never saw: noise-
+            # triggered fragments like "thank you" that it was not responding to.
 
             # Display transcript text at the beginning of the utterance rather than the end
             if id(e) in event_start_times:
@@ -720,7 +767,7 @@ class SessionTimeline:
                 if not wav.exists():
                     wav = session / "speech" / base_name
                 if wav.exists():
-                    frate = get_speech_forced_rate(wav, "assistant")
+                    frate = get_speech_forced_rate(wav, "assistant", session)
                     dur = wav_duration(wav, frate)
                     et = et - dur
 
@@ -787,7 +834,7 @@ class SessionTimeline:
                     wav = session / "speech" / base_name
                 if not wav.exists():
                     continue
-                frate = get_speech_forced_rate(wav, etype)
+                frate = get_speech_forced_rate(wav, etype, session)
                 dur = wav_duration(wav, frate)
                 if etype == "assistant":
                     end_epoch = parse_event_time(e.get("timestamp"))
@@ -808,19 +855,19 @@ class SessionTimeline:
                 wav = session / "speech" / base_name
             if not wav.exists():
                 continue
-            frate = get_speech_forced_rate(wav)
+            frate = get_speech_forced_rate(wav, None, session)
             add(wav, parse_event_time(e.get("timestamp")), frate)
 
         wake_wavs = list(session.glob("*-wake.wav"))
         if (session / "speech").exists():
             wake_wavs.extend((session / "speech").glob("*-wake.wav"))
         for wav in sorted(wake_wavs):
-            frate = get_speech_forced_rate(wav)
+            frate = get_speech_forced_rate(wav, None, session)
             add(wav, wav.stat().st_mtime, frate)
 
         for startup in (session / "startup.wav", session / "speech" / "startup.wav"):
             if startup.exists():
-                frate = get_speech_forced_rate(startup)
+                frate = get_speech_forced_rate(startup, None, session)
                 add(startup, startup.stat().st_mtime, frate)
                 break
 
