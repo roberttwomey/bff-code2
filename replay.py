@@ -125,6 +125,37 @@ def get_speech_forced_rate(wav_path: Path, etype: str | None = None,
     return None
 
 
+def resolve_chunk_video(cdir: Path) -> Path | None:
+    """The playable video for a chunk, preferring a repaired copy.
+
+    122 chunk videos in the archive have no moov atom - OpenCV only writes the
+    index on release(), so a hard shutdown truncates whatever chunk was open.
+    It is always the session's last chunk, i.e. the end of a take.
+    fix_recordings.py rebuilds them alongside the derived work, at
+    processed/<group>/<session>/repaired/<chunk>/video.mp4, and deliberately
+    leaves the broken original in place. Reading the original regardless drops
+    the ending of 119 sessions on the floor.
+    """
+    own = cdir / "video.mp4"
+    session = cdir.parent
+    cands = [
+        # by-phase layout gathers the session's files under one directory
+        session / "repaired" / cdir.name / "video.mp4",
+        session.parent / "repaired" / cdir.name / "video.mp4",
+    ]
+    derived = os.getenv("BFF_DERIVED_ROOT", "/Volumes/Cohab2024/BFF/processed")
+    if derived and session.parent.name:
+        cands.append(Path(derived) / session.parent.name / session.name /
+                     "repaired" / cdir.name / "video.mp4")
+    for c in cands:
+        try:
+            if c.exists() and c.resolve() != own.resolve():
+                return c
+        except OSError:
+            continue
+    return own if own.exists() else None
+
+
 # The single rate the mixed replay audio is delivered at. The browser's
 # AudioContext resamples per chunk to the output device anyway; 24 kHz keeps the
 # in-memory master mix small without audibly hurting speech.
@@ -644,7 +675,8 @@ class SessionTimeline:
             starts = [s for s in starts if s is not None]
             start_epoch = min(starts) if starts else None
 
-            video_path = str(cdir / "video.mp4") if (cdir / "video.mp4").exists() else None
+            resolved = resolve_chunk_video(cdir)
+            video_path = str(resolved) if resolved else None
             vdur, fps = 0.0, 30.0
             if video_path:
                 cap = cv2.VideoCapture(video_path)
@@ -652,8 +684,12 @@ class SessionTimeline:
                     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
                     nfr = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0
                     vdur = (nfr / fps) if fps else 0.0
+                    if resolved.name == "video.mp4" and resolved.parent.parent.name == "repaired":
+                        print(f"[Replay] {cdir.name}: using repaired video "
+                              f"({vdur:.0f}s recovered).")
                 else:
-                    print(f"[Replay] {cdir.name}/video.mp4 is unreadable (truncated?); skipping its video.")
+                    print(f"[Replay] {cdir.name}/video.mp4 is unreadable and has no repaired "
+                          f"copy; skipping its video. Run fix_recordings.py --steps repair.")
                     video_path = None
                 cap.release()
             raw.append({"dir": cdir, "low_p": low_p, "lid_p": lid_p, "det_p": det_p,

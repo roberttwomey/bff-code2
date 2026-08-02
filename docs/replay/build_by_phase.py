@@ -107,14 +107,28 @@ def main():
                 for f in ("retranscription.json", "dialogue.md", "dialogue.srt"):
                     p = os.path.join(DERIVED, "retranscribed", rg, sid, f)
                     if os.path.exists(p): n["transcript"] += link(p, os.path.join(dst, "transcript", f))
-            for g2 in ("snapper", "helper"):
+            # Every group, not just the two that had -processed bundles originally:
+            # the repair pass wrote into processed/mac/ as well, and hardcoding
+            # snapper+helper silently dropped 19 rebuilt videos.
+            for g2 in sorted(os.listdir(DERIVED)):
                 pb = os.path.join(DERIVED, g2, sid)
-                if not os.path.isdir(pb): continue
+                if g2 in ("retranscribed", "complete-logs") or not os.path.isdir(pb): continue
                 for r, _, fs in os.walk(pb):
                     rel = os.path.relpath(r, pb)
                     for f in fs:
                         if f == ".DS_Store": continue
                         s = os.path.join(r, f)
+                        if rel.startswith("repaired") and f == "video.mp4":
+                            # A rebuilt chunk video. It must REPLACE the broken original
+                            # already linked from the raw session, not sit beside it -
+                            # otherwise the gathered tree still hands out the unplayable
+                            # file and the end of the take is lost.
+                            chunk = os.path.basename(rel)
+                            dstv = os.path.join(dst, "video", chunk, f)
+                            if os.path.exists(dstv): os.unlink(dstv)
+                            n["video"] += link(s, dstv)
+                            n["repaired"] += 1
+                            continue
                         if rel.startswith("speech"):      sub = "speech-48k"
                         elif f.endswith(".srt"):          sub = "subtitles"
                         elif f.endswith((".mp4", ".webm")): sub = "video"
