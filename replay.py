@@ -64,6 +64,36 @@ dotenv.load_dotenv()
 SPEECH_TRUE_RATE = 48000
 
 
+_DERIVED_CACHE: dict[str, Path | None] = {}
+
+
+def derived_session_dir(session_dir: Path) -> Path | None:
+    """The processed/ bundle for a session, wherever the session itself came from.
+
+    A session can be replayed from the archive (logs-all/<group>/<id>), from the
+    gathered by-phase tree, or straight out of the live capture dir (~/bff/logs),
+    and only the first of those sits next to its machine group. Locating the
+    bundle by session id instead means the repaired videos and the sample-rate
+    verdicts are found in all three cases - otherwise replaying the live copy
+    silently loses both.
+    """
+    sid = session_dir.name
+    if sid in _DERIVED_CACHE:
+        return _DERIVED_CACHE[sid]
+    root = Path(os.getenv("BFF_DERIVED_ROOT", "/Volumes/Cohab2024/BFF/processed"))
+    found = None
+    if root.is_dir():
+        for g in sorted(os.listdir(root)):
+            if g in ("retranscribed", "complete-logs"):
+                continue
+            p = root / g / sid
+            if p.is_dir():
+                found = p
+                break
+    _DERIVED_CACHE[sid] = found
+    return found
+
+
 _RATE_CACHE: dict[str, set[str]] = {}
 
 
@@ -84,8 +114,13 @@ def _corrected_wavs(session_dir: Path) -> set[str]:
     if key in _RATE_CACHE:
         return _RATE_CACHE[key]
     names: set[str] = set()
-    for p in (session_dir / "transcript" / "retranscription.json",
-              session_dir / "retranscription.json"):
+    cands = [session_dir / "transcript" / "retranscription.json",
+             session_dir / "retranscription.json"]
+    root = Path(os.getenv("BFF_DERIVED_ROOT", "/Volumes/Cohab2024/BFF/processed")) / "retranscribed"
+    if root.is_dir():
+        for g in sorted(os.listdir(root)):
+            cands.append(root / g / session_dir.name / "retranscription.json")
+    for p in cands:
         if not p.exists():
             continue
         try:
@@ -147,6 +182,9 @@ def resolve_chunk_video(cdir: Path) -> Path | None:
     if derived and session.parent.name:
         cands.append(Path(derived) / session.parent.name / session.name /
                      "repaired" / cdir.name / "video.mp4")
+    dsd = derived_session_dir(session)
+    if dsd is not None:
+        cands.append(dsd / "repaired" / cdir.name / "video.mp4")
     for c in cands:
         try:
             if c.exists() and c.resolve() != own.resolve():
@@ -290,14 +328,21 @@ def load_curated_playlist() -> list[dict]:
             p = captures_root / sid
             if p.is_dir():
                 cand_path = p
-        # 2. Search in archive_root across subdirectories
+        # 2. Search in archive_root across the machine groups. Take the richest
+        #    copy, not the first: _conflicts holds partial duplicates and sorts
+        #    ahead of every machine name, so picking alphabetically handed back a
+        #    copy with no chunk_* at all - session-19691231-160201 lost all 10 of
+        #    its video chunks that way.
         if not cand_path and archive_root and archive_root.exists():
             try:
-                for g in sorted(os.listdir(archive_root)):
-                    p = archive_root / g / sid
-                    if p.is_dir():
-                        cand_path = p
-                        break
+                cands = [archive_root / g / sid for g in sorted(os.listdir(archive_root))
+                         if (archive_root / g / sid).is_dir()]
+                if cands:
+                    cand_path = max(cands, key=lambda p: (
+                        len(list(p.glob("chunk_*"))),
+                        p.parent.name != "_conflicts",
+                        sum(1 for _ in p.iterdir()),
+                    ))
             except Exception:
                 pass
         # 3. Search in by_phase_root
