@@ -580,6 +580,8 @@ class SessionTimeline:
         self.detections: list[dict] = []     # small; held in full: {t, detections}
         self.events: list[dict] = []         # user/assistant lines: {t, record}
         self.master_audio = np.zeros(0, dtype=np.int16)
+        self.audio_spans: list[dict] = []
+        self._coverage = None
         self.duration = 0.0
         self.robot_name = "SNAPPER"
         self.device_name = "snapper.local"
@@ -970,6 +972,9 @@ class SessionTimeline:
         if total == 0:
             return
         mix = np.zeros(total, dtype=np.float32)
+        # Remember where speech actually sits, for the scrubber's coverage bands.
+        self.audio_spans = [{"start": start / rate, "dur": len(samples) / rate}
+                            for start, samples in loaded]
         for start, samples in loaded:
             mix[start:start + len(samples)] += samples
         peak = float(np.max(np.abs(mix))) if total else 0.0
@@ -1020,6 +1025,37 @@ class SessionTimeline:
         if j >= 0 and (t - self.detections[j]["t"]) <= window:
             return self.detections[j]["detections"]
         return []
+
+    def coverage(self) -> dict:
+        """Timeline spans where each stream actually has data.
+
+        The streams do not cover the session evenly: capture often starts well
+        after the conversation does (one session's chunks are numbered 30-42 and
+        begin 30 minutes in), and lidar is absent entirely whenever the dog never
+        stood, since the L1 only spins when standing. Without this the scrubber
+        looks identical whether a stream is missing or merely silent, and seeking
+        to find picture is guesswork.
+        """
+        if getattr(self, "_coverage", None) is not None:
+            return self._coverage
+        def merge(spans, gap=1.0):
+            spans = sorted(s for s in spans if s[1] > s[0])
+            out = []
+            for a, b in spans:
+                if out and a - out[-1][1] <= gap: out[-1][1] = max(out[-1][1], b)
+                else: out.append([a, b])
+            return [[round(a, 2), round(b, 2)] for a, b in out]
+        video = [(c.offset, c.offset + c.video_duration)
+                 for c in self.chunks if c.video_path and c.video_duration > 0]
+        tele = [(c.offset, c.offset + max(c.video_duration, 1.0)) for c in self.chunks]
+        lidar = []
+        if self.lid_t:
+            lidar = [(self.lid_t[0], self.lid_t[-1])]
+        speech = [(c["start"], c["start"] + c["dur"]) for c in getattr(self, "audio_spans", [])]
+        self._coverage = {"duration": round(self.duration, 2),
+                          "video": merge(video), "telemetry": merge(tele),
+                          "lidar": merge(lidar), "speech": merge(speech, gap=2.0)}
+        return self._coverage
 
     def lidar_single(self, t: float) -> list:
         j = bisect.bisect_right(self.lid_t, t) - 1
@@ -1588,6 +1624,7 @@ class PlaybackEngine:
             'label': curr.get('label', ''),
             'turn_index': turn_idx,
             'turns_count': len(tl.turn_timestamps) if tl else 0,
+            'coverage': tl.coverage() if tl else None,
             'playlist': [{
                 'index': i['index'],
                 'session_id': i['session_id'],

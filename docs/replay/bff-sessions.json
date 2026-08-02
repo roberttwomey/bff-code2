@@ -1,6 +1,6 @@
 {
  "schema": "bff.sessions/2",
- "generated": "2026-08-01T14:59:11",
+ "generated": "2026-08-02T07:35:32",
  "archive_root": "/Volumes/Cohab2024/BFF/logs-all",
  "derived_root": "/Volumes/Cohab2024/BFF/processed",
  "path_convention": "session/media paths relative to archive_root; processed/retranscription paths relative to derived_root",
@@ -163,7 +163,13 @@
     "empty_wavs": 0,
     "recovered_speech": 12,
     "speaker_bleed": 0,
-    "audio_s": 975.9
+    "audio_s": 839.3
+   },
+   "posture": {
+    "mean_calf_q": 2.755,
+    "stood_up": false,
+    "samples": 827,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
    },
    "media": {
     "vlm_captures": 13,
@@ -173,7 +179,53 @@
      1141.237868128
     ],
     "has_video": true,
-    "camera_path": "snapper/session-19691231-160201/camera_path.jsonl"
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "camera_path": "snapper/session-19691231-160201/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-19691231-160201",
+     "video_clean.mp4": {
+      "path": "snapper/session-19691231-160201/video_clean.mp4",
+      "bytes": 193283834
+     },
+     "video_overlay.mp4": {
+      "path": "snapper/session-19691231-160201/video_overlay.mp4",
+      "bytes": 253569462
+     },
+     "audio_dialogue.wav": {
+      "path": "snapper/session-19691231-160201/audio_dialogue.wav",
+      "bytes": 62486444
+     },
+     "audio_mic.wav": {
+      "path": "snapper/session-19691231-160201/audio_mic.wav",
+      "bytes": 124972844
+     },
+     "speech.srt": {
+      "path": "snapper/session-19691231-160201/speech.srt",
+      "bytes": 1126
+     },
+     "yolo+vlm.srt": {
+      "path": "snapper/session-19691231-160201/yolo+vlm.srt",
+      "bytes": 8438
+     },
+     "bodystate.srt": {
+      "path": "snapper/session-19691231-160201/bodystate.srt",
+      "bytes": 33470
+     },
+     "speech+yolo+vlm+bodystate.srt": {
+      "path": "snapper/session-19691231-160201/speech+yolo+vlm+bodystate.srt",
+      "bytes": 50554
+     },
+     "detections_combined.jsonl": {
+      "path": "snapper/session-19691231-160201/detections_combined.jsonl",
+      "bytes": 2181978
+     },
+     "report.json": {
+      "path": "snapper/session-19691231-160201/report.json",
+      "bytes": 4231
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -263,7 +315,13 @@
     "empty_wavs": 0,
     "recovered_speech": 6,
     "speaker_bleed": 0,
-    "audio_s": 444.5
+    "audio_s": 405.4
+   },
+   "posture": {
+    "mean_calf_q": 2.517,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
    },
    "media": {
     "vlm_captures": 8,
@@ -273,7 +331,16 @@
      2736.314077568
     ],
     "has_video": true,
-    "camera_path": "snapper/session-19691231-163608/camera_path.jsonl"
+    "lidar_bytes": 143925244,
+    "has_lidar": true,
+    "camera_path": "snapper/session-19691231-163608/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-19691231-163608",
+     "report.json": {
+      "path": "snapper/session-19691231-163608/report.json",
+      "bytes": 711
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -407,7 +474,13 @@
     "empty_wavs": 0,
     "recovered_speech": 4,
     "speaker_bleed": 0,
-    "audio_s": 318.9
+    "audio_s": 266.3
+   },
+   "posture": {
+    "mean_calf_q": 1.97,
+    "stood_up": true,
+    "samples": 1137,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
    },
    "media": {
     "vlm_captures": 7,
@@ -416,7 +489,16 @@
      3759.668954624,
      3950.414034976
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 704845453,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-19691231-170233",
+     "report.json": {
+      "path": "snapper/session-19691231-170233/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -9284,6 +9366,12 @@
     "speaker_bleed": 0,
     "audio_s": 237.0
    },
+   "posture": {
+    "mean_calf_q": 1.899,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 5,
@@ -9291,7 +9379,16 @@
      1784406620.7230108,
      1784406869.1578526
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 439774632,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-133013",
+     "report.json": {
+      "path": "snapper/session-20260718-133013/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -9384,13 +9481,29 @@
     "speaker_bleed": 0,
     "audio_s": 53.7
    },
+   "posture": {
+    "mean_calf_q": 2.767,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784407215.9552891,
      1784407255.229798
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-134009",
+     "report.json": {
+      "path": "snapper/session-20260718-134009/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -9437,13 +9550,28 @@
     "speaker_bleed": 0,
     "audio_s": 43.5
    },
+   "posture": {
+    "mean_calf_q": 1.752,
+    "stood_up": true,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784409340.3932598,
      1784409389.1310718
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 80345186,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-141533",
+     "report.json": {
+      "path": "snapper/session-20260718-141533/report.json",
+      "bytes": 910
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -9490,13 +9618,28 @@
     "speaker_bleed": 0,
     "audio_s": 97.7
    },
+   "posture": {
+    "mean_calf_q": 2.458,
+    "stood_up": true,
+    "samples": 521,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784409416.545175,
      1784409495.6686223
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 64226144,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-141649",
+     "report.json": {
+      "path": "snapper/session-20260718-141649/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -9543,13 +9686,29 @@
     "speaker_bleed": 0,
     "audio_s": 113.6
    },
+   "posture": {
+    "mean_calf_q": 2.763,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784410866.4494264,
      1784410980.400668
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-144100",
+     "report.json": {
+      "path": "snapper/session-20260718-144100/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -9602,13 +9761,29 @@
     "speaker_bleed": 0,
     "audio_s": 330.7
    },
+   "posture": {
+    "mean_calf_q": 2.763,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 6,
     "telemetry_span_epoch": [
      1784411972.8996718,
      1784412302.6495194
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-144625",
+     "report.json": {
+      "path": "snapper/session-20260718-144625/report.json",
+      "bytes": 712
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -9655,6 +9830,12 @@
     "speaker_bleed": 0,
     "audio_s": 73.8
    },
+   "posture": {
+    "mean_calf_q": 2.763,
+    "stood_up": false,
+    "samples": 616,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 2,
@@ -9662,7 +9843,17 @@
      1784412347.4483178,
      1784412420.3974817
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-150540",
+     "report.json": {
+      "path": "snapper/session-20260718-150540/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -9753,6 +9944,12 @@
     "speaker_bleed": 0,
     "audio_s": 331.8
    },
+   "posture": {
+    "mean_calf_q": 2.763,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 29,
     "chunks": 6,
@@ -9760,7 +9957,17 @@
      1784415952.1949613,
      1784416283.5583389
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-155642",
+     "report.json": {
+      "path": "snapper/session-20260718-155642/report.json",
+      "bytes": 712
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -9807,6 +10014,12 @@
     "speaker_bleed": 0,
     "audio_s": 59.2
    },
+   "posture": {
+    "mean_calf_q": 2.763,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -9814,7 +10027,17 @@
      1784416326.3895478,
      1784416382.4927306
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-161158",
+     "report.json": {
+      "path": "snapper/session-20260718-161158/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -9861,6 +10084,12 @@
     "speaker_bleed": 0,
     "audio_s": 336.7
    },
+   "posture": {
+    "mean_calf_q": 2.692,
+    "stood_up": false,
+    "samples": 849,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 4,
     "chunks": 4,
@@ -9869,7 +10098,16 @@
      1784417947.280626
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260718-163409/camera_path.jsonl"
+    "lidar_bytes": 437957119,
+    "has_lidar": true,
+    "camera_path": "snapper/session-20260718-163409/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-163409",
+     "report.json": {
+      "path": "snapper/session-20260718-163409/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -9935,6 +10173,12 @@
     "speaker_bleed": 0,
     "audio_s": 359.9
    },
+   "posture": {
+    "mean_calf_q": 2.767,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 7,
     "chunks": 6,
@@ -9942,7 +10186,17 @@
      1784419265.5831153,
      1784419599.0396674
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-170100",
+     "report.json": {
+      "path": "snapper/session-20260718-170100/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10035,6 +10289,12 @@
     "speaker_bleed": 0,
     "audio_s": 284.0
    },
+   "posture": {
+    "mean_calf_q": 1.45,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 5,
     "chunks": 6,
@@ -10043,7 +10303,16 @@
      1784420426.3361716
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260718-171629/camera_path.jsonl"
+    "lidar_bytes": 861569277,
+    "has_lidar": true,
+    "camera_path": "snapper/session-20260718-171629/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260718-171629",
+     "report.json": {
+      "path": "snapper/session-20260718-171629/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10136,6 +10405,12 @@
     "speaker_bleed": 0,
     "audio_s": 33.1
    },
+   "posture": {
+    "mean_calf_q": 1.463,
+    "stood_up": true,
+    "samples": 278,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 1,
@@ -10143,7 +10418,16 @@
      1784464390.0218506,
      1784464424.0456069
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 248485260,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-053303",
+     "report.json": {
+      "path": "snapper/session-20260719-053303/report.json",
+      "bytes": 908
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10196,6 +10480,12 @@
     "speaker_bleed": 0,
     "audio_s": 357.9
    },
+   "posture": {
+    "mean_calf_q": 2.244,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 17,
     "chunks": 6,
@@ -10203,7 +10493,16 @@
      1784465814.1001658,
      1784466174.1841545
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 336708178,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-053441",
+     "report.json": {
+      "path": "snapper/session-20260719-053441/report.json",
+      "bytes": 714
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10235,13 +10534,29 @@
     "speaker_bleed": 0,
     "audio_s": 2.1
    },
+   "posture": {
+    "mean_calf_q": 2.765,
+    "stood_up": false,
+    "samples": 38,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784466205.1848114,
      1784466207.3793085
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-060317",
+     "report.json": {
+      "path": "snapper/session-20260719-060317/report.json",
+      "bytes": 821
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10288,6 +10603,12 @@
     "speaker_bleed": 0,
     "audio_s": 283.1
    },
+   "posture": {
+    "mean_calf_q": 2.293,
+    "stood_up": true,
+    "samples": 933,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 13,
     "chunks": 6,
@@ -10295,7 +10616,9 @@
      1784466227.378187,
      1784466569.0133686
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 182865597,
+    "has_lidar": true
    },
    "replay_tier": "A"
   },
@@ -10342,13 +10665,28 @@
     "speaker_bleed": 0,
     "audio_s": 65.5
    },
+   "posture": {
+    "mean_calf_q": 2.219,
+    "stood_up": true,
+    "samples": 429,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784467486.33234,
      1784467555.5186453
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 44169703,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-062438",
+     "report.json": {
+      "path": "snapper/session-20260719-062438/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10395,6 +10733,12 @@
     "speaker_bleed": 0,
     "audio_s": 198.7
    },
+   "posture": {
+    "mean_calf_q": 2.249,
+    "stood_up": true,
+    "samples": 849,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 4,
     "telemetry_span_epoch": [
@@ -10402,7 +10746,16 @@
      1784468143.0354726
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260719-063157/camera_path.jsonl"
+    "lidar_bytes": 122229147,
+    "has_lidar": true,
+    "camera_path": "snapper/session-20260719-063157/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-063157",
+     "report.json": {
+      "path": "snapper/session-20260719-063157/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10449,6 +10802,12 @@
     "speaker_bleed": 0,
     "audio_s": 57.6
    },
+   "posture": {
+    "mean_calf_q": 1.937,
+    "stood_up": true,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 2,
@@ -10457,6 +10816,8 @@
      1784468221.2641647
     ],
     "has_video": true,
+    "lidar_bytes": 45688327,
+    "has_lidar": true,
     "camera_path": "snapper/session-20260719-063559/camera_path.jsonl"
    },
    "replay_tier": "A"
@@ -10504,6 +10865,12 @@
     "speaker_bleed": 0,
     "audio_s": 320.7
    },
+   "posture": {
+    "mean_calf_q": 2.34,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 6,
     "chunks": 6,
@@ -10511,7 +10878,16 @@
      1784469163.095385,
      1784469476.9123075
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 618853452,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-064935",
+     "report.json": {
+      "path": "snapper/session-20260719-064935/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10558,6 +10934,12 @@
     "speaker_bleed": 0,
     "audio_s": 107.7
    },
+   "posture": {
+    "mean_calf_q": 1.952,
+    "stood_up": true,
+    "samples": 648,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 2,
@@ -10565,7 +10947,16 @@
      1784469902.4492514,
      1784470001.4291143
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 313316368,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-070456",
+     "report.json": {
+      "path": "snapper/session-20260719-070456/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10612,6 +11003,12 @@
     "speaker_bleed": 0,
     "audio_s": 121.7
    },
+   "posture": {
+    "mean_calf_q": 1.726,
+    "stood_up": true,
+    "samples": 890,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 4,
     "chunks": 3,
@@ -10619,7 +11016,16 @@
      1784470033.0479376,
      1784470163.7083883
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 458459506,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-070706",
+     "report.json": {
+      "path": "snapper/session-20260719-070706/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10667,6 +11073,12 @@
     "speaker_bleed": 0,
     "audio_s": 256.3
    },
+   "posture": {
+    "mean_calf_q": 1.544,
+    "stood_up": true,
+    "samples": 760,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 3,
     "chunks": 5,
@@ -10674,7 +11086,16 @@
      1784470656.978638,
      1784470864.1765475
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 824105284,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-071729",
+     "report.json": {
+      "path": "snapper/session-20260719-071729/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10788,7 +11209,9 @@
    },
    "media": {
     "chunks": 1,
-    "has_video": false
+    "has_video": false,
+    "lidar_bytes": 0,
+    "has_lidar": false
    },
    "replay_tier": "B"
   },
@@ -10836,6 +11259,12 @@
     "speaker_bleed": 0,
     "audio_s": 98.8
    },
+   "posture": {
+    "mean_calf_q": 1.506,
+    "stood_up": true,
+    "samples": 431,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 2,
@@ -10843,7 +11272,16 @@
      1784470960.0056875,
      1784471064.1008148
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 546416495,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-072233",
+     "report.json": {
+      "path": "snapper/session-20260719-072233/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10891,6 +11329,12 @@
     "speaker_bleed": 0,
     "audio_s": 259.9
    },
+   "posture": {
+    "mean_calf_q": 1.568,
+    "stood_up": true,
+    "samples": 841,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 4,
     "chunks": 5,
@@ -10898,7 +11342,16 @@
      1784471109.204958,
      1784471377.3734808
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 900563565,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-072502",
+     "report.json": {
+      "path": "snapper/session-20260719-072502/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -10948,7 +11401,9 @@
    },
    "media": {
     "chunks": 1,
-    "has_video": false
+    "has_video": false,
+    "lidar_bytes": 0,
+    "has_lidar": false
    },
    "replay_tier": "B"
   },
@@ -10998,7 +11453,9 @@
    },
    "media": {
     "chunks": 1,
-    "has_video": false
+    "has_video": false,
+    "lidar_bytes": 0,
+    "has_lidar": false
    },
    "replay_tier": "B"
   },
@@ -11054,7 +11511,9 @@
    },
    "media": {
     "chunks": 1,
-    "has_video": false
+    "has_video": false,
+    "lidar_bytes": 0,
+    "has_lidar": false
    },
    "replay_tier": "B"
   },
@@ -11102,13 +11561,28 @@
     "speaker_bleed": 0,
     "audio_s": 249.9
    },
+   "posture": {
+    "mean_calf_q": 1.755,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 4,
     "telemetry_span_epoch": [
      1784472419.804345,
      1784472601.3534079
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 636843382,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260719-074231",
+     "report.json": {
+      "path": "snapper/session-20260719-074231/report.json",
+      "bytes": 552
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11203,6 +11677,12 @@
     "speaker_bleed": 0,
     "audio_s": 41.8
    },
+   "posture": {
+    "mean_calf_q": 1.444,
+    "stood_up": true,
+    "samples": 370,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -11210,7 +11690,16 @@
      1784571095.0425384,
      1784571139.7719514
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 217169060,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-111127",
+     "report.json": {
+      "path": "snapper/session-20260720-111127/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11258,13 +11747,28 @@
     "speaker_bleed": 0,
     "audio_s": 84.6
    },
+   "posture": {
+    "mean_calf_q": 1.933,
+    "stood_up": true,
+    "samples": 550,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784572353.5554326,
      1784572435.6946638
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 190015503,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-113226",
+     "report.json": {
+      "path": "snapper/session-20260720-113226/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11312,13 +11816,28 @@
     "speaker_bleed": 1,
     "audio_s": 75.9
    },
+   "posture": {
+    "mean_calf_q": 1.699,
+    "stood_up": true,
+    "samples": 407,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784572469.5535305,
      1784572531.0162325
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 164405160,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-113423",
+     "report.json": {
+      "path": "snapper/session-20260720-113423/report.json",
+      "bytes": 674
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11366,13 +11885,29 @@
     "speaker_bleed": 0,
     "audio_s": 73.1
    },
+   "posture": {
+    "mean_calf_q": 2.765,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784572811.092988,
      1784572869.9925323
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-114004",
+     "report.json": {
+      "path": "snapper/session-20260720-114004/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11420,6 +11955,12 @@
     "speaker_bleed": 0,
     "audio_s": 321.8
    },
+   "posture": {
+    "mean_calf_q": 1.908,
+    "stood_up": true,
+    "samples": 1129,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 5,
@@ -11428,7 +11969,16 @@
      1784573339.7564237
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-114405/camera_path.jsonl"
+    "lidar_bytes": 534941850,
+    "has_lidar": true,
+    "camera_path": "snapper/session-20260720-114405/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-114405",
+     "report.json": {
+      "path": "snapper/session-20260720-114405/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11476,13 +12026,29 @@
     "speaker_bleed": 0,
     "audio_s": 64.4
    },
+   "posture": {
+    "mean_calf_q": 2.778,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784573573.9016252,
      1784573629.6010866
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-115247",
+     "report.json": {
+      "path": "snapper/session-20260720-115247/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11530,13 +12096,28 @@
     "speaker_bleed": 1,
     "audio_s": 59.7
    },
+   "posture": {
+    "mean_calf_q": 1.511,
+    "stood_up": true,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784574543.589753,
      1784574600.474751
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 67157350,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-120857",
+     "report.json": {
+      "path": "snapper/session-20260720-120857/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11584,13 +12165,29 @@
     "speaker_bleed": 0,
     "audio_s": 56.9
    },
+   "posture": {
+    "mean_calf_q": 2.761,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784575545.9030795,
      1784575594.3577619
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-122539",
+     "report.json": {
+      "path": "snapper/session-20260720-122539/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11638,13 +12235,22 @@
     "speaker_bleed": 0,
     "audio_s": 3.5
    },
+   "posture": {
+    "mean_calf_q": 2.761,
+    "stood_up": false,
+    "samples": 70,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784575670.0067086,
      1784575673.5113053
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -11692,13 +12298,29 @@
     "speaker_bleed": 0,
     "audio_s": 60.8
    },
+   "posture": {
+    "mean_calf_q": 2.761,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784575724.5112681,
      1784575778.363859
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-122838",
+     "report.json": {
+      "path": "snapper/session-20260720-122838/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11746,13 +12368,28 @@
     "speaker_bleed": 0,
     "audio_s": 81.8
    },
+   "posture": {
+    "mean_calf_q": 1.779,
+    "stood_up": true,
+    "samples": 497,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784576246.6634662,
      1784576326.4508014
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 142008988,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-123720",
+     "report.json": {
+      "path": "snapper/session-20260720-123720/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11800,13 +12437,29 @@
     "speaker_bleed": 0,
     "audio_s": 82.0
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 484,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784576402.2140775,
      1784576467.1235752
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-123955",
+     "report.json": {
+      "path": "snapper/session-20260720-123955/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11854,6 +12507,12 @@
     "speaker_bleed": 1,
     "audio_s": 119.0
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 2,
@@ -11861,7 +12520,17 @@
      1784576684.660795,
      1784576784.80971
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-124438",
+     "report.json": {
+      "path": "snapper/session-20260720-124438/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -11909,13 +12578,29 @@
     "speaker_bleed": 0,
     "audio_s": 79.6
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 572,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784577083.2066736,
      1784577153.261084
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-125116",
+     "report.json": {
+      "path": "snapper/session-20260720-125116/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12012,13 +12697,29 @@
     "speaker_bleed": 1,
     "audio_s": 53.7
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784577923.6536348,
      1784577968.752029
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-130517",
+     "report.json": {
+      "path": "snapper/session-20260720-130517/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12066,13 +12767,29 @@
     "speaker_bleed": 0,
     "audio_s": 56.9
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784578047.5006833,
      1784578095.9213586
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-130721",
+     "report.json": {
+      "path": "snapper/session-20260720-130721/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12120,13 +12837,29 @@
     "speaker_bleed": 0,
     "audio_s": 63.0
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784578273.5091999,
      1784578323.1190546
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-131107",
+     "report.json": {
+      "path": "snapper/session-20260720-131107/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12174,6 +12907,12 @@
     "speaker_bleed": 0,
     "audio_s": 65.6
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -12181,7 +12920,17 @@
      1784578364.0085194,
      1784578420.401267
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-131237",
+     "report.json": {
+      "path": "snapper/session-20260720-131237/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12229,6 +12978,12 @@
     "speaker_bleed": 0,
     "audio_s": 141.9
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 2,
@@ -12236,7 +12991,17 @@
      1784578495.3004117,
      1784578598.8023007
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-131449",
+     "report.json": {
+      "path": "snapper/session-20260720-131449/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12284,13 +13049,29 @@
     "speaker_bleed": 0,
     "audio_s": 69.7
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784578717.0487783,
      1784578773.8000863
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-131830",
+     "report.json": {
+      "path": "snapper/session-20260720-131830/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12338,6 +13119,12 @@
     "speaker_bleed": 0,
     "audio_s": 54.8
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -12345,7 +13132,17 @@
      1784579129.5100615,
      1784579183.5263853
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-132522",
+     "report.json": {
+      "path": "snapper/session-20260720-132522/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12487,13 +13284,28 @@
     "speaker_bleed": 0,
     "audio_s": 87.4
    },
+   "posture": {
+    "mean_calf_q": 1.576,
+    "stood_up": true,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784580350.528033,
      1784580407.4895396
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 85204953,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-134543",
+     "report.json": {
+      "path": "snapper/session-20260720-134543/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12713,13 +13525,22 @@
     "speaker_bleed": 0,
     "audio_s": 5.7
    },
+   "posture": {
+    "mean_calf_q": 2.77,
+    "stood_up": false,
+    "samples": 114,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784582027.750595,
      1784582033.4508295
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -12770,13 +13591,28 @@
     "speaker_bleed": 0,
     "audio_s": 55.2
    },
+   "posture": {
+    "mean_calf_q": 1.46,
+    "stood_up": true,
+    "samples": 408,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784583089.410268,
      1784583150.6436574
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 346248700,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-143128",
+     "report.json": {
+      "path": "snapper/session-20260720-143128/report.json",
+      "bytes": 708
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12824,13 +13660,28 @@
     "speaker_bleed": 0,
     "audio_s": 102.0
    },
+   "posture": {
+    "mean_calf_q": 1.453,
+    "stood_up": true,
+    "samples": 486,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784583172.7562532,
      1784583248.8649006
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 421664654,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-143230",
+     "report.json": {
+      "path": "snapper/session-20260720-143230/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12878,6 +13729,12 @@
     "speaker_bleed": 0,
     "audio_s": 311.7
    },
+   "posture": {
+    "mean_calf_q": 1.947,
+    "stood_up": true,
+    "samples": 794,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 5,
@@ -12885,7 +13742,16 @@
      1784583277.2079833,
      1784583417.331342
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 153119138,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-143429",
+     "report.json": {
+      "path": "snapper/session-20260720-143429/report.json",
+      "bytes": 674
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12933,6 +13799,12 @@
     "speaker_bleed": 0,
     "audio_s": 428.2
    },
+   "posture": {
+    "mean_calf_q": 2.767,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 9,
     "chunks": 6,
@@ -12940,7 +13812,17 @@
      1784591869.2659676,
      1784592205.77992
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-164938",
+     "report.json": {
+      "path": "snapper/session-20260720-164938/report.json",
+      "bytes": 714
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -12988,6 +13870,12 @@
     "speaker_bleed": 0,
     "audio_s": 18.5
    },
+   "posture": {
+    "mean_calf_q": 1.451,
+    "stood_up": true,
+    "samples": 165,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -12995,7 +13883,16 @@
      1784592611.6554954,
      1784592629.9666932
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 86509395,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-171004",
+     "report.json": {
+      "path": "snapper/session-20260720-171004/report.json",
+      "bytes": 823
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13043,6 +13940,12 @@
     "speaker_bleed": 0,
     "audio_s": 11.4
    },
+   "posture": {
+    "mean_calf_q": 2.769,
+    "stood_up": false,
+    "samples": 177,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -13050,7 +13953,17 @@
      1784592930.448622,
      1784592939.279198
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-171524",
+     "report.json": {
+      "path": "snapper/session-20260720-171524/report.json",
+      "bytes": 823
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13145,6 +14058,12 @@
     "speaker_bleed": 0,
     "audio_s": 61.0
    },
+   "posture": {
+    "mean_calf_q": 2.769,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -13152,7 +14071,17 @@
      1784593100.4224,
      1784593145.1386921
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-171814",
+     "report.json": {
+      "path": "snapper/session-20260720-171814/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13200,6 +14129,12 @@
     "speaker_bleed": 0,
     "audio_s": 16.3
    },
+   "posture": {
+    "mean_calf_q": 2.769,
+    "stood_up": false,
+    "samples": 312,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -13207,7 +14142,10 @@
      1784593388.045677,
      1784593403.642535
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -13302,6 +14240,12 @@
     "speaker_bleed": 0,
     "audio_s": 162.0
    },
+   "posture": {
+    "mean_calf_q": 1.48,
+    "stood_up": true,
+    "samples": 559,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 4,
     "chunks": 2,
@@ -13309,7 +14253,16 @@
      1784594637.800709,
      1784594723.2298841
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 295731623,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-174351",
+     "report.json": {
+      "path": "snapper/session-20260720-174351/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13357,6 +14310,12 @@
     "speaker_bleed": 0,
     "audio_s": 305.2
    },
+   "posture": {
+    "mean_calf_q": 1.848,
+    "stood_up": true,
+    "samples": 1192,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 6,
     "chunks": 3,
@@ -13364,7 +14323,16 @@
      1784597242.2959077,
      1784597398.9973028
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 776498715,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-182714",
+     "report.json": {
+      "path": "snapper/session-20260720-182714/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13412,6 +14380,12 @@
     "speaker_bleed": 0,
     "audio_s": 357.4
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 6,
@@ -13419,7 +14393,17 @@
      1784597604.546555,
      1784597944.8524268
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-183217",
+     "report.json": {
+      "path": "snapper/session-20260720-183217/report.json",
+      "bytes": 711
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13467,6 +14451,12 @@
     "speaker_bleed": 0,
     "audio_s": 49.3
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -13474,7 +14464,17 @@
      1784598175.6969526,
      1784598200.5984337
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-184249",
+     "report.json": {
+      "path": "snapper/session-20260720-184249/report.json",
+      "bytes": 823
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13522,6 +14522,12 @@
     "speaker_bleed": 0,
     "audio_s": 57.4
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -13529,7 +14535,17 @@
      1784598253.299144,
      1784598284.3009262
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-184407",
+     "report.json": {
+      "path": "snapper/session-20260720-184407/report.json",
+      "bytes": 823
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13577,6 +14593,12 @@
     "speaker_bleed": 0,
     "audio_s": 153.3
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 2,
@@ -13585,7 +14607,17 @@
      1784598475.5671508
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-184606/camera_path.jsonl"
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "camera_path": "snapper/session-20260720-184606/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-184606",
+     "report.json": {
+      "path": "snapper/session-20260720-184606/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13633,6 +14665,12 @@
     "speaker_bleed": 0,
     "audio_s": 61.8
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -13640,7 +14678,17 @@
      1784598640.9527974,
      1784598679.6103194
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-185034",
+     "report.json": {
+      "path": "snapper/session-20260720-185034/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13688,6 +14736,12 @@
     "speaker_bleed": 0,
     "audio_s": 253.4
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 3,
@@ -13695,7 +14749,17 @@
      1784598734.3122447,
      1784598888.3524084
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-185207",
+     "report.json": {
+      "path": "snapper/session-20260720-185207/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13743,6 +14807,12 @@
     "speaker_bleed": 0,
     "audio_s": 152.3
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -13750,7 +14820,17 @@
      1784599010.029963,
      1784599060.936047
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-185643",
+     "report.json": {
+      "path": "snapper/session-20260720-185643/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13782,6 +14862,12 @@
     "speaker_bleed": 0,
     "audio_s": 224.5
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 4,
     "telemetry_span_epoch": [
@@ -13789,7 +14875,17 @@
      1784599298.1993527
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-185752/camera_path.jsonl"
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "camera_path": "snapper/session-20260720-185752/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-185752",
+     "report.json": {
+      "path": "snapper/session-20260720-185752/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13837,6 +14933,12 @@
     "speaker_bleed": 0,
     "audio_s": 25.5
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -13844,7 +14946,17 @@
      1784599305.39795,
      1784599330.0515583
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-190138",
+     "report.json": {
+      "path": "snapper/session-20260720-190138/report.json",
+      "bytes": 823
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13892,6 +15004,12 @@
     "speaker_bleed": 0,
     "audio_s": 169.5
    },
+   "posture": {
+    "mean_calf_q": 2.149,
+    "stood_up": true,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 4,
     "chunks": 2,
@@ -13899,7 +15017,16 @@
      1784599348.9998927,
      1784599467.864604
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 368444107,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-190222",
+     "report.json": {
+      "path": "snapper/session-20260720-190222/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -13947,6 +15074,12 @@
     "speaker_bleed": 0,
     "audio_s": 12.8
    },
+   "posture": {
+    "mean_calf_q": 1.457,
+    "stood_up": true,
+    "samples": 219,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -13954,7 +15087,16 @@
      1784599525.7525022,
      1784599537.6456778
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 8757852,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-190519",
+     "report.json": {
+      "path": "snapper/session-20260720-190519/report.json",
+      "bytes": 823
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -14002,6 +15144,12 @@
     "speaker_bleed": 0,
     "audio_s": 45.8
    },
+   "posture": {
+    "mean_calf_q": 1.457,
+    "stood_up": true,
+    "samples": 382,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 1,
@@ -14009,7 +15157,16 @@
      1784599575.1032743,
      1784599622.416229
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 336775399,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-190608",
+     "report.json": {
+      "path": "snapper/session-20260720-190608/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -14063,6 +15220,12 @@
     "speaker_bleed": 0,
     "audio_s": 445.9
    },
+   "posture": {
+    "mean_calf_q": 2.764,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 19,
     "chunks": 6,
@@ -14071,6 +15234,9 @@
      1784600842.067072
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "camera_path": "snapper/session-20260720-190838/camera_path.jsonl"
    },
    "replay_tier": "A"
@@ -14103,13 +15269,22 @@
     "speaker_bleed": 0,
     "audio_s": 117.9
    },
+   "posture": {
+    "mean_calf_q": 2.764,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784600721.3801317,
      1784600839.6805842
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -14141,13 +15316,22 @@
     "speaker_bleed": 0,
     "audio_s": 83.9
    },
+   "posture": {
+    "mean_calf_q": 2.764,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784600936.5804799,
      1784601020.5487452
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -14179,13 +15363,22 @@
     "speaker_bleed": 0,
     "audio_s": 82.9
    },
+   "posture": {
+    "mean_calf_q": 2.764,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784601028.2376587,
      1784601111.1468918
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -14347,6 +15540,12 @@
     "speaker_bleed": 0,
     "audio_s": 109.1
    },
+   "posture": {
+    "mean_calf_q": 2.107,
+    "stood_up": true,
+    "samples": 586,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 5,
     "chunks": 2,
@@ -14354,7 +15553,16 @@
      1784601722.3056061,
      1784601804.2998476
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 277534324,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-194156",
+     "report.json": {
+      "path": "snapper/session-20260720-194156/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -14527,6 +15735,12 @@
     "speaker_bleed": 0,
     "audio_s": 1839.1
    },
+   "posture": {
+    "mean_calf_q": 2.1,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 18,
     "chunks": 9,
@@ -14534,7 +15748,52 @@
      1784602257.3995917,
      1784814563.8670125
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 3251423405,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-194648",
+     "video_clean.mp4": {
+      "path": "snapper/session-20260720-194648/video_clean.mp4",
+      "bytes": 347507493
+     },
+     "video_overlay.mp4": {
+      "path": "snapper/session-20260720-194648/video_overlay.mp4",
+      "bytes": 611278904
+     },
+     "audio_dialogue.wav": {
+      "path": "snapper/session-20260720-194648/audio_dialogue.wav",
+      "bytes": 92979244
+     },
+     "audio_mic.wav": {
+      "path": "snapper/session-20260720-194648/audio_mic.wav",
+      "bytes": 185958444
+     },
+     "speech.srt": {
+      "path": "snapper/session-20260720-194648/speech.srt",
+      "bytes": 9573
+     },
+     "yolo+vlm.srt": {
+      "path": "snapper/session-20260720-194648/yolo+vlm.srt",
+      "bytes": 28229
+     },
+     "bodystate.srt": {
+      "path": "snapper/session-20260720-194648/bodystate.srt",
+      "bytes": 48303
+     },
+     "speech+yolo+vlm+bodystate.srt": {
+      "path": "snapper/session-20260720-194648/speech+yolo+vlm+bodystate.srt",
+      "bytes": 130780
+     },
+     "detections_combined.jsonl": {
+      "path": "snapper/session-20260720-194648/detections_combined.jsonl",
+      "bytes": 3594630
+     },
+     "report.json": {
+      "path": "snapper/session-20260720-194648/report.json",
+      "bytes": 714
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -14583,6 +15842,12 @@
     "speaker_bleed": 0,
     "audio_s": 230.8
    },
+   "posture": {
+    "mean_calf_q": 1.85,
+    "stood_up": true,
+    "samples": 1154,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 4,
     "chunks": 3,
@@ -14590,7 +15855,16 @@
      1784602020.6175396,
      1784602174.3816016
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 686487167,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-194652",
+     "report.json": {
+      "path": "snapper/session-20260720-194652/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -14638,6 +15912,12 @@
     "speaker_bleed": 0,
     "audio_s": 1364.7
    },
+   "posture": {
+    "mean_calf_q": 2.771,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 16,
     "chunks": 6,
@@ -14646,7 +15926,17 @@
      1784603969.8057497
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-194735/camera_path.jsonl"
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "camera_path": "snapper/session-20260720-194735/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-194735",
+     "report.json": {
+      "path": "snapper/session-20260720-194735/report.json",
+      "bytes": 714
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -14743,6 +16033,12 @@
     "speaker_bleed": 0,
     "audio_s": 32.9
    },
+   "posture": {
+    "mean_calf_q": 2.758,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -14750,7 +16046,17 @@
      1784602218.9262981,
      1784602240.6253896
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-195012",
+     "report.json": {
+      "path": "snapper/session-20260720-195012/report.json",
+      "bytes": 823
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -14799,6 +16105,12 @@
     "speaker_bleed": 0,
     "audio_s": 95.3
    },
+   "posture": {
+    "mean_calf_q": 2.758,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 2,
@@ -14806,7 +16118,17 @@
      1784602263.076843,
      1784602345.0756495
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-195056",
+     "report.json": {
+      "path": "snapper/session-20260720-195056/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -14855,6 +16177,12 @@
     "speaker_bleed": 0,
     "audio_s": 343.6
    },
+   "posture": {
+    "mean_calf_q": 2.758,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 3,
     "chunks": 6,
@@ -14862,7 +16190,17 @@
      1784602364.5693967,
      1784602703.209409
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-195237",
+     "report.json": {
+      "path": "snapper/session-20260720-195237/report.json",
+      "bytes": 711
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -14913,6 +16251,12 @@
     "speaker_bleed": 0,
     "audio_s": 1307.2
    },
+   "posture": {
+    "mean_calf_q": 2.747,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 29,
     "chunks": 13,
@@ -14921,7 +16265,45 @@
      1784605227.5839217
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-195543/camera_path.jsonl"
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "camera_path": "snapper/session-20260720-195543/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-195543",
+     "video_clean.mp4": {
+      "path": "snapper/session-20260720-195543/video_clean.mp4",
+      "bytes": 190297734
+     },
+     "video_overlay.mp4": {
+      "path": "snapper/session-20260720-195543/video_overlay.mp4",
+      "bytes": 214035933
+     },
+     "audio_mic.wav": {
+      "path": "snapper/session-20260720-195543/audio_mic.wav",
+      "bytes": 133427244
+     },
+     "yolo+vlm.srt": {
+      "path": "snapper/session-20260720-195543/yolo+vlm.srt",
+      "bytes": 3296
+     },
+     "bodystate.srt": {
+      "path": "snapper/session-20260720-195543/bodystate.srt",
+      "bytes": 36117
+     },
+     "speech+yolo+vlm+bodystate.srt": {
+      "path": "snapper/session-20260720-195543/speech+yolo+vlm+bodystate.srt",
+      "bytes": 45666
+     },
+     "detections_combined.jsonl": {
+      "path": "snapper/session-20260720-195543/detections_combined.jsonl",
+      "bytes": 1817901
+     },
+     "report.json": {
+      "path": "snapper/session-20260720-195543/report.json",
+      "bytes": 1539
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -14970,6 +16352,12 @@
     "speaker_bleed": 0,
     "audio_s": 889.2
    },
+   "posture": {
+    "mean_calf_q": 2.777,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 45,
     "chunks": 6,
@@ -14978,7 +16366,17 @@
      1784604527.460053
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-195601/camera_path.jsonl"
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "camera_path": "snapper/session-20260720-195601/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-195601",
+     "report.json": {
+      "path": "snapper/session-20260720-195601/report.json",
+      "bytes": 714
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15027,6 +16425,12 @@
     "speaker_bleed": 0,
     "audio_s": 148.8
    },
+   "posture": {
+    "mean_calf_q": 2.762,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 2,
@@ -15034,7 +16438,17 @@
      1784602725.3028505,
      1784602836.6495702
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-195838",
+     "report.json": {
+      "path": "snapper/session-20260720-195838/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15082,6 +16496,12 @@
     "speaker_bleed": 0,
     "audio_s": 697.8
    },
+   "posture": {
+    "mean_calf_q": 2.499,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 10,
     "chunks": 6,
@@ -15090,7 +16510,16 @@
      1784603458.376296
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-195955/camera_path.jsonl"
+    "lidar_bytes": 227429427,
+    "has_lidar": true,
+    "camera_path": "snapper/session-20260720-195955/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-195955",
+     "report.json": {
+      "path": "snapper/session-20260720-195955/report.json",
+      "bytes": 714
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15139,6 +16568,12 @@
     "speaker_bleed": 0,
     "audio_s": 232.1
    },
+   "posture": {
+    "mean_calf_q": 2.203,
+    "stood_up": true,
+    "samples": 983,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 3,
@@ -15147,7 +16582,16 @@
      1784603009.8176045
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-200103/camera_path.jsonl"
+    "lidar_bytes": 266217561,
+    "has_lidar": true,
+    "camera_path": "snapper/session-20260720-200103/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-200103",
+     "report.json": {
+      "path": "snapper/session-20260720-200103/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15246,6 +16690,12 @@
     "speaker_bleed": 0,
     "audio_s": 36.8
    },
+   "posture": {
+    "mean_calf_q": 1.459,
+    "stood_up": true,
+    "samples": 329,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -15253,7 +16703,16 @@
      1784603135.6342754,
      1784603172.9735126
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 230019489,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-200523",
+     "report.json": {
+      "path": "snapper/session-20260720-200523/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15301,6 +16760,12 @@
     "speaker_bleed": 0,
     "audio_s": 105.9
    },
+   "posture": {
+    "mean_calf_q": 2.77,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 2,
@@ -15308,7 +16773,17 @@
      1784603481.0271466,
      1784603562.069558
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-201114",
+     "report.json": {
+      "path": "snapper/session-20260720-201114/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15357,6 +16832,12 @@
     "speaker_bleed": 0,
     "audio_s": 356.8
    },
+   "posture": {
+    "mean_calf_q": 2.777,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 14,
     "chunks": 6,
@@ -15364,7 +16845,17 @@
      1784603994.6964273,
      1784604351.1316092
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-201207",
+     "report.json": {
+      "path": "snapper/session-20260720-201207/report.json",
+      "bytes": 714
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15412,6 +16903,12 @@
     "speaker_bleed": 0,
     "audio_s": 895.0
    },
+   "posture": {
+    "mean_calf_q": 2.04,
+    "stood_up": true,
+    "samples": 973,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 5,
     "chunks": 6,
@@ -15419,7 +16916,16 @@
      1784604351.5370584,
      1784604679.6201823
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 725211388,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-201944",
+     "report.json": {
+      "path": "snapper/session-20260720-201944/report.json",
+      "bytes": 712
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15468,6 +16974,12 @@
     "speaker_bleed": 0,
     "audio_s": 35.4
    },
+   "posture": {
+    "mean_calf_q": 2.779,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -15475,7 +16987,17 @@
      1784604373.128892,
      1784604407.4832253
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-202605",
+     "report.json": {
+      "path": "snapper/session-20260720-202605/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15524,6 +17046,12 @@
     "speaker_bleed": 0,
     "audio_s": 250.1
    },
+   "posture": {
+    "mean_calf_q": 2.788,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 5,
@@ -15531,7 +17059,17 @@
      1784604432.7243211,
      1784604681.7617633
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-202705",
+     "report.json": {
+      "path": "snapper/session-20260720-202705/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15579,6 +17117,12 @@
     "speaker_bleed": 0,
     "audio_s": 194.4
    },
+   "posture": {
+    "mean_calf_q": 1.698,
+    "stood_up": true,
+    "samples": 1189,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 3,
     "chunks": 3,
@@ -15586,7 +17130,16 @@
      1784604506.6279218,
      1784604655.529418
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 473295694,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-202820",
+     "report.json": {
+      "path": "snapper/session-20260720-202820/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15635,6 +17188,12 @@
     "speaker_bleed": 0,
     "audio_s": 155.5
    },
+   "posture": {
+    "mean_calf_q": 2.777,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 2,
@@ -15642,7 +17201,17 @@
      1784604546.3091245,
      1784604631.3076658
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-202859",
+     "report.json": {
+      "path": "snapper/session-20260720-202859/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15690,6 +17259,12 @@
     "speaker_bleed": 0,
     "audio_s": 73.3
    },
+   "posture": {
+    "mean_calf_q": 2.787,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -15697,7 +17272,17 @@
      1784604673.6212604,
      1784604732.8679047
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-203107",
+     "report.json": {
+      "path": "snapper/session-20260720-203107/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15793,6 +17378,12 @@
     "speaker_bleed": 0,
     "audio_s": 17.5
    },
+   "posture": {
+    "mean_calf_q": 2.788,
+    "stood_up": false,
+    "samples": 315,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -15800,7 +17391,10 @@
      1784604720.2612603,
      1784604736.5103521
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -15848,6 +17442,12 @@
     "speaker_bleed": 0,
     "audio_s": 204.0
    },
+   "posture": {
+    "mean_calf_q": 1.86,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 3,
@@ -15855,7 +17455,16 @@
      1784604752.7661188,
      1784604903.061982
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 397072085,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-203226",
+     "report.json": {
+      "path": "snapper/session-20260720-203226/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -15903,6 +17512,12 @@
     "speaker_bleed": 0,
     "audio_s": 128.3
    },
+   "posture": {
+    "mean_calf_q": 2.779,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -15910,7 +17525,17 @@
      1784604818.6137016,
      1784604873.6623054
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-203331",
+     "report.json": {
+      "path": "snapper/session-20260720-203331/report.json",
+      "bytes": 825
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -16009,6 +17634,12 @@
     "speaker_bleed": 0,
     "audio_s": 120.0
    },
+   "posture": {
+    "mean_calf_q": 2.29,
+    "stood_up": true,
+    "samples": 831,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 5,
     "chunks": 3,
@@ -16016,7 +17647,16 @@
      1784604872.3525054,
      1784604994.896911
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 204180840,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-203414",
+     "report.json": {
+      "path": "snapper/session-20260720-203414/report.json",
+      "bytes": 708
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -16083,6 +17723,12 @@
     "speaker_bleed": 0,
     "audio_s": 181.9
    },
+   "posture": {
+    "mean_calf_q": 2.762,
+    "stood_up": false,
+    "samples": 1180,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 3,
@@ -16090,7 +17736,17 @@
      1784605050.952152,
      1784605190.2970083
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-203724",
+     "report.json": {
+      "path": "snapper/session-20260720-203724/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -16138,6 +17794,12 @@
     "speaker_bleed": 0,
     "audio_s": 748.3
    },
+   "posture": {
+    "mean_calf_q": 2.762,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 6,
@@ -16145,7 +17807,17 @@
      1784605271.4445293,
      1784605624.4249666
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-204004",
+     "report.json": {
+      "path": "snapper/session-20260720-204004/report.json",
+      "bytes": 711
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -16194,6 +17866,12 @@
     "speaker_bleed": 0,
     "audio_s": 355.5
    },
+   "posture": {
+    "mean_calf_q": 2.757,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 3,
     "chunks": 6,
@@ -16201,7 +17879,10 @@
      1784605433.432662,
      1784605752.9612746
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -16252,6 +17933,12 @@
     "speaker_bleed": 0,
     "audio_s": 1189.5
    },
+   "posture": {
+    "mean_calf_q": 1.588,
+    "stood_up": true,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 6,
     "chunks": 6,
@@ -16260,7 +17947,52 @@
      1784606193.4483902
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-204648/camera_path.jsonl"
+    "lidar_bytes": 195104922,
+    "has_lidar": true,
+    "camera_path": "snapper/session-20260720-204648/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-204648",
+     "video_clean.mp4": {
+      "path": "snapper/session-20260720-204648/video_clean.mp4",
+      "bytes": 96060350
+     },
+     "video_overlay.mp4": {
+      "path": "snapper/session-20260720-204648/video_overlay.mp4",
+      "bytes": 119333785
+     },
+     "audio_dialogue.wav": {
+      "path": "snapper/session-20260720-204648/audio_dialogue.wav",
+      "bytes": 29648044
+     },
+     "audio_mic.wav": {
+      "path": "snapper/session-20260720-204648/audio_mic.wav",
+      "bytes": 59296044
+     },
+     "speech.srt": {
+      "path": "snapper/session-20260720-204648/speech.srt",
+      "bytes": 1896
+     },
+     "yolo+vlm.srt": {
+      "path": "snapper/session-20260720-204648/yolo+vlm.srt",
+      "bytes": 3111
+     },
+     "bodystate.srt": {
+      "path": "snapper/session-20260720-204648/bodystate.srt",
+      "bytes": 12446
+     },
+     "speech+yolo+vlm+bodystate.srt": {
+      "path": "snapper/session-20260720-204648/speech+yolo+vlm+bodystate.srt",
+      "bytes": 29848
+     },
+     "detections_combined.jsonl": {
+      "path": "snapper/session-20260720-204648/detections_combined.jsonl",
+      "bytes": 1202526
+     },
+     "report.json": {
+      "path": "snapper/session-20260720-204648/report.json",
+      "bytes": 1535
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -16280,6 +18012,12 @@
     "speaker_bleed": 0,
     "audio_s": 0.0
    },
+   "posture": {
+    "mean_calf_q": 1.763,
+    "stood_up": true,
+    "samples": 180,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 5,
     "telemetry_span_epoch": [
@@ -16287,7 +18025,16 @@
      1784608708.3324072
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-213420/camera_path.jsonl"
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "camera_path": "snapper/session-20260720-213420/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-213420",
+     "report.json": {
+      "path": "snapper/session-20260720-213420/report.json",
+      "bytes": 709
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -16319,13 +18066,22 @@
     "speaker_bleed": 0,
     "audio_s": 43.8
    },
+   "posture": {
+    "mean_calf_q": 2.773,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784662690.1056466,
      1784662734.006991
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -16345,13 +18101,28 @@
     "speaker_bleed": 0,
     "audio_s": 0.0
    },
+   "posture": {
+    "mean_calf_q": 1.56,
+    "stood_up": true,
+    "samples": 172,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 3,
     "telemetry_span_epoch": [
      1784663482.840563,
      1784663653.836298
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "processed_bundle": {
+     "dir": "snapper/session-20260721-125121",
+     "report.json": {
+      "path": "snapper/session-20260721-125121/report.json",
+      "bytes": 710
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -16371,13 +18142,28 @@
     "speaker_bleed": 0,
     "audio_s": 0.0
    },
+   "posture": {
+    "mean_calf_q": 1.629,
+    "stood_up": true,
+    "samples": 443,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 3,
     "telemetry_span_epoch": [
      1784684905.385807,
      1784685347.38682
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "processed_bundle": {
+     "dir": "snapper/session-20260721-184824",
+     "report.json": {
+      "path": "snapper/session-20260721-184824/report.json",
+      "bytes": 711
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -16397,13 +18183,29 @@
     "speaker_bleed": 0,
     "audio_s": 0.0
    },
+   "posture": {
+    "mean_calf_q": 2.739,
+    "stood_up": false,
+    "samples": 180,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 6,
     "telemetry_span_epoch": [
      1784685353.937776,
      1784685688.938368
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "snapper/session-20260721-185552",
+     "report.json": {
+      "path": "snapper/session-20260721-185552/report.json",
+      "bytes": 711
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -16423,13 +18225,21 @@
     "speaker_bleed": 0,
     "audio_s": 0.0
    },
+   "posture": {
+    "mean_calf_q": 2.165,
+    "stood_up": true,
+    "samples": 181,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 6,
     "telemetry_span_epoch": [
      1784686816.842263,
      1784687104.842796
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false
    },
    "replay_tier": "A"
   },
@@ -16530,6 +18340,12 @@
     "speaker_bleed": 0,
     "audio_s": 971.8
    },
+   "posture": {
+    "mean_calf_q": 2.761,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 25,
     "chunks": 8,
@@ -16538,6 +18354,8 @@
      1784688843.4144402
     ],
     "has_video": true,
+    "lidar_bytes": 2727218162,
+    "has_lidar": true,
     "camera_path": "snapper/session-20260721-192531/camera_path.jsonl",
     "processed_bundle": {
      "dir": "snapper/session-20260721-192531",
@@ -16607,13 +18425,22 @@
     "speaker_bleed": 0,
     "audio_s": 0.0
    },
+   "posture": {
+    "mean_calf_q": 2.747,
+    "stood_up": false,
+    "samples": 180,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 6,
     "telemetry_span_epoch": [
      1784736799.6789188,
      1784737088.675607
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -16661,6 +18488,12 @@
     "speaker_bleed": 0,
     "audio_s": 368.7
    },
+   "posture": {
+    "mean_calf_q": 2.759,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 5,
     "chunks": 6,
@@ -16669,6 +18502,9 @@
      1784745403.2779036
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "snapper/session-20260722-112218",
      "video_clean.mp4": {
@@ -16766,6 +18602,12 @@
     "speaker_bleed": 0,
     "audio_s": 497.9
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 56,
     "chunks": 6,
@@ -16774,6 +18616,9 @@
      1784748977.5468676
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "snapper/session-20260722-114251",
      "video_clean.mp4": {
@@ -16866,6 +18711,12 @@
     "speaker_bleed": 0,
     "audio_s": 711.0
    },
+   "posture": {
+    "mean_calf_q": 2.754,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 47,
     "chunks": 6,
@@ -16874,6 +18725,9 @@
      1784752577.514748
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "snapper/session-20260722-123630",
      "video_clean.mp4": {
@@ -16957,6 +18811,12 @@
     "speaker_bleed": 0,
     "audio_s": 261.7
    },
+   "posture": {
+    "mean_calf_q": 2.326,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 4,
@@ -16965,6 +18825,8 @@
      1784815121.786487
     ],
     "has_video": true,
+    "lidar_bytes": 552542633,
+    "has_lidar": true,
     "camera_path": "snapper/session-20260723-065358/camera_path.jsonl",
     "processed_bundle": {
      "dir": "snapper/session-20260723-065358",
@@ -17057,6 +18919,12 @@
     "speaker_bleed": 1,
     "audio_s": 511.6
    },
+   "posture": {
+    "mean_calf_q": 2.754,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 9,
     "chunks": 4,
@@ -17065,6 +18933,9 @@
      1784815570.5640624
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "snapper/session-20260723-065906",
      "video_clean.mp4": {
@@ -17156,6 +19027,12 @@
     "speaker_bleed": 0,
     "audio_s": 1097.7
    },
+   "posture": {
+    "mean_calf_q": 1.891,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 17,
     "chunks": 4,
@@ -17164,6 +19041,8 @@
      1784816672.1657274
     ],
     "has_video": true,
+    "lidar_bytes": 1926473846,
+    "has_lidar": true,
     "camera_path": "snapper/session-20260723-070632/camera_path.jsonl",
     "processed_bundle": {
      "dir": "snapper/session-20260723-070632",
@@ -17256,6 +19135,12 @@
     "speaker_bleed": 0,
     "audio_s": 225.2
    },
+   "posture": {
+    "mean_calf_q": 2.55,
+    "stood_up": true,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 6,
     "chunks": 1,
@@ -17264,6 +19149,8 @@
      1784816952.2458258
     ],
     "has_video": true,
+    "lidar_bytes": 230160782,
+    "has_lidar": true,
     "camera_path": "snapper/session-20260723-072549/camera_path.jsonl",
     "processed_bundle": {
      "dir": "snapper/session-20260723-072549",
@@ -17356,6 +19243,12 @@
     "speaker_bleed": 0,
     "audio_s": 86.1
    },
+   "posture": {
+    "mean_calf_q": 2.77,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -17364,6 +19257,9 @@
      1784817946.9402027
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "snapper/session-20260723-074443",
      "video_clean.mp4": {
@@ -17455,6 +19351,12 @@
     "speaker_bleed": 0,
     "audio_s": 32.2
    },
+   "posture": {
+    "mean_calf_q": 1.451,
+    "stood_up": true,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 1,
@@ -17463,6 +19365,8 @@
      1784823588.2865405
     ],
     "has_video": true,
+    "lidar_bytes": 49915422,
+    "has_lidar": true,
     "processed_bundle": {
      "dir": "snapper/session-20260723-091909",
      "video_clean.mp4": {
@@ -17548,7 +19452,9 @@
    },
    "media": {
     "chunks": 1,
-    "has_video": false
+    "has_video": false,
+    "lidar_bytes": 0,
+    "has_lidar": false
    },
    "replay_tier": "B"
   },
@@ -17600,6 +19506,12 @@
     "speaker_bleed": 1,
     "audio_s": 5230.2
    },
+   "posture": {
+    "mean_calf_q": 1.932,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 127,
     "chunks": 16,
@@ -17608,6 +19520,8 @@
      1784828591.0253947
     ],
     "has_video": true,
+    "lidar_bytes": 4671528456,
+    "has_lidar": true,
     "camera_path": "snapper/session-20260723-092744/camera_path.jsonl",
     "processed_bundle": {
      "dir": "snapper/session-20260723-092744",
@@ -22007,6 +23921,12 @@
     "speaker_bleed": 0,
     "audio_s": 405.2
    },
+   "posture": {
+    "mean_calf_q": 2.461,
+    "stood_up": true,
+    "samples": 1119,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 19,
     "chunks": 6,
@@ -22014,7 +23934,16 @@
      1784661289.651923,
      1784661614.1602232
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 1304302672,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "helper/session-20260721-121342",
+     "report.json": {
+      "path": "helper/session-20260721-121342/report.json",
+      "bytes": 1628
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -22342,6 +24271,12 @@
     "speaker_bleed": 0,
     "audio_s": 312.9
    },
+   "posture": {
+    "mean_calf_q": 2.809,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 104,
     "chunks": 6,
@@ -22349,7 +24284,17 @@
      1784664564.694745,
      1784664872.8321857
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "helper/session-20260721-121712",
+     "report.json": {
+      "path": "helper/session-20260721-121712/report.json",
+      "bytes": 708
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -22398,6 +24343,12 @@
     "speaker_bleed": 0,
     "audio_s": 89.2
    },
+   "posture": {
+    "mean_calf_q": 1.539,
+    "stood_up": true,
+    "samples": 341,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 2,
@@ -22405,7 +24356,16 @@
      1784661632.287398,
      1784661699.0166414
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 476179342,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "helper/session-20260721-122026",
+     "report.json": {
+      "path": "helper/session-20260721-122026/report.json",
+      "bytes": 991
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -22454,6 +24414,12 @@
     "speaker_bleed": 0,
     "audio_s": 142.2
    },
+   "posture": {
+    "mean_calf_q": 1.559,
+    "stood_up": true,
+    "samples": 971,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 11,
     "chunks": 3,
@@ -22461,7 +24427,16 @@
      1784662357.0574286,
      1784662504.161988
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 1002763838,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "helper/session-20260721-123230",
+     "report.json": {
+      "path": "helper/session-20260721-123230/report.json",
+      "bytes": 705
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -22510,6 +24485,12 @@
     "speaker_bleed": 0,
     "audio_s": 52.3
    },
+   "posture": {
+    "mean_calf_q": 2.803,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 4,
     "chunks": 1,
@@ -22517,7 +24498,17 @@
      1784662523.299903,
      1784662574.548966
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "helper/session-20260721-123517",
+     "report.json": {
+      "path": "helper/session-20260721-123517/report.json",
+      "bytes": 821
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -22566,6 +24557,12 @@
     "speaker_bleed": 0,
     "audio_s": 179.6
    },
+   "posture": {
+    "mean_calf_q": 2.814,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 4,
     "chunks": 3,
@@ -22573,7 +24570,10 @@
      1784662580.3971977,
      1784662759.0402489
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -22622,6 +24622,12 @@
     "speaker_bleed": 0,
     "audio_s": 21.3
    },
+   "posture": {
+    "mean_calf_q": 2.815,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 1,
@@ -22629,7 +24635,10 @@
      1784662869.737479,
      1784662890.4399688
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -22687,6 +24696,12 @@
     "speaker_bleed": 0,
     "audio_s": 725.4
    },
+   "posture": {
+    "mean_calf_q": 2.391,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 89,
     "chunks": 6,
@@ -22695,6 +24710,8 @@
      1784665196.27853
     ],
     "has_video": true,
+    "lidar_bytes": 1217188676,
+    "has_lidar": true,
     "camera_path": "helper/session-20260721-124325/camera_path.jsonl",
     "processed_bundle": {
      "dir": "helper/session-20260721-124325",
@@ -22786,6 +24803,12 @@
     "speaker_bleed": 0,
     "audio_s": 120.3
    },
+   "posture": {
+    "mean_calf_q": 2.759,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 3,
     "chunks": 2,
@@ -22793,7 +24816,10 @@
      1784663161.7489195,
      1784663280.836368
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -22937,6 +24963,12 @@
     "speaker_bleed": 0,
     "audio_s": 55.0
    },
+   "posture": {
+    "mean_calf_q": 1.562,
+    "stood_up": true,
+    "samples": 263,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 5,
     "chunks": 1,
@@ -22945,6 +24977,8 @@
      1784746231.7088597
     ],
     "has_video": true,
+    "lidar_bytes": 483956821,
+    "has_lidar": true,
     "processed_bundle": {
      "dir": "helper/session-20260722-114925",
      "video_clean.mp4": {
@@ -23031,6 +25065,12 @@
     "speaker_bleed": 0,
     "audio_s": 41.6
    },
+   "posture": {
+    "mean_calf_q": 2.817,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 3,
     "chunks": 1,
@@ -23039,6 +25079,9 @@
      1784746614.412487
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "helper/session-20260722-115617",
      "video_clean.mp4": {
@@ -23129,6 +25172,12 @@
     "speaker_bleed": 0,
     "audio_s": 48.3
    },
+   "posture": {
+    "mean_calf_q": 2.817,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 1,
@@ -23137,6 +25186,9 @@
      1784746743.9080198
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "helper/session-20260722-115819",
      "video_clean.mp4": {
@@ -23228,6 +25280,12 @@
     "speaker_bleed": 0,
     "audio_s": 213.2
    },
+   "posture": {
+    "mean_calf_q": 2.817,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 4,
@@ -23236,6 +25294,9 @@
      1784747738.2310612
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "helper/session-20260722-121223",
      "video_clean.mp4": {
@@ -23333,6 +25394,12 @@
     "speaker_bleed": 0,
     "audio_s": 390.9
    },
+   "posture": {
+    "mean_calf_q": 2.821,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 6,
     "telemetry_span_epoch": [
@@ -23340,6 +25407,9 @@
      1784748920.5255535
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "helper/session-20260722-121653",
      "video_clean.mp4": {
@@ -23434,6 +25504,12 @@
     "speaker_bleed": 0,
     "audio_s": 861.7
    },
+   "posture": {
+    "mean_calf_q": 2.821,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 6,
     "telemetry_span_epoch": [
@@ -23441,6 +25517,9 @@
      1784750063.8822231
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "camera_path": "helper/session-20260722-123623/camera_path.jsonl",
     "processed_bundle": {
      "dir": "helper/session-20260722-123623",
@@ -23533,6 +25612,12 @@
     "speaker_bleed": 0,
     "audio_s": 523.1
    },
+   "posture": {
+    "mean_calf_q": 2.821,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 8,
     "chunks": 6,
@@ -23541,6 +25626,9 @@
      1784750632.4080327
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "helper/session-20260722-125445",
      "video_clean.mp4": {
@@ -27779,6 +29867,12 @@
     "speaker_bleed": 0,
     "audio_s": 53.3
    },
+   "posture": {
+    "mean_calf_q": 2.767,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 9,
     "chunks": 1,
@@ -27787,7 +29881,17 @@
      1784407307.954035
     ],
     "has_video": true,
-    "camera_path": "mac/session-20260718-134103/camera_path.jsonl"
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "camera_path": "mac/session-20260718-134103/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "mac/session-20260718-134103",
+     "report.json": {
+      "path": "mac/session-20260718-134103/report.json",
+      "bytes": 809
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -27834,6 +29938,12 @@
     "speaker_bleed": 0,
     "audio_s": 76.6
    },
+   "posture": {
+    "mean_calf_q": 2.561,
+    "stood_up": true,
+    "samples": 474,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 15,
     "chunks": 2,
@@ -27842,7 +29952,16 @@
      1784407875.217294
     ],
     "has_video": true,
-    "camera_path": "mac/session-20260718-135008/camera_path.jsonl"
+    "lidar_bytes": 13612824,
+    "has_lidar": true,
+    "camera_path": "mac/session-20260718-135008/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "mac/session-20260718-135008",
+     "report.json": {
+      "path": "mac/session-20260718-135008/report.json",
+      "bytes": 693
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -27889,6 +30008,12 @@
     "speaker_bleed": 0,
     "audio_s": 107.3
    },
+   "posture": {
+    "mean_calf_q": 2.764,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 20,
     "chunks": 2,
@@ -27897,7 +30022,17 @@
      1784408245.951809
     ],
     "has_video": true,
-    "camera_path": "mac/session-20260718-135548/camera_path.jsonl"
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "camera_path": "mac/session-20260718-135548/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "mac/session-20260718-135548",
+     "report.json": {
+      "path": "mac/session-20260718-135548/report.json",
+      "bytes": 694
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -27944,6 +30079,12 @@
     "speaker_bleed": 0,
     "audio_s": 235.5
    },
+   "posture": {
+    "mean_calf_q": 2.137,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 29,
     "chunks": 4,
@@ -27952,7 +30093,16 @@
      1784409110.902616
     ],
     "has_video": true,
-    "camera_path": "mac/session-20260718-140835/camera_path.jsonl"
+    "lidar_bytes": 294653592,
+    "has_lidar": true,
+    "camera_path": "mac/session-20260718-140835/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "mac/session-20260718-140835",
+     "report.json": {
+      "path": "mac/session-20260718-140835/report.json",
+      "bytes": 693
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -27999,6 +30149,12 @@
     "speaker_bleed": 0,
     "audio_s": 53.3
    },
+   "posture": {
+    "mean_calf_q": 2.763,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 1,
@@ -28006,7 +30162,10 @@
      1784412197.024645,
      1784412250.250288
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure."
    },
    "replay_tier": "A"
   },
@@ -28056,7 +30215,9 @@
    "media": {
     "vlm_captures": 6,
     "chunks": 1,
-    "has_video": false
+    "has_video": false,
+    "lidar_bytes": 0,
+    "has_lidar": false
    },
    "replay_tier": "B"
   },
@@ -28109,7 +30270,9 @@
    "media": {
     "vlm_captures": 22,
     "chunks": 1,
-    "has_video": false
+    "has_video": false,
+    "lidar_bytes": 0,
+    "has_lidar": false
    },
    "replay_tier": "B"
   },
@@ -28159,7 +30322,9 @@
    "media": {
     "vlm_captures": 4,
     "chunks": 1,
-    "has_video": false
+    "has_video": false,
+    "lidar_bytes": 0,
+    "has_lidar": false
    },
    "replay_tier": "B"
   },
@@ -28398,6 +30563,12 @@
     "speaker_bleed": 0,
     "audio_s": 72.4
    },
+   "posture": {
+    "mean_calf_q": 2.763,
+    "stood_up": false,
+    "samples": 681,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 6,
     "chunks": 2,
@@ -28405,7 +30576,17 @@
      1784469504.103582,
      1784469583.7525702
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "mac/session-20260719-065818",
+     "report.json": {
+      "path": "mac/session-20260719-065818/report.json",
+      "bytes": 693
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -28453,13 +30634,28 @@
     "speaker_bleed": 0,
     "audio_s": 195.1
    },
+   "posture": {
+    "mean_calf_q": 1.57,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 3,
     "telemetry_span_epoch": [
      1784485810.378939,
      1784485986.776387
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 1957118172,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "mac/session-20260719-113005",
+     "report.json": {
+      "path": "mac/session-20260719-113005/report.json",
+      "bytes": 694
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -28507,13 +30703,21 @@
     "speaker_bleed": 0,
     "audio_s": 122.5
    },
+   "posture": {
+    "mean_calf_q": 2.742,
+    "stood_up": false,
+    "samples": 817,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 3,
     "telemetry_span_epoch": [
      1784486279.4487271,
      1784486401.131712
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 79622272,
+    "has_lidar": true
    },
    "replay_tier": "A"
   },
@@ -28608,13 +30812,29 @@
     "speaker_bleed": 0,
     "audio_s": 65.8
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784510194.713117,
      1784510247.6122382
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "mac/session-20260719-181631",
+     "report.json": {
+      "path": "mac/session-20260719-181631/report.json",
+      "bytes": 809
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -28662,13 +30882,29 @@
     "speaker_bleed": 0,
     "audio_s": 41.0
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784510253.511981,
      1784510285.011093
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "mac/session-20260719-181730",
+     "report.json": {
+      "path": "mac/session-20260719-181730/report.json",
+      "bytes": 807
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -28763,13 +30999,29 @@
     "speaker_bleed": 0,
     "audio_s": 51.5
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784510336.7821922,
      1784510380.5786638
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "mac/session-20260719-181854",
+     "report.json": {
+      "path": "mac/session-20260719-181854/report.json",
+      "bytes": 809
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -28817,13 +31069,29 @@
     "speaker_bleed": 0,
     "audio_s": 58.1
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784510385.3304,
      1784510420.779665
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "mac/session-20260719-181942",
+     "report.json": {
+      "path": "mac/session-20260719-181942/report.json",
+      "bytes": 809
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -28871,13 +31139,29 @@
     "speaker_bleed": 0,
     "audio_s": 147.5
    },
+   "posture": {
+    "mean_calf_q": 2.768,
+    "stood_up": false,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 2,
     "telemetry_span_epoch": [
      1784510426.1796842,
      1784510526.981906
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "processed_bundle": {
+     "dir": "mac/session-20260719-182023",
+     "report.json": {
+      "path": "mac/session-20260719-182023/report.json",
+      "bytes": 694
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -29366,6 +31650,12 @@
     "speaker_bleed": 0,
     "audio_s": 13.1
    },
+   "posture": {
+    "mean_calf_q": 1.448,
+    "stood_up": true,
+    "samples": 120,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -29373,7 +31663,16 @@
      1784571208.324893,
      1784571219.275341
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 65584765,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "mac/session-20260720-111323",
+     "report.json": {
+      "path": "mac/session-20260720-111323/report.json",
+      "bytes": 807
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -29421,6 +31720,12 @@
     "speaker_bleed": 0,
     "audio_s": 35.2
    },
+   "posture": {
+    "mean_calf_q": 1.448,
+    "stood_up": true,
+    "samples": 400,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 1,
@@ -29428,7 +31733,16 @@
      1784571377.640341,
      1784571412.367203
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 225283742,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "mac/session-20260720-111612",
+     "report.json": {
+      "path": "mac/session-20260720-111612/report.json",
+      "bytes": 809
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -29476,6 +31790,12 @@
     "speaker_bleed": 0,
     "audio_s": 27.9
    },
+   "posture": {
+    "mean_calf_q": 1.448,
+    "stood_up": true,
+    "samples": 236,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -29483,7 +31803,16 @@
      1784571430.925727,
      1784571462.049983
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 144747914,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "mac/session-20260720-111706",
+     "report.json": {
+      "path": "mac/session-20260720-111706/report.json",
+      "bytes": 807
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -29531,6 +31860,12 @@
     "speaker_bleed": 1,
     "audio_s": 107.5
    },
+   "posture": {
+    "mean_calf_q": 1.453,
+    "stood_up": true,
+    "samples": 475,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 2,
@@ -29538,7 +31873,16 @@
      1784588782.536853,
      1784588847.482408
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 416427523,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "mac/session-20260720-160619",
+     "report.json": {
+      "path": "mac/session-20260720-160619/report.json",
+      "bytes": 693
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -29635,6 +31979,12 @@
     "speaker_bleed": 0,
     "audio_s": 28.3
    },
+   "posture": {
+    "mean_calf_q": 1.452,
+    "stood_up": true,
+    "samples": 279,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 1,
     "chunks": 1,
@@ -29642,7 +31992,16 @@
      1784590287.810046,
      1784590313.416495
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 244765388,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "mac/session-20260720-163123",
+     "report.json": {
+      "path": "mac/session-20260720-163123/report.json",
+      "bytes": 807
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -29690,6 +32049,12 @@
     "speaker_bleed": 0,
     "audio_s": 169.5
    },
+   "posture": {
+    "mean_calf_q": 1.452,
+    "stood_up": true,
+    "samples": 863,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 2,
     "chunks": 3,
@@ -29697,7 +32062,16 @@
      1784590409.934082,
      1784590536.85116
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 1210760727,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "mac/session-20260720-163326",
+     "report.json": {
+      "path": "mac/session-20260720-163326/report.json",
+      "bytes": 693
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -29745,6 +32119,12 @@
     "speaker_bleed": 0,
     "audio_s": 296.4
    },
+   "posture": {
+    "mean_calf_q": 1.452,
+    "stood_up": true,
+    "samples": 891,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": 3,
     "chunks": 6,
@@ -29752,7 +32132,16 @@
      1784591011.742702,
      1784591339.426652
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 1843071713,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "mac/session-20260720-164025",
+     "report.json": {
+      "path": "mac/session-20260720-164025/report.json",
+      "bytes": 693
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -30339,13 +32728,28 @@
     "speaker_bleed": 0,
     "audio_s": 10.1
    },
+   "posture": {
+    "mean_calf_q": 1.455,
+    "stood_up": true,
+    "samples": 161,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 1,
     "telemetry_span_epoch": [
      1784679116.686555,
      1784679125.5380569
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "processed_bundle": {
+     "dir": "mac/session-20260721-171151",
+     "report.json": {
+      "path": "mac/session-20260721-171151/report.json",
+      "bytes": 807
+     }
+    }
    },
    "replay_tier": "A"
   },
@@ -30444,7 +32848,14 @@
     "audio_s": 24.0
    },
    "media": {
-    "vlm_captures": 4
+    "vlm_captures": 4,
+    "processed_bundle": {
+     "dir": "mac/session-20260725-111707",
+     "report.json": {
+      "path": "mac/session-20260725-111707/report.json",
+      "bytes": 352
+     }
+    }
    },
    "replay_tier": "B"
   },
@@ -30871,13 +33282,21 @@
     "speaker_bleed": 0,
     "audio_s": 0.0
    },
+   "posture": {
+    "mean_calf_q": 1.538,
+    "stood_up": true,
+    "samples": 180,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": 6,
     "telemetry_span_epoch": [
      1784607237.8988736,
      1784607558.8841538
     ],
-    "has_video": false
+    "has_video": false,
+    "lidar_bytes": 0,
+    "has_lidar": false
    },
    "replay_tier": "C"
   },
@@ -32524,7 +34943,7 @@
     "empty_wavs": 0,
     "recovered_speech": 39,
     "speaker_bleed": 0,
-    "audio_s": 975.9
+    "audio_s": 839.3
    },
    "media": {},
    "replay_tier": "B"

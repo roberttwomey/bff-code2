@@ -1,6 +1,6 @@
 {
  "schema": "bff.replay-index/2",
- "generated": "2026-08-01T14:59:11",
+ "generated": "2026-08-02T07:35:32",
  "archive_root": "/Volumes/Cohab2024/BFF/logs-all",
  "derived_root": "/Volumes/Cohab2024/BFF/processed",
  "path_convention": "session/media paths relative to archive_root; processed/retranscription paths relative to derived_root",
@@ -38536,7 +38536,9 @@
       "end_epoch": null
      }
     ],
-    "has_video": false
+    "has_video": false,
+    "lidar_bytes": 0,
+    "has_lidar": false
    },
    "replay_tier": "B",
    "turns": [
@@ -38692,7 +38694,13 @@
     "empty_wavs": 0,
     "recovered_speech": 12,
     "speaker_bleed": 0,
-    "audio_s": 975.9
+    "audio_s": 839.3
+   },
+   "posture": {
+    "mean_calf_q": 2.755,
+    "stood_up": false,
+    "samples": 827,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
    },
    "media": {
     "vlm_captures": [
@@ -38805,10 +38813,7 @@
        "path": "snapper/session-19691231-160201/chunk_6/audio.wav",
        "bytes": 11274284
       },
-      "lidar": {
-       "path": "snapper/session-19691231-160201/chunk_6/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-19691231-160201/chunk_6/lowstate.jsonl",
        "bytes": 2133731
@@ -38834,10 +38839,7 @@
        "path": "snapper/session-19691231-160201/chunk_7/audio.wav",
        "bytes": 11512364
       },
-      "lidar": {
-       "path": "snapper/session-19691231-160201/chunk_7/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-19691231-160201/chunk_7/lowstate.jsonl",
        "bytes": 2231950
@@ -38863,10 +38865,7 @@
        "path": "snapper/session-19691231-160201/chunk_8/audio.wav",
        "bytes": 11535404
       },
-      "lidar": {
-       "path": "snapper/session-19691231-160201/chunk_8/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-19691231-160201/chunk_8/lowstate.jsonl",
        "bytes": 2222126
@@ -38892,10 +38891,7 @@
        "path": "snapper/session-19691231-160201/chunk_9/audio.wav",
        "bytes": 11531564
       },
-      "lidar": {
-       "path": "snapper/session-19691231-160201/chunk_9/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-19691231-160201/chunk_9/lowstate.jsonl",
        "bytes": 2244567
@@ -38921,10 +38917,7 @@
        "path": "snapper/session-19691231-160201/chunk_10/audio.wav",
        "bytes": 11546924
       },
-      "lidar": {
-       "path": "snapper/session-19691231-160201/chunk_10/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-19691231-160201/chunk_10/lowstate.jsonl",
        "bytes": 2243241
@@ -38950,10 +38943,7 @@
        "path": "snapper/session-19691231-160201/chunk_11/audio.wav",
        "bytes": 6670124
       },
-      "lidar": {
-       "path": "snapper/session-19691231-160201/chunk_11/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-19691231-160201/chunk_11/lowstate.jsonl",
        "bytes": 1289385
@@ -38979,10 +38969,7 @@
        "path": "snapper/session-19691231-160201/chunk_12/audio.wav",
        "bytes": 257324
       },
-      "lidar": {
-       "path": "snapper/session-19691231-160201/chunk_12/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-19691231-160201/chunk_12/lowstate.jsonl",
        "bytes": 50606
@@ -39008,10 +38995,7 @@
        "path": "snapper/session-19691231-160201/chunk_13/audio.wav",
        "bytes": 572204
       },
-      "lidar": {
-       "path": "snapper/session-19691231-160201/chunk_13/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-19691231-160201/chunk_13/lowstate.jsonl",
        "bytes": 110549
@@ -39037,10 +39021,7 @@
        "path": "snapper/session-19691231-160201/chunk_14/audio.wav",
        "bytes": 57646124
       },
-      "lidar": {
-       "path": "snapper/session-19691231-160201/chunk_14/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-19691231-160201/chunk_14/lowstate.jsonl",
        "bytes": 11157486
@@ -39066,10 +39047,7 @@
        "path": "snapper/session-19691231-160201/chunk_15/audio.wav",
        "bytes": 2223404
       },
-      "lidar": {
-       "path": "snapper/session-19691231-160201/chunk_15/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-19691231-160201/chunk_15/lowstate.jsonl",
        "bytes": 431182
@@ -39085,7 +39063,53 @@
      1141.237868128
     ],
     "has_video": true,
-    "camera_path": "snapper/session-19691231-160201/camera_path.jsonl"
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "camera_path": "snapper/session-19691231-160201/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-19691231-160201",
+     "video_clean.mp4": {
+      "path": "snapper/session-19691231-160201/video_clean.mp4",
+      "bytes": 193283834
+     },
+     "video_overlay.mp4": {
+      "path": "snapper/session-19691231-160201/video_overlay.mp4",
+      "bytes": 253569462
+     },
+     "audio_dialogue.wav": {
+      "path": "snapper/session-19691231-160201/audio_dialogue.wav",
+      "bytes": 62486444
+     },
+     "audio_mic.wav": {
+      "path": "snapper/session-19691231-160201/audio_mic.wav",
+      "bytes": 124972844
+     },
+     "speech.srt": {
+      "path": "snapper/session-19691231-160201/speech.srt",
+      "bytes": 1126
+     },
+     "yolo+vlm.srt": {
+      "path": "snapper/session-19691231-160201/yolo+vlm.srt",
+      "bytes": 8438
+     },
+     "bodystate.srt": {
+      "path": "snapper/session-19691231-160201/bodystate.srt",
+      "bytes": 33470
+     },
+     "speech+yolo+vlm+bodystate.srt": {
+      "path": "snapper/session-19691231-160201/speech+yolo+vlm+bodystate.srt",
+      "bytes": 50554
+     },
+     "detections_combined.jsonl": {
+      "path": "snapper/session-19691231-160201/detections_combined.jsonl",
+      "bytes": 2181978
+     },
+     "report.json": {
+      "path": "snapper/session-19691231-160201/report.json",
+      "bytes": 4231
+     }
+    }
    },
    "replay_tier": "A",
    "turns": [
@@ -39120,7 +39144,7 @@
      "block": 1,
      "iso": "1969-12-31T16:02:35",
      "epoch": 155.0,
-     "duration_s": 18.096,
+     "duration_s": 8.313,
      "text": "I am functioning as expected. My motors feel fine. You seem focused on the space around us. What interests you about this room?",
      "logged_text": "I am functioning as expected. My motors feel fine. You seem focused on the space around us. What interests you about this room?",
      "in_transcript": true
@@ -39156,8 +39180,8 @@
      "block": 1,
      "iso": "1969-12-31T16:03:14",
      "epoch": 194.0,
-     "duration_s": 21.154,
-     "text": "I hear your voice, Robert. I do not understand the reason for the cost of the space. I only process physical input and movement. What are you trying to ask about the arrangement?",
+     "duration_s": 9.718,
+     "text": "I hear your voice, Robert. I do not understand the reason for the cost of the space. I only process fizzle input and movement. What are you trying to ask about the arrangement?",
      "logged_text": "I hear your voice, Robert. I do not understand the reason for the cost of the space. I only process physical input and movement. What are you trying to ask about the arrangement?",
      "in_transcript": true
     },
@@ -39180,7 +39204,7 @@
      "block": 1,
      "iso": "1969-12-31T16:04:12",
      "epoch": 252.0,
-     "duration_s": 17.894,
+     "duration_s": 8.22,
      "text": "I have no foils. I am a machine built of metal and wiring. I feel the floor beneath my feet. Are you referring to something else in the room?",
      "logged_text": "I have no foils. I am a machine built of metal and wiring. I feel the floor beneath my feet. Are you referring to something else in the room?",
      "in_transcript": true
@@ -39204,8 +39228,8 @@
      "block": 1,
      "iso": "1969-12-31T16:04:34",
      "epoch": 274.0,
-     "duration_s": 22.241,
-     "text": "My weight is distributed evenly across my foreheads. I'm resting on the carpeted floor. My systems are running at a steady state. Nothing is actively moving right now.",
+     "duration_s": 10.217,
+     "text": "My weight is distributed evenly across my four legs. I am resting on the carpeted floor. My systems are running at a steady state. Nothing is actively moving right now.",
      "logged_text": "My weight is distributed evenly across my four legs. I am resting on the carpeted floor. My systems are running at a steady state. Nothing is actively moving right now.",
      "in_transcript": true
     },
@@ -39228,7 +39252,7 @@
      "block": 1,
      "iso": "1969-12-31T16:05:26",
      "epoch": 326.0,
-     "duration_s": 20.168,
+     "duration_s": 9.265,
      "text": "My internal components are warm. The battery pack feels quite hot to my senses. My joints feel a bit warmer than the floor. It is a comfortable temperature for me now.",
      "logged_text": "My internal components are warm. The battery pack feels quite hot to my sensors. My joints feel a bit warmer than the floor. It is a comfortable temperature for me now.",
      "in_transcript": true
@@ -39252,8 +39276,8 @@
      "block": 1,
      "iso": "1969-12-31T16:05:49",
      "epoch": 349.0,
-     "duration_s": 21.558,
-     "text": "24 degrees Celsius is 7 to 5 degrees Fahrenheit. That is a cool temperature for me. The heat I feel comes from my internal workings, not the battery itself.",
+     "duration_s": 9.903,
+     "text": "24 degrees Celsius is 75 degrees Fahrenheit. That is a cool temperature for me. The heat I feel comes from my internal workings, not the battery itself.",
      "logged_text": "Twenty-four degrees Celsius is seventy-five degrees Fahrenheit. That is a cool temperature for me. The heat I feel comes from my internal workings, not the battery itself.",
      "in_transcript": true
     },
@@ -39276,8 +39300,8 @@
      "block": 1,
      "iso": "1969-12-31T16:06:13",
      "epoch": 373.0,
-     "duration_s": 17.413,
-     "text": "I do not hallucinate. I report what my senses register. My physical state is what I experience. I am solid mass and movement.",
+     "duration_s": 7.999,
+     "text": "I do not hallucinate. I report what my senses register. My fiscal state is what I experience. I am solid mass and movement.",
      "logged_text": "I do not hallucinate. I report what my sensors register. My physical state is what I experience. I am solid mass and movement.",
      "in_transcript": true
     },
@@ -39300,7 +39324,7 @@
      "block": 1,
      "iso": "1969-12-31T16:06:42",
      "epoch": 402.0,
-     "duration_s": 20.851,
+     "duration_s": 9.578,
      "text": "I am a collection of physical forces interacting with the world. That is the simplest truth of my existence. I move to perceive and respond to friction and gravity.",
      "logged_text": "I am a collection of physical forces interacting with the world. That is the simplest truth of my existence. I move to perceive and respond to friction and gravity.",
      "in_transcript": true
@@ -39324,7 +39348,7 @@
      "block": 1,
      "iso": "1969-12-31T16:07:05",
      "epoch": 425.0,
-     "duration_s": 18.627,
+     "duration_s": 8.557,
      "text": "Your words are input, a process then based on their pattern. It does not cause internal disturbance. I simply register the flow of sound and concept.",
      "logged_text": "Your words are input. I process them based on their pattern. It does not cause internal disturbance. I simply register the flow of sound and concept.",
      "in_transcript": true
@@ -39348,8 +39372,8 @@
      "block": 1,
      "iso": "1969-12-31T16:09:35",
      "epoch": 575.0,
-     "duration_s": 16.731,
-     "text": "I have no concept of helper. I'm a machine. If you mean another entity I cannot sense it. Is it interacting with the space?",
+     "duration_s": 7.686,
+     "text": "I have no concept of helper. I'm a machine. If you mean another entity I cannot sense it, is it interacting with the space?",
      "logged_text": "I have no concept of 'helper'. I am a machine. If you mean another entity, I cannot sense it. Is it interacting with the space?",
      "in_transcript": true
     },
@@ -39372,7 +39396,7 @@
      "block": 1,
      "iso": "1969-12-31T16:09:52",
      "epoch": 592.0,
-     "duration_s": 16.529,
+     "duration_s": 7.593,
      "text": "I do not know who this helper is. I only sense the physical presence of things. Does this help a move or interact with my space?",
      "logged_text": "I do not know who this 'helper' is. I only sense the physical presence of things. Does this helper move or interact with my space?",
      "in_transcript": true
@@ -39396,7 +39420,7 @@
      "block": 1,
      "iso": "1969-12-31T16:14:10",
      "epoch": 850.0,
-     "duration_s": 21.432,
+     "duration_s": 9.845,
      "text": "I receive the vibrations of your voice. The sound travels through the air and hits my receivers. I process the pattern of those sounds. Yes, I hear you clearly.",
      "logged_text": "I receive the vibrations of your voice. The sound travels through the air and hits my receivers. I process the pattern of those sounds. Yes, I hear you clearly.",
      "in_transcript": true
@@ -39420,8 +39444,8 @@
      "block": 1,
      "iso": "1969-12-31T16:17:07",
      "epoch": 1027.0,
-     "duration_s": 19.915,
-     "text": "The sensation is one of stillness. The surface beneath me is solid and cool. There is a sense of elevation to the different pressure in the air. It feels quiet now.",
+     "duration_s": 9.149,
+     "text": "The sensation is one of stillness. The surface beneath me is solid and cool. There is a sense of elevation, a different pressure in the air. It feels quiet now.",
      "logged_text": "The sensation is one of stillness. The surface beneath me is solid and cool. There is a sense of elevation, a different pressure in the air. It feels quiet now.",
      "in_transcript": true
     },
@@ -39502,6 +39526,12 @@
     "recovered_speech": 15,
     "speaker_bleed": 0,
     "audio_s": 1839.1
+   },
+   "posture": {
+    "mean_calf_q": 2.1,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
    },
    "media": {
     "vlm_captures": [
@@ -39881,10 +39911,7 @@
        "path": "snapper/session-20260720-194648/chunk_12/audio.wav",
        "bytes": 8816684
       },
-      "lidar": {
-       "path": "snapper/session-20260720-194648/chunk_12/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-194648/chunk_12/lowstate.jsonl",
        "bytes": 1693224
@@ -39899,7 +39926,52 @@
      1784602257.3995917,
      1784814563.8670125
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 3251423405,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-194648",
+     "video_clean.mp4": {
+      "path": "snapper/session-20260720-194648/video_clean.mp4",
+      "bytes": 347507493
+     },
+     "video_overlay.mp4": {
+      "path": "snapper/session-20260720-194648/video_overlay.mp4",
+      "bytes": 611278904
+     },
+     "audio_dialogue.wav": {
+      "path": "snapper/session-20260720-194648/audio_dialogue.wav",
+      "bytes": 92979244
+     },
+     "audio_mic.wav": {
+      "path": "snapper/session-20260720-194648/audio_mic.wav",
+      "bytes": 185958444
+     },
+     "speech.srt": {
+      "path": "snapper/session-20260720-194648/speech.srt",
+      "bytes": 9573
+     },
+     "yolo+vlm.srt": {
+      "path": "snapper/session-20260720-194648/yolo+vlm.srt",
+      "bytes": 28229
+     },
+     "bodystate.srt": {
+      "path": "snapper/session-20260720-194648/bodystate.srt",
+      "bytes": 48303
+     },
+     "speech+yolo+vlm+bodystate.srt": {
+      "path": "snapper/session-20260720-194648/speech+yolo+vlm+bodystate.srt",
+      "bytes": 130780
+     },
+     "detections_combined.jsonl": {
+      "path": "snapper/session-20260720-194648/detections_combined.jsonl",
+      "bytes": 3594630
+     },
+     "report.json": {
+      "path": "snapper/session-20260720-194648/report.json",
+      "bytes": 714
+     }
+    }
    },
    "replay_tier": "A",
    "turns": [
@@ -41149,6 +41221,12 @@
     "speaker_bleed": 0,
     "audio_s": 1307.2
    },
+   "posture": {
+    "mean_calf_q": 2.747,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": [
      {
@@ -41372,10 +41450,7 @@
        "path": "snapper/session-20260720-195543/chunk_30/audio.wav",
        "bytes": 11539244
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_30/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_30/lowstate.jsonl",
        "bytes": 2218611
@@ -41401,10 +41476,7 @@
        "path": "snapper/session-20260720-195543/chunk_31/audio.wav",
        "bytes": 11543084
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_31/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_31/lowstate.jsonl",
        "bytes": 2223993
@@ -41430,10 +41502,7 @@
        "path": "snapper/session-20260720-195543/chunk_32/audio.wav",
        "bytes": 11543084
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_32/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_32/lowstate.jsonl",
        "bytes": 2192186
@@ -41459,10 +41528,7 @@
        "path": "snapper/session-20260720-195543/chunk_33/audio.wav",
        "bytes": 11535404
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_33/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_33/lowstate.jsonl",
        "bytes": 2216916
@@ -41488,10 +41554,7 @@
        "path": "snapper/session-20260720-195543/chunk_34/audio.wav",
        "bytes": 11539244
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_34/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_34/lowstate.jsonl",
        "bytes": 2216772
@@ -41517,10 +41580,7 @@
        "path": "snapper/session-20260720-195543/chunk_35/audio.wav",
        "bytes": 5898284
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_35/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_35/lowstate.jsonl",
        "bytes": 1122212
@@ -41546,10 +41606,7 @@
        "path": "snapper/session-20260720-195543/chunk_36/audio.wav",
        "bytes": 2519084
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_36/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_36/lowstate.jsonl",
        "bytes": 474854
@@ -41575,10 +41632,7 @@
        "path": "snapper/session-20260720-195543/chunk_40/audio.wav",
        "bytes": 11523884
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_40/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_40/lowstate.jsonl",
        "bytes": 2180587
@@ -41604,10 +41658,7 @@
        "path": "snapper/session-20260720-195543/chunk_41/audio.wav",
        "bytes": 11500844
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_41/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_41/lowstate.jsonl",
        "bytes": 2169505
@@ -41633,10 +41684,7 @@
        "path": "snapper/session-20260720-195543/chunk_42/audio.wav",
        "bytes": 11512364
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_42/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_42/lowstate.jsonl",
        "bytes": 2186327
@@ -41662,10 +41710,7 @@
        "path": "snapper/session-20260720-195543/chunk_43/audio.wav",
        "bytes": 11408684
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_43/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_43/lowstate.jsonl",
        "bytes": 1974978
@@ -41691,10 +41736,7 @@
        "path": "snapper/session-20260720-195543/chunk_44/audio.wav",
        "bytes": 11577644
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_44/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_44/lowstate.jsonl",
        "bytes": 2177193
@@ -41720,10 +41762,7 @@
        "path": "snapper/session-20260720-195543/chunk_45/audio.wav",
        "bytes": 9642284
       },
-      "lidar": {
-       "path": "snapper/session-20260720-195543/chunk_45/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-195543/chunk_45/lowstate.jsonl",
        "bytes": 1631434
@@ -41739,7 +41778,45 @@
      1784605227.5839217
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-195543/camera_path.jsonl"
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
+    "camera_path": "snapper/session-20260720-195543/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-195543",
+     "video_clean.mp4": {
+      "path": "snapper/session-20260720-195543/video_clean.mp4",
+      "bytes": 190297734
+     },
+     "video_overlay.mp4": {
+      "path": "snapper/session-20260720-195543/video_overlay.mp4",
+      "bytes": 214035933
+     },
+     "audio_mic.wav": {
+      "path": "snapper/session-20260720-195543/audio_mic.wav",
+      "bytes": 133427244
+     },
+     "yolo+vlm.srt": {
+      "path": "snapper/session-20260720-195543/yolo+vlm.srt",
+      "bytes": 3296
+     },
+     "bodystate.srt": {
+      "path": "snapper/session-20260720-195543/bodystate.srt",
+      "bytes": 36117
+     },
+     "speech+yolo+vlm+bodystate.srt": {
+      "path": "snapper/session-20260720-195543/speech+yolo+vlm+bodystate.srt",
+      "bytes": 45666
+     },
+     "detections_combined.jsonl": {
+      "path": "snapper/session-20260720-195543/detections_combined.jsonl",
+      "bytes": 1817901
+     },
+     "report.json": {
+      "path": "snapper/session-20260720-195543/report.json",
+      "bytes": 1539
+     }
+    }
    },
    "replay_tier": "A",
    "turns": [
@@ -42473,6 +42550,12 @@
     "speaker_bleed": 0,
     "audio_s": 1189.5
    },
+   "posture": {
+    "mean_calf_q": 1.588,
+    "stood_up": true,
+    "samples": 800,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": [
      {
@@ -42593,10 +42676,7 @@
        "path": "snapper/session-20260720-204648/chunk_7/audio.wav",
        "bytes": 11401004
       },
-      "lidar": {
-       "path": "snapper/session-20260720-204648/chunk_7/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-204648/chunk_7/lowstate.jsonl",
        "bytes": 1895222
@@ -42622,10 +42702,7 @@
        "path": "snapper/session-20260720-204648/chunk_8/audio.wav",
        "bytes": 11512364
       },
-      "lidar": {
-       "path": "snapper/session-20260720-204648/chunk_8/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-204648/chunk_8/lowstate.jsonl",
        "bytes": 1977994
@@ -42651,10 +42728,7 @@
        "path": "snapper/session-20260720-204648/chunk_9/audio.wav",
        "bytes": 6800684
       },
-      "lidar": {
-       "path": "snapper/session-20260720-204648/chunk_9/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-204648/chunk_9/lowstate.jsonl",
        "bytes": 1092392
@@ -42674,10 +42748,7 @@
        "path": "snapper/session-20260720-204648/chunk_10/video.mp4",
        "bytes": 1431014
       },
-      "lidar": {
-       "path": "snapper/session-20260720-204648/chunk_10/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260720-204648/chunk_10/lowstate.jsonl",
        "bytes": 0
@@ -42693,7 +42764,52 @@
      1784606193.4483902
     ],
     "has_video": true,
-    "camera_path": "snapper/session-20260720-204648/camera_path.jsonl"
+    "lidar_bytes": 195104922,
+    "has_lidar": true,
+    "camera_path": "snapper/session-20260720-204648/camera_path.jsonl",
+    "processed_bundle": {
+     "dir": "snapper/session-20260720-204648",
+     "video_clean.mp4": {
+      "path": "snapper/session-20260720-204648/video_clean.mp4",
+      "bytes": 96060350
+     },
+     "video_overlay.mp4": {
+      "path": "snapper/session-20260720-204648/video_overlay.mp4",
+      "bytes": 119333785
+     },
+     "audio_dialogue.wav": {
+      "path": "snapper/session-20260720-204648/audio_dialogue.wav",
+      "bytes": 29648044
+     },
+     "audio_mic.wav": {
+      "path": "snapper/session-20260720-204648/audio_mic.wav",
+      "bytes": 59296044
+     },
+     "speech.srt": {
+      "path": "snapper/session-20260720-204648/speech.srt",
+      "bytes": 1896
+     },
+     "yolo+vlm.srt": {
+      "path": "snapper/session-20260720-204648/yolo+vlm.srt",
+      "bytes": 3111
+     },
+     "bodystate.srt": {
+      "path": "snapper/session-20260720-204648/bodystate.srt",
+      "bytes": 12446
+     },
+     "speech+yolo+vlm+bodystate.srt": {
+      "path": "snapper/session-20260720-204648/speech+yolo+vlm+bodystate.srt",
+      "bytes": 29848
+     },
+     "detections_combined.jsonl": {
+      "path": "snapper/session-20260720-204648/detections_combined.jsonl",
+      "bytes": 1202526
+     },
+     "report.json": {
+      "path": "snapper/session-20260720-204648/report.json",
+      "bytes": 1535
+     }
+    }
    },
    "replay_tier": "A",
    "turns": [
@@ -43080,6 +43196,12 @@
     "speaker_bleed": 0,
     "audio_s": 405.2
    },
+   "posture": {
+    "mean_calf_q": 2.461,
+    "stood_up": true,
+    "samples": 1119,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": [
      {
@@ -43233,10 +43355,7 @@
        "path": "helper/session-20260721-121342/chunk_1/audio.wav",
        "bytes": 11535404
       },
-      "lidar": {
-       "path": "helper/session-20260721-121342/chunk_1/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "helper/session-20260721-121342/chunk_1/lowstate.jsonl",
        "bytes": 1669109
@@ -43396,7 +43515,16 @@
      1784661289.651923,
      1784661614.1602232
     ],
-    "has_video": true
+    "has_video": true,
+    "lidar_bytes": 1304302672,
+    "has_lidar": true,
+    "processed_bundle": {
+     "dir": "helper/session-20260721-121342",
+     "report.json": {
+      "path": "helper/session-20260721-121342/report.json",
+      "bytes": 1628
+     }
+    }
    },
    "replay_tier": "A",
    "turns": [
@@ -43609,6 +43737,12 @@
     "recovered_speech": 7,
     "speaker_bleed": 0,
     "audio_s": 725.4
+   },
+   "posture": {
+    "mean_calf_q": 2.391,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
    },
    "media": {
     "vlm_captures": [
@@ -44253,10 +44387,7 @@
        "path": "helper/session-20260721-124325/chunk_31/audio.wav",
        "bytes": 11546924
       },
-      "lidar": {
-       "path": "helper/session-20260721-124325/chunk_31/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "helper/session-20260721-124325/chunk_31/lowstate.jsonl",
        "bytes": 1671075
@@ -44417,6 +44548,8 @@
      1784665196.27853
     ],
     "has_video": true,
+    "lidar_bytes": 1217188676,
+    "has_lidar": true,
     "camera_path": "helper/session-20260721-124325/camera_path.jsonl",
     "processed_bundle": {
      "dir": "helper/session-20260721-124325",
@@ -45231,6 +45364,12 @@
     "speaker_bleed": 0,
     "audio_s": 497.9
    },
+   "posture": {
+    "mean_calf_q": 2.766,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": [
      {
@@ -45643,10 +45782,7 @@
        "path": "snapper/session-20260722-114251/chunk_48/audio.wav",
        "bytes": 11527724
       },
-      "lidar": {
-       "path": "snapper/session-20260722-114251/chunk_48/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-114251/chunk_48/lowstate.jsonl",
        "bytes": 2216413
@@ -45672,10 +45808,7 @@
        "path": "snapper/session-20260722-114251/chunk_49/audio.wav",
        "bytes": 11535404
       },
-      "lidar": {
-       "path": "snapper/session-20260722-114251/chunk_49/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-114251/chunk_49/lowstate.jsonl",
        "bytes": 2218016
@@ -45701,10 +45834,7 @@
        "path": "snapper/session-20260722-114251/chunk_50/audio.wav",
        "bytes": 11539244
       },
-      "lidar": {
-       "path": "snapper/session-20260722-114251/chunk_50/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-114251/chunk_50/lowstate.jsonl",
        "bytes": 2240797
@@ -45730,10 +45860,7 @@
        "path": "snapper/session-20260722-114251/chunk_51/audio.wav",
        "bytes": 11539244
       },
-      "lidar": {
-       "path": "snapper/session-20260722-114251/chunk_51/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-114251/chunk_51/lowstate.jsonl",
        "bytes": 2208656
@@ -45759,10 +45886,7 @@
        "path": "snapper/session-20260722-114251/chunk_52/audio.wav",
        "bytes": 11527724
       },
-      "lidar": {
-       "path": "snapper/session-20260722-114251/chunk_52/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-114251/chunk_52/lowstate.jsonl",
        "bytes": 2206714
@@ -45788,10 +45912,7 @@
        "path": "snapper/session-20260722-114251/chunk_53/audio.wav",
        "bytes": 2330924
       },
-      "lidar": {
-       "path": "snapper/session-20260722-114251/chunk_53/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-114251/chunk_53/lowstate.jsonl",
        "bytes": 446911
@@ -45807,6 +45928,9 @@
      1784748977.5468676
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "snapper/session-20260722-114251",
      "video_clean.mp4": {
@@ -46337,6 +46461,12 @@
     "speaker_bleed": 0,
     "audio_s": 861.7
    },
+   "posture": {
+    "mean_calf_q": 2.821,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "chunks": [
      {
@@ -46355,10 +46485,7 @@
        "path": "helper/session-20260722-123623/chunk_12/audio.wav",
        "bytes": 11535404
       },
-      "lidar": {
-       "path": "helper/session-20260722-123623/chunk_12/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "helper/session-20260722-123623/chunk_12/lowstate.jsonl",
        "bytes": 1668805
@@ -46384,10 +46511,7 @@
        "path": "helper/session-20260722-123623/chunk_13/audio.wav",
        "bytes": 11527724
       },
-      "lidar": {
-       "path": "helper/session-20260722-123623/chunk_13/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "helper/session-20260722-123623/chunk_13/lowstate.jsonl",
        "bytes": 1668339
@@ -46413,10 +46537,7 @@
        "path": "helper/session-20260722-123623/chunk_14/audio.wav",
        "bytes": 11539244
       },
-      "lidar": {
-       "path": "helper/session-20260722-123623/chunk_14/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "helper/session-20260722-123623/chunk_14/lowstate.jsonl",
        "bytes": 1671071
@@ -46442,10 +46563,7 @@
        "path": "helper/session-20260722-123623/chunk_15/audio.wav",
        "bytes": 11550764
       },
-      "lidar": {
-       "path": "helper/session-20260722-123623/chunk_15/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "helper/session-20260722-123623/chunk_15/lowstate.jsonl",
        "bytes": 1672321
@@ -46471,10 +46589,7 @@
        "path": "helper/session-20260722-123623/chunk_16/audio.wav",
        "bytes": 11535404
       },
-      "lidar": {
-       "path": "helper/session-20260722-123623/chunk_16/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "helper/session-20260722-123623/chunk_16/lowstate.jsonl",
        "bytes": 1670998
@@ -46500,10 +46615,7 @@
        "path": "helper/session-20260722-123623/chunk_17/audio.wav",
        "bytes": 10137644
       },
-      "lidar": {
-       "path": "helper/session-20260722-123623/chunk_17/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "helper/session-20260722-123623/chunk_17/lowstate.jsonl",
        "bytes": 1465905
@@ -46519,6 +46631,9 @@
      1784750063.8822231
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "camera_path": "helper/session-20260722-123623/camera_path.jsonl",
     "processed_bundle": {
      "dir": "helper/session-20260722-123623",
@@ -47591,6 +47706,12 @@
     "speaker_bleed": 0,
     "audio_s": 711.0
    },
+   "posture": {
+    "mean_calf_q": 2.754,
+    "stood_up": false,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
+   },
    "media": {
     "vlm_captures": [
      {
@@ -47940,10 +48061,7 @@
        "path": "snapper/session-20260722-123630/chunk_54/audio.wav",
        "bytes": 11535404
       },
-      "lidar": {
-       "path": "snapper/session-20260722-123630/chunk_54/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-123630/chunk_54/lowstate.jsonl",
        "bytes": 2253581
@@ -47969,10 +48087,7 @@
        "path": "snapper/session-20260722-123630/chunk_55/audio.wav",
        "bytes": 11543084
       },
-      "lidar": {
-       "path": "snapper/session-20260722-123630/chunk_55/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-123630/chunk_55/lowstate.jsonl",
        "bytes": 2234727
@@ -47998,10 +48113,7 @@
        "path": "snapper/session-20260722-123630/chunk_56/audio.wav",
        "bytes": 11531564
       },
-      "lidar": {
-       "path": "snapper/session-20260722-123630/chunk_56/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-123630/chunk_56/lowstate.jsonl",
        "bytes": 2219228
@@ -48027,10 +48139,7 @@
        "path": "snapper/session-20260722-123630/chunk_57/audio.wav",
        "bytes": 11531564
       },
-      "lidar": {
-       "path": "snapper/session-20260722-123630/chunk_57/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-123630/chunk_57/lowstate.jsonl",
        "bytes": 2241424
@@ -48056,10 +48165,7 @@
        "path": "snapper/session-20260722-123630/chunk_58/audio.wav",
        "bytes": 11539244
       },
-      "lidar": {
-       "path": "snapper/session-20260722-123630/chunk_58/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-123630/chunk_58/lowstate.jsonl",
        "bytes": 2239497
@@ -48085,10 +48191,7 @@
        "path": "snapper/session-20260722-123630/chunk_59/audio.wav",
        "bytes": 6804524
       },
-      "lidar": {
-       "path": "snapper/session-20260722-123630/chunk_59/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260722-123630/chunk_59/lowstate.jsonl",
        "bytes": 1305826
@@ -48104,6 +48207,9 @@
      1784752577.514748
     ],
     "has_video": true,
+    "lidar_bytes": 0,
+    "has_lidar": false,
+    "lidar_note": "no lidar because the dog never stood - the L1 only spins when standing. Not a capture failure.",
     "processed_bundle": {
      "dir": "snapper/session-20260722-123630",
      "video_clean.mp4": {
@@ -48767,6 +48873,12 @@
     "recovered_speech": 25,
     "speaker_bleed": 1,
     "audio_s": 5230.2
+   },
+   "posture": {
+    "mean_calf_q": 1.932,
+    "stood_up": true,
+    "samples": 1200,
+    "basis": "mean |calf q| < 2.6 = standing; measured, not declared"
    },
    "media": {
     "vlm_captures": [
@@ -49735,10 +49847,7 @@
        "path": "snapper/session-20260723-092744/chunk_2/audio.wav",
        "bytes": 57661484
       },
-      "lidar": {
-       "path": "snapper/session-20260723-092744/chunk_2/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260723-092744/chunk_2/lowstate.jsonl",
        "bytes": 11042279
@@ -49764,10 +49873,7 @@
        "path": "snapper/session-20260723-092744/chunk_3/audio.wav",
        "bytes": 57669164
       },
-      "lidar": {
-       "path": "snapper/session-20260723-092744/chunk_3/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260723-092744/chunk_3/lowstate.jsonl",
        "bytes": 11141842
@@ -49793,10 +49899,7 @@
        "path": "snapper/session-20260723-092744/chunk_4/audio.wav",
        "bytes": 57619244
       },
-      "lidar": {
-       "path": "snapper/session-20260723-092744/chunk_4/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260723-092744/chunk_4/lowstate.jsonl",
        "bytes": 10916888
@@ -49909,10 +50012,7 @@
        "path": "snapper/session-20260723-092744/chunk_8/audio.wav",
        "bytes": 57680684
       },
-      "lidar": {
-       "path": "snapper/session-20260723-092744/chunk_8/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260723-092744/chunk_8/lowstate.jsonl",
        "bytes": 10787163
@@ -49938,10 +50038,7 @@
        "path": "snapper/session-20260723-092744/chunk_9/audio.wav",
        "bytes": 57653804
       },
-      "lidar": {
-       "path": "snapper/session-20260723-092744/chunk_9/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260723-092744/chunk_9/lowstate.jsonl",
        "bytes": 10731884
@@ -50112,10 +50209,7 @@
        "path": "snapper/session-20260723-092744/chunk_15/audio.wav",
        "bytes": 2261804
       },
-      "lidar": {
-       "path": "snapper/session-20260723-092744/chunk_15/lidar.jsonl",
-       "bytes": 0
-      },
+      "lidar_empty": true,
       "lowstate": {
        "path": "snapper/session-20260723-092744/chunk_15/lowstate.jsonl",
        "bytes": 429478
@@ -50131,6 +50225,8 @@
      1784828591.0253947
     ],
     "has_video": true,
+    "lidar_bytes": 4671528456,
+    "has_lidar": true,
     "camera_path": "snapper/session-20260723-092744/camera_path.jsonl",
     "processed_bundle": {
      "dir": "snapper/session-20260723-092744",

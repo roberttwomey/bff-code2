@@ -36,8 +36,18 @@ def phase_of(sid):
         if (lo is None or d >= lo) and (hi is None or d < hi): return name
     return UNKNOWN
 
-def link(src, dst):
-    """Hardlink src -> dst, falling back to copy across devices."""
+def link(src, dst, skip_empty=True):
+    """Hardlink src -> dst, falling back to copy across devices.
+
+    Zero-byte files are skipped: the only ones in the archive are lidar.jsonl
+    from sessions where the dog never stood (the L1 only spins when standing),
+    and linking them makes an empty capture look like broken data when browsing.
+    """
+    if skip_empty:
+        try:
+            if os.path.getsize(src) == 0: return 0
+        except OSError:
+            return 0
     if os.path.exists(dst): return 0
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     try: os.link(src, dst)
@@ -61,6 +71,12 @@ def main():
 
     idx = json.load(open(os.path.join(HERE, "bff-replay-index.json")))
     curated = {e["session_id"]: e.get("label") for e in idx["exchanges"]}
+    cat_path = os.path.join(HERE, "bff-sessions.json")
+    stood = {}
+    if os.path.exists(cat_path):
+        for srec in json.load(open(cat_path)).get("sessions", []):
+            p = srec.get("posture")
+            if p: stood[srec["session_id"]] = p.get("stood_up")
 
     stats = collections.Counter(); rows = collections.defaultdict(list)
 
@@ -166,13 +182,14 @@ def main():
         if not rs: continue
         L = [f"# {ph}", "", blurb[ph], "",
              f"{len(rs)} sessions. `KEY__` marks the curated exchanges.", "",
-             "| session | machine | key | speech | video | telemetry | vlm | subtitles |",
-             "|---|---|---|---|---|---|---|---|"]
+             "| session | machine | key | speech | video | telemetry | vlm | subtitles | posture |",
+             "|---|---|---|---|---|---|---|---|---|"]
         for name, sid, group, key, label, n in rs:
             L.append(f"| `{name}` | {group} | {'**'+label+'**' if label else ''} | "
                      f"{n.get('speech',0) or ''} | {n.get('video',0) or ''} | "
                      f"{n.get('telemetry',0) or ''} | {n.get('vlm',0) or ''} | "
-                     f"{n.get('subtitles',0) or ''} |")
+                     f"{n.get('subtitles',0) or ''} | "
+                     f"{'' if stood.get(sid) is None else ('stood' if stood[sid] else 'never stood - no lidar')} |")
         open(os.path.join(OUT, ph, "INDEX.md"), "w").write("\n".join(L) + "\n")
 
     open(os.path.join(OUT, "README.md"), "w").write(f"""# BFF by phase

@@ -104,9 +104,47 @@ def chunk_info(cdir, root):
     for f, k in [("video.mp4","video"),("audio.wav","audio"),("lidar.jsonl","lidar"),
                  ("lowstate.jsonl","lowstate"),("detections.jsonl","detections")]:
         p = os.path.join(cdir, f)
-        if os.path.exists(p):
-            info[k] = {"path": os.path.relpath(p, root), "bytes": os.path.getsize(p)}
+        if not os.path.exists(p): continue
+        sz = os.path.getsize(p)
+        # An empty lidar.jsonl is not lidar. Recording presence rather than size
+        # overstated coverage for half the tier-A exchanges.
+        if k == "lidar" and sz == 0:
+            info["lidar_empty"] = True
+            continue
+        info[k] = {"path": os.path.relpath(p, root), "bytes": sz}
     return info
+
+
+# The Go2's L1 only spins once the dog stands, so a session spent lying down
+# writes a lidar.jsonl that exists but is empty. That is a fact about the
+# performance, not a capture failure - counting the file's presence reports
+# lidar for sessions that have none. Mean absolute calf-joint angle separates
+# the two cleanly: standing sessions measure 1.59-2.46, prone ones 2.75-2.82.
+CALF_JOINTS = (2, 5, 8, 11)
+STOOD_UP_MAX_CALF = 2.6
+
+
+def posture(sdir, max_rows=400):
+    """Mean |calf angle| and whether the dog ever stood, from lowstate."""
+    vals = []
+    for lw in sorted(glob.glob(os.path.join(sdir, "chunk_*", "lowstate.jsonl")))[:3]:
+        try:
+            with open(lw, errors="replace") as fh:
+                for i, line in enumerate(fh):
+                    if i >= max_rows: break
+                    try: ms = (json.loads(line).get("data") or {}).get("motor_state") or []
+                    except Exception: continue
+                    if len(ms) >= 12:
+                        vals.append(sum(abs(ms[j].get("q", 0.0)) for j in CALF_JOINTS) / len(CALF_JOINTS))
+        except Exception:
+            continue
+    if not vals: return None
+    mean = sum(vals) / len(vals)
+    return {"mean_calf_q": round(mean, 3),
+            "stood_up": mean < STOOD_UP_MAX_CALF,
+            "samples": len(vals),
+            "basis": f"mean |calf q| < {STOOD_UP_MAX_CALF} = standing; measured, not declared"}
+
 
 def load_retrans(group, sid):
     p = os.path.join(DERIVED, "retranscribed", group, sid, "retranscription.json")
@@ -215,6 +253,14 @@ def build(group, sid, full):
             eph = [x["end_epoch"] for x in ci if x.get("end_epoch")]
             if eps and eph: media["telemetry_span_epoch"] = [min(eps), max(eph)]
             media["has_video"] = any(x.get("video") for x in ci)
+            media["lidar_bytes"] = sum(x["lidar"]["bytes"] for x in ci if x.get("lidar"))
+            media["has_lidar"] = media["lidar_bytes"] > 0
+            p = posture(sdir)
+            if p:
+                ent["posture"] = p
+                if not media["has_lidar"] and not p["stood_up"]:
+                    media["lidar_note"] = ("no lidar because the dog never stood - the L1 only "
+                                           "spins when standing. Not a capture failure.")
         cp = os.path.join(sdir, "camera_path.jsonl")
         if os.path.exists(cp): media["camera_path"] = os.path.relpath(cp, ROOT)
     pm = processed_media(group, sid)

@@ -636,8 +636,26 @@
             background: rgba(0, 255, 102, 0.2); border-color: rgba(0, 255, 102, 0.5); color: #00ff66;
         }
         .replay-btn-play:hover { background: rgba(0, 255, 102, 0.35); }
+        /* Coverage bands. The streams do not run the whole session: capture often
+           starts long after the talking does, and lidar is absent whenever the dog
+           never stood. Without these the scrubber cannot distinguish "no data here"
+           from "quiet here", and finding the picture is guesswork. */
+        #replaySeekWrap { flex: 1 1 auto; position: relative; display: flex;
+                          flex-direction: column; justify-content: center; }
+        #replayCoverage { position: relative; height: 13px; margin-bottom: 3px; }
+        .cov-row { position: absolute; left: 0; right: 0; height: 3px;
+                   background: rgba(255,255,255,0.07); border-radius: 2px; }
+        .cov-row[data-k="video"]     { top: 0; }
+        .cov-row[data-k="lidar"]     { top: 4px; }
+        .cov-row[data-k="telemetry"] { top: 8px; }
+        .cov-span { position: absolute; top: 0; height: 100%; border-radius: 2px; }
+        .cov-row[data-k="video"] .cov-span     { background: #4ea1ff; }
+        .cov-row[data-k="lidar"] .cov-span     { background: #b06cff; }
+        .cov-row[data-k="telemetry"] .cov-span { background: #6c757d; }
+        .cov-none { position: absolute; left: 0; top: -1px; font-size: 8px;
+                    letter-spacing: .04em; color: rgba(255,255,255,0.32); }
         #replaySeek {
-            flex: 1 1 auto; -webkit-appearance: none; appearance: none;
+            flex: 0 0 auto; width: 100%; -webkit-appearance: none; appearance: none;
             height: 6px; border-radius: 3px; cursor: pointer;
             background: linear-gradient(to right, #00ff66 0%, #00ff66 0%,
                                         rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.15) 100%);
@@ -693,7 +711,10 @@
                 </div>
                 <select id="replaySessionSelect" title="Select Session"></select>
             </div>
-            <input type="range" id="replaySeek" min="0" max="1000" value="0" step="1">
+            <div id="replaySeekWrap">
+                <div id="replayCoverage" title="where each stream has data"></div>
+                <input type="range" id="replaySeek" min="0" max="1000" value="0" step="1">
+            </div>
             <span id="replayTime">0:00 / 0:00</span>
         </div>
         {% endif %}
@@ -1762,6 +1783,42 @@
             const turnsCountLabel = document.getElementById('replayTurnsCount');
             const sessionSelect = document.getElementById('replaySessionSelect');
             const seek = document.getElementById('replaySeek');
+            const covEl = document.getElementById('replayCoverage');
+            let covKey = '';
+            const covFmt = (s) => {
+                s = Math.max(0, Math.floor(s || 0));
+                return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+            };
+            function renderCoverage(cov) {
+                if (!covEl) return;
+                const key = cov ? JSON.stringify(cov) : '';
+                if (key === covKey) return;          // only redraw when it changes
+                covKey = key;
+                covEl.innerHTML = '';
+                if (!cov || !cov.duration) return;
+                const rows = [['video', 'VIDEO'], ['lidar', 'LIDAR'], ['telemetry', 'BODY']];
+                for (const [k, lbl] of rows) {
+                    const row = document.createElement('div');
+                    row.className = 'cov-row';
+                    row.dataset.k = k;
+                    const spans = cov[k] || [];
+                    if (!spans.length) {
+                        const n = document.createElement('span');
+                        n.className = 'cov-none';
+                        n.textContent = k === 'lidar' ? 'no lidar (never stood)' : 'no ' + lbl.toLowerCase();
+                        row.appendChild(n);
+                    }
+                    for (const [a, b] of spans) {
+                        const d = document.createElement('div');
+                        d.className = 'cov-span';
+                        d.style.left = (100 * a / cov.duration) + '%';
+                        d.style.width = Math.max(0.4, 100 * (b - a) / cov.duration) + '%';
+                        d.title = lbl + ' ' + covFmt(a) + '\u2013' + covFmt(b);
+                        row.appendChild(d);
+                    }
+                    covEl.appendChild(row);
+                }
+            }
             const timeLabel = document.getElementById('replayTime');
             const accumulateEl = document.getElementById('accumulateLidar');
 
@@ -1812,6 +1869,7 @@
                     paintFill(frac);
                 }
                 timeLabel.textContent = fmt(st.playhead) + ' / ' + fmt(duration);
+                renderCoverage(st.coverage);
 
                 if (phaseBadge) {
                     phaseBadge.textContent = st.phase || 'SESSION';

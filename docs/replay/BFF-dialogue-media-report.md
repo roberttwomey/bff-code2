@@ -3,7 +3,7 @@
 Curated exchanges from the BFF development and performance archive, with an
 inventory of every recorded stream that survives for each one.
 
-- **Generated:** 2026-08-01T14:59:11
+- **Generated:** 2026-08-02T07:35:32
 - **Archive:** `/Volumes/Cohab2024/BFF/logs-all`
 - **Derived:** `/Volumes/Cohab2024/BFF/processed`
 - **Companion index:** [`bff-replay-index.json`](bff-replay-index.json) — per-turn timestamps,
@@ -97,7 +97,7 @@ turns can share one timestamp. Good for ordering, not for tight sync.
 | Francis & Jasper meet Snapper | [`session-20260201-190334`](file:///Volumes/Cohab2024/BFF/by-phase/3-IDEAS-2026-01/KEY__session-20260201-190334__snapper) | snapper | aru | B | 35 | 33 | 6 | **25** | 1 | 5.5m | – |
 | 'what was the feeling of being activated' | [`session-20260701-125318`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260701-125318__mac) | mac | aru | B | 10 | 10 | – | **2** | – | 1.8m | – |
 | 'have you seen my red ball' | [`session-20260718-195946`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260718-195946__mac) | mac | aru | B | 3 | 3 | – | **2** | – | 44s | – |
-| embodied hallucination / Ace Hotel | [`session-19691231-160201`](file:///Volumes/Cohab2024/BFF/by-phase/_unknown-clock/KEY__session-19691231-160201__snapper) | snapper | aru | A | 14 | 13 | – | **12** | – | 16.3m | 176MB |
+| embodied hallucination / Ace Hotel | [`session-19691231-160201`](file:///Volumes/Cohab2024/BFF/by-phase/_unknown-clock/KEY__session-19691231-160201__snapper) | snapper | aru | A | 14 | 13 | – | **12** | – | 14.0m | 176MB |
 | naming denied (Jasper) | [`session-20260720-194648`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260720-194648__snapper) | snapper | aru | A | 49 | 43 | – | **15** | – | 30.7m | 315MB |
 | 'I feel dead inside' | [`session-20260720-195543`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260720-195543__snapper) | snapper | aru | A | 28 | 24 | – | **17** | – | 21.8m | 173MB |
 | apple as mirror | [`session-20260720-204648`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260720-204648__snapper) | snapper | aru | A | 13 | 12 | – | **6** | – | 19.8m | 87MB |
@@ -132,6 +132,11 @@ than the raw per-chunk files.
 
 | Exchange | Session | Clean video | Overlay | Subtitles |
 |---|---|---|---|---|
+| embodied hallucination / Ace Hotel | [`session-19691231-160201`](file:///Volumes/Cohab2024/BFF/by-phase/_unknown-clock/KEY__session-19691231-160201__snapper) | 193MB | 254MB | `speech.srt`, `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
+| naming denied (Jasper) | [`session-20260720-194648`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260720-194648__snapper) | 348MB | 611MB | `speech.srt`, `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
+| 'I feel dead inside' | [`session-20260720-195543`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260720-195543__snapper) | 190MB | 214MB | `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
+| apple as mirror | [`session-20260720-204648`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260720-204648__snapper) | 96MB | 119MB | `speech.srt`, `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
+| Pinocchio / 'bad dog' | [`session-20260721-121342`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260721-121342__helper) | – | – | – |
 | Companion scene (Jesse) | [`session-20260721-124325`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260721-124325__helper) | 80MB | 144MB | `speech.srt`, `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
 | McCarthy / Lovelace | [`session-20260722-114251`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260722-114251__snapper) | 149MB | 197MB | `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
 | Mirror / 'space between us' / interiority | [`session-20260722-123623`](file:///Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07/KEY__session-20260722-123623__helper) | 100MB | 162MB | `speech.srt`, `yolo+vlm.srt`, `bodystate.srt`, `speech+yolo+vlm+bodystate.srt` |
