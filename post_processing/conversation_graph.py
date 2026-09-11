@@ -12,7 +12,7 @@ Positions are LEXICAL, not neural: two utterances sit close when they share voca
 not because a language model judged them alike.
 
 usage:
-  python3 conversation_graph.py SESSION_DIR [-o OUT.svg] [--echo-threshold 0.86]
+  python3 conversation_graph.py SESSION_DIR [-o OUT.svg] [--echo-threshold 0.86] [--png [--png-width 3440]]
 
 SESSION_DIR is a by-phase session folder containing transcript/session-complete.jsonl
 (falls back to transcript/session.jsonl).
@@ -23,6 +23,8 @@ import json
 import math
 import html
 import argparse
+import shutil
+import subprocess
 import datetime as dt
 import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -53,7 +55,8 @@ def load(session_dir):
             t=parse_ts(r.get("timestamp"))
             if not t: continue
             U.append(dict(t=t, type=r["type"], speaker=r.get("speaker"),
-                          text=(r.get("text") or "").strip(), dur=r.get("duration_s"),
+                          text=(r.get("text") or "").strip(), logged=(r.get("logged_text") or "").strip(),
+                          dur=r.get("duration_s"),
                           block=r.get("block"), cue=r.get("cue")))
     U.sort(key=lambda u:u["t"])
     for i,u in enumerate(U): u["i"]=i
@@ -105,6 +108,38 @@ RX0,RX1=1166,1662
 INK="#1c1917"; MUT="#78716c"; FAINT="#dcd8d2"; BG="#faf8f5"
 HUM="#c2410c"; DOG="#0e7490"; SYS="#a8a29e"; VIS="#7c3aed"; RST="#b91c1c"; HIST="#64748b"
 ramp=lambda f:"#%02x%02x%02x"%(int(176-146*f),int(183-152*f),int(194-165*f))
+
+def place_labels(items,nodes,x0,x1,y0,ybot):
+    """Width-aware labels, clamped to [x0,x1], relaxed against each other and against node discs.
+    items: [(i,x,y,r,text)] to label; nodes: [(i,x,y,r)] every disc a label must avoid.
+    Returns [(i,lx,ly,right,text)] with ly clamped to [y0+18, ybot]."""
+    CW=5.05; L_,R_=x0+10,x1-10
+    cx0=float(np.mean([it[1] for it in items])); cy0=float(np.mean([it[2] for it in items])); lab=[]
+    for i,x,y,r,t in items:
+        t=(t[:28].rstrip()+"…") if len(t)>29 else t; w=len(t)*CW
+        vx,vy=x-cx0,y-cy0; Ln=math.hypot(vx,vy) or 1; right=vx>=-0.15*Ln
+        if right and x+r+9+w>R_: right=False
+        if (not right) and x-r-9-w<L_: right=True
+        lx=x+(r+9)*(1 if right else -1)
+        lx=min(max(lx,L_+(w if not right else 0)),R_-(w if right else 0))
+        lab.append([i,lx,y+(vy/Ln)*10+3.5,right,t,w])
+    span=lambda r:(r[1],r[1]+r[5]) if r[3] else (r[1]-r[5],r[1])
+    for _ in range(400):
+        lab.sort(key=lambda r:r[2]); moved=False
+        for a in range(len(lab)-1):
+            X_,Y_=lab[a],lab[a+1]; ax0,ax1=span(X_); bx0,bx1=span(Y_)
+            if ax0<bx1 and bx0<ax1 and Y_[2]-X_[2]<12.4:
+                sh=(12.4-(Y_[2]-X_[2]))/2+0.05; X_[2]-=sh; Y_[2]+=sh; moved=True
+        for r in lab:
+            lx0,lx1=span(r); ly=r[2]
+            for j,nx,ny,nr in nodes:
+                if j==r[0]: continue
+                nr=nr+3.0
+                if lx0-nr<nx<lx1+nr and abs(ny-(ly-3.4))<nr+5.4:
+                    push=(nr+5.4)-abs(ny-(ly-3.4))+0.1
+                    r[2]+= push if (ly-3.4)>=ny else -push; moved=True
+        if not moved: break
+    return [(i,lx,min(max(ly,y0+18),ybot),right,t) for i,lx,ly,right,t,w in lab]
 
 def render(cfg,U,resets,n_vlm,P,sim,edges,session,echo_min):
     resets=set(resets); o=[]; A=o.append
@@ -159,33 +194,9 @@ def render(cfg,U,resets,n_vlm,P,sim,edges,session,echo_min):
             A(f'<path d="M{x1s:.1f},{y1s:.1f} Q{cx:.1f},{cy:.1f} {x2s:.1f},{y2s:.1f}" fill="none" stroke="{ramp(f)}" stroke-width="0.9" stroke-opacity="0.6" marker-end="url(#ar{min(5,int(f*6))})"/>')
 
     # labels: width-aware, clamped to the panel, relaxed against each other and against nodes
-    CW=5.05; L_,R_=GX0+10,GX1-10; cx0,cy0=xs.mean(),ys.mean(); lab=[]
-    for u in U:
-        i=u["i"]; t=u["text"]; t=(t[:28].rstrip()+"…") if len(t)>29 else t; w=len(t)*CW
-        vx,vy=xs[i]-cx0,ys[i]-cy0; Ln=math.hypot(vx,vy) or 1; right=vx>=-0.15*Ln
-        if right and xs[i]+rad[i]+9+w>R_: right=False
-        if (not right) and xs[i]-rad[i]-9-w<L_: right=True
-        lx=xs[i]+(rad[i]+9)*(1 if right else -1)
-        lx=min(max(lx,L_+(w if not right else 0)),R_-(w if right else 0))
-        lab.append([i,lx,ys[i]+(vy/Ln)*10+3.5,right,t,w])
-    span=lambda r:(r[1],r[1]+r[5]) if r[3] else (r[1]-r[5],r[1])
-    for _ in range(400):
-        lab.sort(key=lambda r:r[2]); moved=False
-        for a in range(len(lab)-1):
-            X_,Y_=lab[a],lab[a+1]; ax0,ax1=span(X_); bx0,bx1=span(Y_)
-            if ax0<bx1 and bx0<ax1 and Y_[2]-X_[2]<12.4:
-                sh=(12.4-(Y_[2]-X_[2]))/2+0.05; X_[2]-=sh; Y_[2]+=sh; moved=True
-        for r in lab:
-            lx0,lx1=span(r); ly=r[2]
-            for j in range(len(U)):
-                if j==r[0]: continue
-                nx,ny,nr=xs[j],ys[j],rad[j]+3.0
-                if lx0-nr<nx<lx1+nr and abs(ny-(ly-3.4))<nr+5.4:
-                    push=(nr+5.4)-abs(ny-(ly-3.4))+0.1
-                    r[2]+= push if (ly-3.4)>=ny else -push; moved=True
-        if not moved: break
-    for i,lx,ly,right,t,w in lab:
-        ly=min(max(ly,GY0+18),GY1-46)
+    lab=place_labels([(u["i"],xs[u["i"]],ys[u["i"]],rad[u["i"]],u["text"]) for u in U],
+                     [(j,xs[j],ys[j],rad[j]) for j in range(len(U))], GX0,GX1,GY0,GY1-46)
+    for i,lx,ly,right,t in lab:
         A(f'<line x1="{xs[i]:.1f}" y1="{ys[i]:.1f}" x2="{lx:.1f}" y2="{ly-3.4:.1f}" stroke="{FAINT}" stroke-width="0.8"/>')
         A(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="9.3" fill="{INK}" fill-opacity="0.85" text-anchor="{"start" if right else "end"}">{e(t)}</text>')
     for u in U:
@@ -261,11 +272,27 @@ def render_rail(o,cfg,U,resets,n_vlm,echo_min):
     A(f'<text x="62" y="{1064+3*17+6}" font-size="10" fill="{MUT}">Robert Twomey &#183; BFF / Dog Walk &#183; rendered {dt.date.today():%Y-%m-%d}</text>')
     A("</svg>")
 
+def export_png(svg,png,width):
+    # rasterise with whichever renderer is on PATH; inkscape is the reference
+    t0=os.path.getmtime(svg)
+    for tool,cmd in (("inkscape",["inkscape",svg,"-o",png,"-w",str(width)]),
+                     ("rsvg-convert",["rsvg-convert","-w",str(width),"-o",png,svg])):
+        if not shutil.which(tool): continue
+        r=subprocess.run(cmd,capture_output=True,text=True)
+        if r.returncode!=0 or not os.path.exists(png) or os.path.getmtime(png)<t0:
+            sys.exit(f"{tool} failed to export {png}:\n{r.stderr.strip()}")
+        return tool
+    sys.exit("--png needs inkscape or rsvg-convert on PATH")
+
 def main():
     ap=argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("session_dir"); ap.add_argument("-o","--out", default=None)
     ap.add_argument("--echo-threshold", type=float, default=0.86,
                     help="min cosine for an echo arc (default 0.86)")
+    ap.add_argument("--png", action="store_true",
+                    help="also export a PNG next to the SVG (needs inkscape or rsvg-convert)")
+    ap.add_argument("--png-width", type=int, default=2*W,
+                    help=f"PNG width in px (default {2*W}, twice the SVG canvas)")
     a=ap.parse_args()
     cfg,U,resets,n_vlm=load(a.session_dir)
     P,sim,edges=embed(U,a.echo_threshold)
@@ -277,5 +304,9 @@ def main():
     open(out,"w").write("\n".join(o))
     print(f"{out}  ({len(U)} utterances, {len(edges)} echo arcs, {len(resets)} resets, "
           f"median sim SNAPPER {medS:.2f} / ROBERT {medH:.2f})")
+    if a.png:
+        png=os.path.splitext(out)[0]+".png"
+        tool=export_png(out,png,a.png_width)
+        print(f"{png}  ({a.png_width} px wide, via {tool})")
 
 if __name__=="__main__": main()
