@@ -14,6 +14,9 @@ usage:
 Camera: --azimuth turns the graph about its vertical axis, --elevation raises the viewpoint
 (degrees), --camera is the distance in graph radii (smaller = stronger perspective; 0 = orthographic).
 
+--flat runs MDS to two dimensions instead, so the layout makes full use of the page, and draws it
+straight on. plotter_drawing.py then reads a flat layout from the JSON with no extra flags.
+
 Also writes:
   OUT.json     3D coordinates, text and edges for every utterance
   OUT.html     with --viewer: drag to rotate, scroll to zoom; prints the flags for this view
@@ -36,17 +39,19 @@ def floor_of(P):
     """A reference plane just under the graph, fitted to its footprint: (y, x0, x1, z0, z1)."""
     m=0.08; return float(P[:,1].min())-m,float(P[:,0].min())-m,float(P[:,0].max())+m,float(P[:,2].min())-m,float(P[:,2].max())+m
 
-def layout3d(D,hum,b1):
-    """3D MDS, centred, axes by decreasing spread, scaled uniformly to unit radius."""
+def layout3d(D,hum,b1,k=3):
+    """MDS to k dimensions, centred, axes by decreasing spread, scaled uniformly to unit radius.
+    k=2 is the flat layout, returned with z = 0."""
     import activation_graph as ag
-    P=ag.mds2(D,3); P=P-P.mean(0); _,_,vt=np.linalg.svd(P,full_matrices=False); P=P@vt.T
+    P=ag.mds2(D,k); P=P-P.mean(0); _,_,vt=np.linalg.svd(P,full_matrices=False); P=P@vt.T
     if b1 and P[b1,0].mean()>0: P[:,0]*=-1
     if P[hum,1].mean()<0: P[:,1]*=-1
     P/=np.linalg.norm(P,axis=1).max()
+    if k==2: P=np.c_[P,np.zeros(len(P))]
     for a in range(len(P)):                        # identical utterances: nudge apart, deterministically
         for b in range(a+1,len(P)):
             if np.linalg.norm(P[a]-P[b])<0.03:
-                ang=a*2.399; d=np.array([math.cos(ang),math.sin(ang),0.3])*0.025; P[a]-=d; P[b]+=d
+                ang=a*2.399; d=np.array([math.cos(ang),math.sin(ang),0.3 if k==3 else 0])*0.025; P[a]-=d; P[b]+=d
     return P
 
 def park(P,U,live):
@@ -81,7 +86,7 @@ def render(cfg,U,resets,live,P,edges,session,a,fid3,fid2,how):
     mx,my=(ax.min()+ax.max())/2,(ay.min()+ay.max())/2; ox,oy=(gx0+PX1)/2,(top+PY1-44)/2
     sc=lambda q:(ox+s*(q[0]-mx),oy-s*(q[1]-my))
     pos={i:sc((sx[k],sy[k])) for i,k in lp.items()}
-    d01=np.clip((dz-dz[live].min())/max(1e-9,np.ptp(dz[live])),0,1); fog={i:float(d01[i]) for i in live}
+    d01=np.ones(len(dz)) if a.flat else np.clip((dz-dz[live].min())/max(1e-9,np.ptp(dz[live])),0,1); fog={i:float(d01[i]) for i in live}
     rad={i:(6.5+3.3*math.sqrt(U[i]["dur"] or 1.0))*float(np.clip(f[i],0.7,1.35)) for i in live}
     fs=8.6; lh=fs*1.18; pinned=[]; off=[U[i] for i in hollow]       # pinned to the page, outside the space
     wrapped=[textwrap.wrap(f'{u["i"]}  {u["text"]}',width=38) for u in off]
@@ -100,14 +105,14 @@ def render(cfg,U,resets,live,P,edges,session,a,fid3,fid2,how):
     A(f'<text x="62" y="76" font-size="12.5" fill="{MUT}">{e(session)} &#183; {t0:%Y-%m-%d}, {t0:%H:%M}&#8211;{t1:%H:%M} &#183; {len(live)} utterances &#183; {how}</text>')
     A(f'<line x1="62" y1="96" x2="{PX1}" y2="96" stroke="{FAINT}"/>')
     cam_txt=f"camera {cam:g} radii" if cam>0 else "orthographic"
-    A(f'<text x="{PX0+14}" y="{PY0-8}" font-size="11.5" font-weight="700" fill="{INK}" letter-spacing="1.2">SEMANTIC SPACE, 3D</text>')
-    A(f'<text x="{PX0+176}" y="{PY0-8}" font-size="11" fill="{MUT}">azimuth {az:g}&#176; &#183; elevation {el:g}&#176; &#183; {cam_txt} &#183; larger and darker = nearer the camera &#183; thin lines drop to a floor grid</text>')
+    A(f'<text x="{PX0+14}" y="{PY0-8}" font-size="11.5" font-weight="700" fill="{INK}" letter-spacing="1.2">SEMANTIC SPACE, {"2D" if a.flat else "3D"}</text>')
+    A(f'<text x="{PX0+176}" y="{PY0-8}" font-size="11" fill="{MUT}">{"flat MDS, seen straight on" if a.flat else f"azimuth {az:g}&#176; &#183; elevation {el:g}&#176; &#183; {cam_txt} &#183; larger and darker = nearer the camera &#183; thin lines drop to a floor grid"}</text>')
     A(f'<rect x="{PX0}" y="{PY0}" width="{PX1-PX0}" height="{PY1-PY0}" fill="#ffffff" stroke="{FAINT}"/>')
-    grid=[([v,floor,fz0],[v,floor,fz1]) for v in np.linspace(fx0,fx1,7)]+[([fx0,floor,v],[fx1,floor,v]) for v in np.linspace(fz0,fz1,7)]
+    grid=[] if a.flat else [([v,floor,fz0],[v,floor,fz1]) for v in np.linspace(fx0,fx1,7)]+[([fx0,floor,v],[fx1,floor,v]) for v in np.linspace(fz0,fz1,7)]
     for p1,p2 in grid:                             # the floor: a reference plane, not data
         (x1,y1),(x2,y2)=pt(p1),pt(p2)
         A(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{FAINT}" stroke-width="0.7"/>')
-    for i in live:
+    for i in ([] if a.flat else live):
         k=lp[i]; (x1,y1),(x2,y2)=pos[i],pt([P[k,0],floor,P[k,2]])
         A(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{MUT}" stroke-width="0.5" stroke-opacity="0.35"/>')
         A(f'<ellipse cx="{x2:.1f}" cy="{y2:.1f}" rx="2.4" ry="1.2" fill="{MUT}" fill-opacity="0.4"/>')
@@ -148,7 +153,7 @@ def render(cfg,U,resets,live,P,edges,session,a,fid3,fid2,how):
     if hollow:
         A(f'<text x="{PX0+14}" y="{ytop-10:.1f}" font-size="9.2" font-weight="700" fill="{MUT}" letter-spacing="0.9">NEVER ENTERED THE MODEL</text>')
     fx=PX0+14; fy=PY1-14
-    A(f'<text x="{fx}" y="{fy}" font-size="10.4" fill="{MUT}">3D keeps the full-dimension distance ranks at &#961; = {fid3:.2f} (2D MDS: {fid2:.2f}) &#183; on-screen distance is not model distance{" &#183; dashed outlines sit outside the space: curved lines are jumps out of the conversation and back" if hollow else ", and depth is foreshortened"}</text>')
+    A(f'<text x="{fx}" y="{fy}" font-size="10.4" fill="{MUT}">{f"2D MDS keeps the full-dimension distance ranks at &#961; = {fid3:.2f}" if a.flat else f"3D keeps the full-dimension distance ranks at &#961; = {fid3:.2f} (2D MDS: {fid2:.2f})"} &#183; on-screen distance is not model distance{" &#183; dashed outlines sit outside the space: curved lines are jumps out of the conversation and back" if hollow else ", and depth is foreshortened"}</text>')
     kx=PX1-430
     for c,t in ((HUM,"Robert"),(DOG,"Snapper")):
         A(f'<circle cx="{kx}" cy="{fy-16}" r="4.5" fill="{c}"/><text x="{kx+9}" y="{fy-13}" font-size="9.6" fill="{INK}">{t}</text>'); kx+=68
@@ -156,7 +161,7 @@ def render(cfg,U,resets,live,P,edges,session,a,fid3,fid2,how):
     A(f'<line x1="{kx}" y1="{fy-16}" x2="{kx+20}" y2="{fy-16}" stroke="{RST}" stroke-width="1.5" stroke-dasharray="2 4"/><text x="{kx+25}" y="{fy-13}" font-size="9.6" fill="{INK}">wipe</text>'); kx+=60
     A(f'<line x1="{kx}" y1="{fy-16}" x2="{kx+20}" y2="{fy-16}" stroke="{DOG}" stroke-width="1.2" stroke-opacity="0.5" stroke-dasharray="3.5 3"/><text x="{kx+25}" y="{fy-13}" font-size="9.6" fill="{INK}">echo</text>')
     A(f'<line x1="62" y1="1042" x2="{PX1}" y2="1042" stroke="{FAINT}"/>')
-    A(f'<text x="62" y="1064" font-size="10" fill="{MUT}">Metric MDS to three dimensions on the same utterance distances as the 2D dialogue graph, scaled uniformly. Axes run widest to narrowest. Dashed lines join the most similar non-adjacent pairs.</text>')
+    A(f'<text x="62" y="1064" font-size="10" fill="{MUT}">Metric MDS to {"two" if a.flat else "three"} dimensions on the same utterance distances as the 2D dialogue graph, scaled uniformly. Axes run widest to narrowest. Dashed lines join the most similar non-adjacent pairs.</text>')
     A(f'<text x="62" y="1088" font-size="10" fill="{MUT}">Robert Twomey &#183; BFF / Dog Walk &#183; rendered {dt.date.today():%Y-%m-%d}</text></svg>')
     return o
 
@@ -202,7 +207,7 @@ VIEWER="""<!doctype html><meta charset="utf-8"><title>__TITLE__</title>
 label{pointer-events:auto;cursor:pointer}canvas{display:block}</style>
 <div id="b"><b>__TITLE__</b> &mdash; drag to rotate, scroll to change perspective, shift-scroll for orthographic, hover a node or a line of the transcript; text that won&rsquo;t fit stays in the transcript until hovered<br><span id="c"></span> &nbsp;<label><input type="checkbox" id="lb" checked> text on graph (T)</label></div><div id="s"></div><canvas id="v"></canvas>
 <script>const G=__DATA__;let az=G.view[0],el=G.view[1],cam=G.view[2];const v=document.getElementById('v'),x=v.getContext('2d');let hi=null,pts=[];const sd=document.getElementById('s'),lb=document.getElementById('lb'),rows={};
-for(const n of G.nodes){const r=document.createElement('div');r.className='r'+(n.parked?' p':'');r.style.borderColor=n.c;const m=document.createElement('small');m.textContent=n.i+' '+n.who+(n.parked?' \u00b7 never entered the model':'');r.append(m,n.text);r.onmouseenter=()=>{hi=n.i;mark();draw()};sd.append(r);rows[n.i]=r}
+for(const n of G.nodes){const r=document.createElement('div');r.className='r'+(n.parked?' p':'');r.style.borderColor=n.c;const m=document.createElement('small');m.textContent=(n.label??n.i)+' '+n.who+(n.parked?' \u00b7 never entered the model':'');r.append(m,n.text);r.onmouseenter=()=>{hi=n.i;mark();draw()};sd.append(r);rows[n.i]=r}
 sd.onmouseleave=()=>{hi=null;mark();draw()};lb.onchange=()=>draw();onkeydown=e=>{if(e.key=='t'||e.key=='T'){lb.checked=!lb.checked;draw()}};
 function mark(){for(const k in rows)rows[k].classList.toggle('on',k==hi)}
 function wrap(t,w){const o=[];let l='';for(const a of t.split(' ')){if(l&&(l+' '+a).length>w){o.push(l);l=a}else l=l?l+' '+a:a}if(l)o.push(l);return o}
@@ -211,10 +216,10 @@ function draw(){const w=v.width=innerWidth-321,h=v.height=innerHeight,G0=G.nodes
 const[F,x0,x1,z0,z1]=G.floor;x.strokeStyle='#dcd8d2';x.lineWidth=1;for(let i=0;i<7;i++){const u=x0+(x1-x0)*i/6,w=z0+(z1-z0)*i/6;for(const[a,b]of[[[u,F,z0],[u,F,z1]],[[x0,F,w],[x1,F,w]]]){const A=S(proj(a)),B=S(proj(b));x.beginPath();x.moveTo(...A);x.lineTo(...B);x.stroke()}}
 const items=[];const pk=G.nodes.filter(n=>n.parked);pts=G.nodes.map(n=>{if(n.parked)return{n,q:[0,0,99,1],o:[G0-22,h/2+(pk.indexOf(n)-(pk.length-1)/2)*7]};const q=proj(n.p);return{n,q,o:S(q)}});const by=Object.fromEntries(pts.map(p=>[p.n.i,p]));
 for(const[i,j,c,dsh]of G.links){const a=by[i],b=by[j];items.push([(a.q[2]+b.q[2])/2-.001,()=>{x.strokeStyle=c;x.lineWidth=c=='#b91c1c'?1.5:1;x.setLineDash(c=='#b91c1c'||dsh?[2,5]:[]);x.beginPath();x.moveTo(...a.o);if(a.n.parked||b.n.parked){const L=Math.hypot(b.o[0]-a.o[0],b.o[1]-a.o[1])||1,mx=(a.o[0]+b.o[0])/2,my=(a.o[1]+b.o[1])/2,cx=L<40?mx+30:mx-(b.o[1]-a.o[1])*.22,cy=L<40?my:my+(b.o[0]-a.o[0])*.22;x.quadraticCurveTo(cx,cy,...b.o)}else x.lineTo(...b.o);x.stroke();x.setLineDash([])}])}
-for(const p of pts)items.push([p.q[2],()=>{const r=(6.5+3.3*Math.sqrt(p.n.dur||1))*Math.max(.7,Math.min(1.35,p.q[3]));if(p.n.parked){x.fillStyle='#fff';x.strokeStyle=p.n.c;x.lineWidth=1.3;x.setLineDash([3,2]);x.beginPath();x.arc(...p.o,9,0,7);x.fill();x.stroke();x.setLineDash([]);x.fillStyle=p.n.c}else{x.fillStyle=p.n.c;x.globalAlpha=.9;x.beginPath();x.arc(...p.o,r,0,7);x.fill();x.globalAlpha=1;x.fillStyle='#fff'}x.font='bold 9px Menlo';x.textAlign='center';x.fillText(p.n.i,p.o[0],p.o[1]+3)}]);
+for(const p of pts)items.push([p.q[2],()=>{const r=(6.5+3.3*Math.sqrt(p.n.dur||1))*Math.max(.7,Math.min(1.35,p.q[3]));if(p.n.parked){x.fillStyle='#fff';x.strokeStyle=p.n.c;x.lineWidth=1.3;x.setLineDash([3,2]);x.beginPath();x.arc(...p.o,9,0,7);x.fill();x.stroke();x.setLineDash([]);x.fillStyle=p.n.c}else{x.fillStyle=p.n.c;x.globalAlpha=.9;x.beginPath();x.arc(...p.o,r,0,7);x.fill();x.globalAlpha=1;x.fillStyle='#fff'}x.font='bold 9px Menlo';x.textAlign='center';x.fillText(p.n.label??p.n.i,p.o[0],p.o[1]+3)}]);
 items.sort((a,b)=>a[0]-b[0]).forEach(t=>t[1]());
 const hit=(a,b)=>a[0]<b[2]&&b[0]<a[2]&&a[1]<b[3]&&b[1]<a[3],D=pts.map(p=>[p.o[0]-13,p.o[1]-13,p.o[0]+13,p.o[1]+13]),B=[],L=[],SD=[[1,0],[-1,0],[1,-1],[-1,-1],[1,1],[-1,1],[0,-1],[0,1]];
-const PL=pts.filter(p=>p.n.parked).map(p=>[p,wrap(p.n.i+'  '+p.n.text,34)]);let ly=h/2-PL.reduce((a,t)=>a+t[1].length*12+8,0)/2;for(const[p,l]of PL){const bh=l.length*12+4,q=[6,ly,14+Math.max(...l.map(t=>t.length))*5,ly+bh];ly+=bh+4;if(lb.checked&&p.n.i!=hi){B.push(q);L.push([p,q,l])}}
+const PL=pts.filter(p=>p.n.parked).map(p=>[p,wrap((p.n.label??p.n.i)+'  '+p.n.text,34)]);let ly=h/2-PL.reduce((a,t)=>a+t[1].length*12+8,0)/2;for(const[p,l]of PL){const bh=l.length*12+4,q=[6,ly,14+Math.max(...l.map(t=>t.length))*5,ly+bh];ly+=bh+4;if(lb.checked&&p.n.i!=hi){B.push(q);L.push([p,q,l])}}
 if(lb.checked)for(const p of [...pts].sort((a,b)=>b.q[2]-a.q[2])){if(p.n.i==hi||p.n.parked)continue;const l=wrap(p.n.text,34),bw=Math.max(...l.map(t=>t.length))*5+8,bh=l.length*12+4;let f=null;
 for(const d of [16,36,60,90,130,180,240]){for(const s of SD){const c=[p.o[0]+s[0]*(d+bw/2),p.o[1]+s[1]*(d+bh/2)],q=[c[0]-bw/2,c[1]-bh/2,c[0]+bw/2,c[1]+bh/2];if(q[0]<G0-6||q[2]>w-4||q[1]<56||q[3]>h-4||B.some(b=>hit(q,b))||D.some(b=>hit(q,b)))continue;f=q;break}if(f)break}
 if(f){B.push(f);L.push([p,f,l])}}
@@ -236,10 +241,12 @@ def main():
     ap.add_argument("--echo-threshold", type=float, default=0.86, help="tfidf only")
     ap.add_argument("--azimuth", type=float, default=30); ap.add_argument("--elevation", type=float, default=20)
     ap.add_argument("--camera", type=float, default=4, help="distance in graph radii; 0 = orthographic")
+    ap.add_argument("--flat", action="store_true", help="MDS to 2D rather than 3D, drawn straight on")
     ap.add_argument("--viewer", action="store_true", help="write an interactive OUT.html")
     ap.add_argument("--obj", action="store_true", help="write OUT.obj for 3D tools")
     ap.add_argument("--png", action="store_true"); ap.add_argument("--png-width", type=int, default=2*W)
     a=ap.parse_args()
+    if a.flat: a.azimuth=a.elevation=a.camera=0
     if 0<a.camera<=1.5: sys.exit("--camera must exceed 1.5 graph radii, or be 0 for orthographic")
     cfg,U,resets,n_vlm=cg.load(a.session_dir)
     session=os.path.basename(a.session_dir.rstrip("/"))
@@ -254,18 +261,18 @@ def main():
     D=np.clip(1-sim[np.ix_(live,live)],0,None); D=(D+D.T)/2; np.fill_diagonal(D,0)
     lp={i:k for k,i in enumerate(live)}
     hum=[lp[u["i"]] for u in U if u["i"] in lp and u["speaker"]=="HUMAN"]; b1=[lp[u["i"]] for u in U if u["i"] in lp and u.get("block")==1]
-    L3=layout3d(D,hum,b1); P=park(L3,U,live)
+    L3=layout3d(D,hum,b1,2 if a.flat else 3); P=park(L3,U,live)
     from scipy.stats import spearmanr
     from scipy.spatial.distance import pdist
     iu=np.triu_indices(len(live),1); fid3=float(spearmanr(pdist(L3),D[iu]).statistic); fid2=float(spearmanr(pdist(P2[live]),D[iu]).statistic)
     open(out,"w").write("\n".join(render(cfg,U,resets,live,P,edges,session,a,fid3,fid2,how)))
-    print(f"{out}  ({len(live)} nodes, az {a.azimuth:g} el {a.elevation:g} cam {a.camera:g}; distance ranks rho {fid3:.2f} in 3D, {fid2:.2f} in 2D)")
+    print(f"{out}  ({len(live)} nodes, az {a.azimuth:g} el {a.elevation:g} cam {a.camera:g}; distance ranks rho {fid3:.2f} in {"2D" if a.flat else f"3D, {fid2:.2f} in 2D"})")
     stem=os.path.splitext(out)[0]; rs=set(resets); seq=[u["i"] for u in U]; pairs=list(zip(seq,seq[1:]))
     who=lambda u:"ROBERT" if u["speaker"]=="HUMAN" else ("SNAPPER" if u["type"]=="assistant" else "SYSTEM")
     nodes=[dict(i=i,who=who(U[i]),type=U[i]["type"],text=(U[i]["logged"] or U[i]["text"]) if i in lp and a.space!="tfidf" else U[i]["text"],dur=U[i]["dur"],p=[round(float(v),5) for v in P[i]] if i in lp else None,
                 parked=i not in lp,c=HUM if who(U[i])=="ROBERT" else (DOG if who(U[i])=="SNAPPER" else SYS)) for i in seq]
     links=[[i,j,RST if (i in rs or j in rs or any(i<c<j for c in rs)) else "#9a948c",i not in lp or j not in lp] for i,j in pairs]
-    data=dict(session=session,space=a.space,nodes=nodes,links=links,floor=[round(v,4) for v in floor_of(P[live])],view=[a.azimuth,a.elevation,a.camera],
+    data=dict(session=session,space=a.space,start=U[0]["t"].isoformat(),end=U[-1]["t"].isoformat(),nodes=nodes,links=links,floor=[round(v,4) for v in floor_of(P[live])],view=[a.azimuth,a.elevation,a.camera],
               echoes=[[i,j,round(s,4)] for i,j,s,_ in edges if i in lp and j in lp])
     json.dump(data,open(stem+".json","w"),indent=1); print(stem+".json")
     if a.viewer:
