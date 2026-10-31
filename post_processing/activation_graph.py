@@ -164,9 +164,9 @@ def std_frame(M):
 def cosdist(Z):
     Zn=Z/np.linalg.norm(Z,axis=1,keepdims=True); return np.clip(1.0-Zn@Zn.T,0,2)
 
-def mds2(D):
+def mds2(D,k=2):
     from sklearn.manifold import MDS
-    return MDS(n_components=2,dissimilarity="precomputed",random_state=7,n_init=16,
+    return MDS(n_components=k,dissimilarity="precomputed",random_state=7,n_init=16,
                max_iter=1500,normalized_stress="auto").fit_transform(D)
 
 def align(P,ref):
@@ -174,6 +174,36 @@ def align(P,ref):
     from scipy.linalg import orthogonal_procrustes
     a=P-P.mean(0); b=ref-ref.mean(0); Rm,_=orthogonal_procrustes(a,b); a=a@Rm
     return a*(np.linalg.norm(b)/max(np.linalg.norm(a),1e-9))+ref.mean(0)
+
+def extract_standalone(U, model_dir):
+    """Each utterance alone through the model, with no prompt, history or chat template:
+    [utterances, layers+1, d], mean over its tokens (excluding <bos>)."""
+    import torch
+    from transformers import AutoTokenizer, Gemma4ForConditionalGeneration
+    dev="mps" if torch.backends.mps.is_available() else "cpu"
+    tok=AutoTokenizer.from_pretrained(model_dir)
+    model=Gemma4ForConditionalGeneration.from_pretrained(model_dir, dtype=torch.bfloat16).to(dev).eval()
+    out=[]
+    with torch.inference_mode():
+        for u in U:
+            ids=[tok.bos_token_id]+tok(u["logged"] or u["text"],add_special_tokens=False)["input_ids"]
+            h=model(input_ids=torch.tensor([ids],device=dev),output_hidden_states=True).hidden_states
+            out.append(torch.stack(h,0)[:,0,1:].float().mean(1).cpu().numpy())
+    return np.stack(out).astype(np.float32)
+
+def space_standalone(H,U,layer):
+    """Plane, similarities and nearest non-adjacent pairs for extract_standalone's vectors."""
+    from scipy.stats import spearmanr
+    from scipy.spatial.distance import pdist
+    Z=std_frame(H[:,layer])(H[:,layer]); D=cosdist(Z); iu=np.triu_indices(len(U),1)
+    P=mds2(D); P=P-P.mean(0); _,_,vt=np.linalg.svd(P,full_matrices=False); P=P@vt.T
+    b1=[u["i"] for u in U if u.get("block")==1]; hn=[u["i"] for u in U if u["speaker"]=="HUMAN"]
+    if b1 and P[b1,0].mean()>0: P[:,0]*=-1
+    if hn and P[hn,1].mean()<0: P[:,1]*=-1
+    sim=1-D; kind=lambda u:"H" if u["speaker"]=="HUMAN" else ("S" if u["type"]=="assistant" else "X")
+    pairs=sorted(((sim[a,b],a,b) for a in range(len(U)) for b in range(a+2,len(U))),reverse=True)[:30]
+    return dict(P=P,sim=sim,echoes=[(a,b,float(v),kind(U[a])+kind(U[b])) for v,a,b in pairs],
+                fid=float(spearmanr(pdist(P),D[iu]).statistic))
 
 def analyse(z,U,layer,small_layers):
     from sklearn.metrics import silhouette_score
@@ -213,7 +243,7 @@ def analyse(z,U,layer,small_layers):
     pairs=sorted(((sim[a,b],order[a],order[b]) for a in range(len(order)) for b in range(a+1,len(order))
                   if order[b]-order[a]>=2), reverse=True)
     echoes=[(i,j,float(s),kind(i)+kind(j)) for s,i,j in pairs[:30]]
-    return dict(order=order,P=P,small=small,sil=sil,rho=rho,shift=shift,fid=fid,scenes=scenes,
+    return dict(order=order,P=P,sim=sim,small=small,sil=sil,rho=rho,shift=shift,fid=fid,scenes=scenes,
                 echoes=echoes,nL=nL,dspread=float(np.median(D[layer][iu])))
 
 GYB=930                                   # graph area ends here; the off-model strip sits below
