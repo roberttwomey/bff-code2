@@ -152,6 +152,38 @@ def place_labels(items,nodes,x0,x1,y0,ybot):
         if not moved: break
     return [(i,lx,min(max(ly,y0+18),ybot),right,t) for i,lx,ly,right,t,w in lab]
 
+def place_text(items,nodes,x0,x1,y0,y1,width=36,fs=8.6):
+    """Full utterance text as word-wrapped boxes. Greedy, longest first: each box takes the nearest
+    spot around its node that best avoids boxes already placed and every node disc.
+    items: [(i,x,y,r,text)], nodes: [(i,x,y,r)]. Returns [dict(i,x,y,w,h,lines)], x/y the top-left corner."""
+    lh=fs*1.18; cw=fs*0.5; placed=[]; out=[]
+    ov=lambda a,b:max(0,min(a[2],b[2])-max(a[0],b[0]))*max(0,min(a[3],b[3])-max(a[1],b[1]))
+    discs={i:(x-r-2,y-r-2,x+r+2,y+r+2) for i,x,y,r in nodes}
+    for i,x,y,r,t in sorted(items,key=lambda it:-len(it[4])):
+        lines=textwrap.wrap(t,width=width) or [""]; w=max(map(len,lines))*cw+6; h=len(lines)*lh+4; best=None
+        for d in (8,20,36,56,80,110,150,200,260,330):
+            for k in range(16):
+                a=k*math.pi/8; cx=x+(r+d+w/2)*math.cos(a); cy=y+(r+d+h/2)*math.sin(a)
+                b=(cx-w/2,cy-h/2,cx+w/2,cy+h/2)
+                if b[0]<x0+6 or b[2]>x1-6 or b[1]<y0+6 or b[3]>y1: continue
+                sc=d+0.8*sum(ov(b,q) for q in placed)+0.8*sum(ov(b,q) for j,q in discs.items())
+                if best is None or sc<best[0]: best=(sc,b)
+        b=best[1] if best else (min(max(x+r+8,x0+6),x1-6-w),min(max(y,y0+6),y1-h),0,0)
+        b=(b[0],b[1],b[0]+w,b[1]+h); placed.append(b); out.append(dict(i=i,x=b[0],y=b[1],w=w,h=h,lines=lines))
+    return sorted(out,key=lambda q:q["i"])
+
+def draw_text(A,boxes,px,py,colour,fs=8.6):
+    """A leader from each node to the nearest edge of its box, then the box and its wrapped text."""
+    lh=fs*1.18
+    for q in boxes:
+        x,y=px(q["i"]),py(q["i"]); ex=min(max(x,q["x"]),q["x"]+q["w"]); ey=min(max(y,q["y"]),q["y"]+q["h"])
+        A(f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{ex:.1f}" y2="{ey:.1f}" stroke="#a8a29e" stroke-width="0.7"/>')
+    for q in boxes:
+        A(f'<rect x="{q["x"]:.1f}" y="{q["y"]:.1f}" width="{q["w"]:.1f}" height="{q["h"]:.1f}" fill="#ffffff" fill-opacity="0.86"/>')
+        A(f'<rect x="{q["x"]:.1f}" y="{q["y"]:.1f}" width="1.6" height="{q["h"]:.1f}" fill="{colour(q["i"])}"/>')
+        for n,ln in enumerate(q["lines"]):
+            A(f'<text x="{q["x"]+4:.1f}" y="{q["y"]+fs+0.6+n*lh:.1f}" font-size="{fs}" fill="{INK}">{e(ln)}</text>')
+
 def render(cfg,U,resets,n_vlm,P,sim,edges,session,echo_min,space=None):
     """space: None for tfidf, else dict(live, panel, caption, echo_max) for a model-derived layout."""
     resets=set(resets); o=[]; A=o.append
@@ -166,12 +198,16 @@ def render(cfg,U,resets,n_vlm,P,sim,edges,session,echo_min,space=None):
                 ang=a*2.399; r=0.055*float(np.ptp(p,axis=0).max() or 1)
                 d=np.array([np.cos(ang),np.sin(ang)])*r; p[b]=p[b]+d; p[a]=p[a]-d
     p-=p.min(0); p/=np.clip(p.max(0),1e-9,None); pad=60
-    top=GY0+(70 if parked else 0)                 # the parked band takes the top of the panel
+    top=GY0+(84 if parked else 0)                 # the parked band takes the top of the panel
     xs=np.zeros(len(U)); ys=np.zeros(len(U))
     xs[live]=GX0+pad+p[:,0]*((GX1-GX0)-2*pad); ys[live]=GY1-pad-p[:,1]*((GY1-top)-2*pad)
     kind=lambda u:"H" if u["speaker"]=="HUMAN" else ("S" if u["type"]=="assistant" else "X")
     K=[kind(u) for u in U]; col={"H":HUM,"S":DOG,"X":SYS}
     rad=[6.5+3.3*math.sqrt(u["dur"] or 1.0) for u in U]
+    col_=-1                                       # parked: one column each, a reset cue under its request
+    for u in parked:
+        col_+=0 if u["type"]=="cue" else 1; i=u["i"]; rad[i]=8.0
+        xs[i]=GX0+24+max(col_,0)*250; ys[i]=GY0+36+(24 if u["type"]=="cue" else 0)
     Sn=[i for i in live if K[i]=="S"]; Hn=[i for i in live if K[i]=="H"]
     med=lambda s:float(np.median([sim[i,j] for a,i in enumerate(s) for j in s[a+1:]])) if len(s)>1 else 0.0
     medS,medH=med(Sn),med(Hn)
@@ -198,7 +234,8 @@ def render(cfg,U,resets,n_vlm,P,sim,edges,session,echo_min,space=None):
         c=DOG if k=="SS" else (HUM if k=="HH" else VIS); f=(s-echo_min)/max(1e-6,echo_max-echo_min)
         A(f'<path d="M{x1:.1f},{y1:.1f} Q{cx:.1f},{cy:.1f} {x2:.1f},{y2:.1f}" fill="none" stroke="{c}" stroke-width="{0.9+1.6*f:.2f}" stroke-opacity="{0.20+0.38*f:.2f}" stroke-dasharray="3.5 3"/>')
     # dialogue spine, colour-ramped by time; severed in red across a reset
-    for n_,(a,b) in enumerate(zip(live,live[1:])):
+    seq=[u["i"] for u in U]                       # every utterance, so a reset runs through its request and cue
+    for n_,(a,b) in enumerate(zip(seq,seq[1:])):
         x1,y1,x2,y2=xs[a],ys[a],xs[b],ys[b]
         dx,dy=x2-x1,y2-y1; L=math.hypot(dx,dy) or 1; ux,uy=dx/L,dy/L
         x1s,y1s=x1+ux*(rad[a]+2.5),y1+uy*(rad[a]+2.5); x2s,y2s=x2-ux*(rad[b]+6.5),y2-uy*(rad[b]+6.5)
@@ -206,15 +243,12 @@ def render(cfg,U,resets,n_vlm,P,sim,edges,session,echo_min,space=None):
         if (b in resets) or (a in resets) or any(a<c<b for c in resets):
             A(f'<path d="M{x1s:.1f},{y1s:.1f} Q{cx:.1f},{cy:.1f} {x2s:.1f},{y2s:.1f}" fill="none" stroke="{RST}" stroke-width="1.5" stroke-opacity="0.8" stroke-dasharray="2 5" marker-end="url(#arr)"/>')
         else:
-            f=n_/max(1,len(live)-2)
+            f=n_/max(1,len(seq)-2)
             A(f'<path d="M{x1s:.1f},{y1s:.1f} Q{cx:.1f},{cy:.1f} {x2s:.1f},{y2s:.1f}" fill="none" stroke="{ramp(f)}" stroke-width="0.9" stroke-opacity="0.6" marker-end="url(#ar{min(5,int(f*6))})"/>')
 
-    # labels: width-aware, clamped to the panel, relaxed against each other and against nodes
-    lab=place_labels([(i,xs[i],ys[i],rad[i],say(U[i])) for i in live],
-                     [(j,xs[j],ys[j],rad[j]) for j in live], GX0,GX1,top,GY1-46)
-    for i,lx,ly,right,t in lab:
-        A(f'<line x1="{xs[i]:.1f}" y1="{ys[i]:.1f}" x2="{lx:.1f}" y2="{ly-3.4:.1f}" stroke="{FAINT}" stroke-width="0.8"/>')
-        A(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="9.3" fill="{INK}" fill-opacity="0.85" text-anchor="{"start" if right else "end"}">{e(t)}</text>')
+    # the complete text of every utterance in the space, word-wrapped beside its node
+    boxes=place_text([(i,xs[i],ys[i],rad[i],say(U[i])) for i in live],[(j,xs[j],ys[j],rad[j]) for j in live],GX0,GX1,top,GY1-46)
+    draw_text(A,boxes,lambda i:xs[i],lambda i:ys[i],lambda i:col[K[i]])
     for i in live:
         u=U[i]; k=K[i]; c=col[k]
         if u["type"]=="cue":
@@ -225,14 +259,14 @@ def render(cfg,U,resets,n_vlm,P,sim,edges,session,echo_min,space=None):
     A(f'<text x="{GX0+14}" y="{GY1-14}">{space.get("caption","the dog&#39;s replies are uniformly alike; the questions split between near-repeats and genuinely new ground.")}</text></g>')
     if parked:                                    # no position in this space: a fixed spot, upper left
         A(f'<text x="{GX0+14}" y="{GY0+18}" font-size="9.2" font-weight="700" fill="{MUT}" letter-spacing="0.9">NEVER ENTERED THE MODEL &#183; NO POSITION IN THIS SPACE</text>')
-        for n_,u in enumerate(parked):
-            x=GX0+24+(n_%3)*218; y=GY0+36+(n_//3)*22; c=HUM if u["speaker"]=="HUMAN" else SYS
-            why={"startup":"canned greeting","cue":"canned reset audio"}.get(u["type"]) or \
-                ("reset request, intercepted" if any(u["i"]<r_<=u["i"]+1 for r_ in resets) else "no reply logged")
-            t=u["text"]; t=(t[:19].rstrip()+"…") if len(t)>20 else t
-            A(f'<circle cx="{x}" cy="{y-3}" r="8" fill="none" stroke="{c}" stroke-width="1.3" stroke-dasharray="2.5 2"/>')
+        for u in parked:
+            x=float(xs[u["i"]]); y=float(ys[u["i"]])+3; c=HUM if u["speaker"]=="HUMAN" else SYS
+            why={"startup":"canned greeting","cue":"canned audio"}.get(u["type"]) or \
+                ("intercepted" if any(u["i"]<r_<=u["i"]+1 for r_ in resets) else "no reply")
+            t=u["text"]
+            A(f'<circle cx="{x}" cy="{y-3}" r="8" fill="#ffffff" stroke="{c}" stroke-width="1.3" stroke-dasharray="2.5 2"/>')
             A(f'<text x="{x}" y="{y}" font-size="7.8" text-anchor="middle" font-weight="700" fill="{c}" font-family="SF Mono, Menlo, monospace">{u["i"]}</text>')
-            A(f'<text x="{x+13}" y="{y-1}" font-size="9" fill="{INK}" fill-opacity="0.85">{e(t)}<tspan fill="{MUT}" font-style="italic" font-size="8.2" dx="5">{e(why)}</tspan></text>')
+            A(f'<text x="{x+13}" y="{y-1}" font-size="9" fill="{INK}" fill-opacity="0.85" stroke="#ffffff" stroke-width="2.4" paint-order="stroke">{e(t)}<tspan fill="{MUT}" font-style="italic" font-size="8.2" dx="5">{e(why)}</tspan></text>')
     return o, xs, ys, medS, medH
 
 def render_rail(o,cfg,U,resets,n_vlm,echo_min,foot=None,sp_src=None):
