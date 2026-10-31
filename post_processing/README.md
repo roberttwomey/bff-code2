@@ -114,6 +114,7 @@ The drawing's options:
 | `--knots` | Scribbled knots replace the circles |
 | `--excerpt [N]`, `--speaker` | Opening N words, or the speaker's name, instead of full text |
 | `--no-sequence`, `--no-date` | Remove the turn numbers and arrows, or the date line |
+| `--leader solid`, `--leader-gap` | Text leaders are dotted by default, with dots 2.5 mm apart. Each dot is a pen drop |
 | `--paper WxH` | Paper size in inches, default `30x22` |
 | `--title`, `--title-height`, `--seed`, `--stroke-mm` | Title text and size, random seed, pen weight |
 

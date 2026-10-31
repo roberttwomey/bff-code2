@@ -183,6 +183,11 @@ def hook(a,b,r,bow):
     p0=np.array(a,float); p2=np.array(b,float); c=(p0+p2)/2+np.array([2*r+bow,0])   # centre to centre
     t=np.linspace(0,1,12)[:,None]; return (1-t)**2*p0+2*(1-t)*t*c+t*t*p2
 
+def dots(a,b,gap,mark=0.35):
+    """A leader as a row of tiny strokes: each is a pen drop, so a dotted leader costs lifts."""
+    L=float(np.linalg.norm(b-a)); u=(b-a)/(L or 1); n=max(2,int(L/gap)+1)
+    return [np.array([a+u*t,a+u*(t+mark)]) for t in np.linspace(0,max(L-mark,0),n)]
+
 def ticks(path,n,every,length):
     """n short cross-strokes every so often along a path: how a trail says which recording it is."""
     out=[]; d=np.diff(path,axis=0); L=np.hypot(d[:,0],d[:,1]); s=np.r_[0,np.cumsum(L)]
@@ -238,6 +243,8 @@ def main():
                     help="turn numbers on labels and arrowheads along the trail (default on)")
     ap.add_argument("--session-ticks", action=argparse.BooleanOptionalAction, default=False,
                     help="with several recordings, mark each trail with cross-strokes (default off)")
+    ap.add_argument("--leader", choices=("solid","dotted"), default="dotted", help="line from text to its circle (default dotted)")
+    ap.add_argument("--leader-gap", type=float, default=2.5, help="mm between dots in a dotted leader (default 2.5)")
     ap.add_argument("--strand-pct", type=float, default=0.5, help="attention per strand, in percent (default 0.5)")
     ap.add_argument("--stroke-mm", type=float, default=0.3); ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--title", default="snapper and robert")
@@ -354,7 +361,8 @@ def main():
             labels+=[p+np.array([b[0]-bx,b[1]-by]) for p in paths]
             if d>=12:                              # a leader, when the text had to sit away from its circle
                 q=np.array([min(max(pos[i][0],b[0]),b[2]),min(max(pos[i][1],b[1]),b[3])]); c=np.array(pos[i],float); v=q-c; L=np.linalg.norm(v) or 1
-                labels.append(np.array([c+v/L*(outer(i)+0.8),q-v/L*1.2]))
+                p0,p1=c+v/L*(outer(i)+0.8),q-v/L*1.2
+                labels+=dots(p0,p1,a.leader_gap) if a.leader=="dotted" else [np.array([p0,p1])]
         labels+=lists
     if not a.knots:                                # a small key, on the title's baseline
         dog=next((nodes[i]["who"].lower() for i in live if nodes[i]["type"]=="assistant"),"reply")
