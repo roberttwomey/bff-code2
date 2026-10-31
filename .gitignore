@@ -32,3 +32,5 @@ snapshot.jpg
 # Performance scripts are per-machine and edited per show, kept local.
 # chat-manager.py falls back to the default scene when there is no script.
 performance-script.json*
+
+outputs/
