@@ -30,6 +30,8 @@ A `SESSION` folder needs `transcript/session-complete.jsonl`, or `session.jsonl`
 | `graph3d.py` | 3D dialogue graph: projected render, interactive viewer, OBJ, JSON |
 | `plotter_drawing.py` | Black-ink pen-plotter drawing, from `graph3d.py`'s or `multi_session.py`'s JSON |
 | `multi_session.py` | Several sessions in one shared space, for `plotter_drawing.py` |
+| `conversation_map.py` | A fixed map of all Snapper exchanges, and a session's turns placed on it |
+| `map_compare.py`, `map_report.py` | Compare feature vectors for that map |
 | `activation_graph.py` | 2D graph with six other depths and a depth profile; writes the activation cache |
 | `similarity_grid.py` | Similarity matrix at each of the 36 depths |
 | `attention_flow.py` | Where each reply's attention went; writes the attention cache |
@@ -190,6 +192,32 @@ model (cached in `outputs/multi/`). Both give every utterance a position, so the
 python3 post_processing/multi_session.py $B/KEY__session-20260720-195543__snapper $B/KEY__session-20260720-204648__snapper $B/KEY__session-20260722-114251__snapper --model $MODEL --system-prompt performance-script.json-02 --names "i feel dead inside" "apple as mirror" "mccarthy and lovelace" --space tfidf --flat -o outputs/snapper-multi-tfidf-flat.json
 $HM post_processing/plotter_drawing.py --graph outputs/snapper-multi-tfidf-flat.json --attn outputs/snapper-multi-tfidf-flat-attention.json -o outputs/snapper-multi-tfidf-flat-plotter.svg --png
 ```
+
+### Fixed conversation map
+
+One map of all Snapper's conversations, so every plot shares its coordinates. Needs `map_compare.py
+corpus minilm summary` to have run, and uses the `bff` conda env, which has `umap-learn`.
+
+```bash
+BFF=/opt/homebrew/anaconda3/envs/bff/bin/python
+$BFF post_processing/conversation_map.py fit
+$BFF post_processing/conversation_map.py place "$SESSION" -o outputs/snapper-exchange-map.json
+$HM post_processing/plotter_drawing.py --graph outputs/snapper-exchange-map.json -o outputs/snapper-exchange-map-plotter-full.svg --png
+```
+
+Several sessions go on the same map. Turns are lettered by session, and each has its own stack:
+
+```bash
+B=/Volumes/Cohab2024/BFF/by-phase/4-SIGGRAPH-2026-07
+$BFF post_processing/conversation_map.py place $B/KEY__session-20260720-195543__snapper $B/KEY__session-20260720-204648__snapper $B/KEY__session-20260722-114251__snapper --names "i feel dead inside" "apple as mirror" "mccarthy and lovelace" -o outputs/snapper-multi-exchange-map.json
+$HM post_processing/plotter_drawing.py --graph outputs/snapper-multi-exchange-map.json --excerpt 6 -o outputs/snapper-multi-exchange-map-plotter-excerpt.svg --png
+```
+
+`fit` is done once and saved in `outputs/map/`; refitting changes the map. `place` puts each turn on
+it separately, so the path steps between question and reply, and resets stay in the stack. The drawing
+scales to the whole map and shows every exchange as a faint mark with region names (`--no-backdrop`
+removes them, and `--mark slash` or `dash` changes the symbol; the default `plus` costs two pen drops per
+exchange). `--no-marks` leaves out the marks but keeps the region names. `--attn` is only needed for `--surprise` and `--attention`.
 
 ### TF-IDF drawing
 

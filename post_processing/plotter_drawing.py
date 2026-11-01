@@ -38,7 +38,7 @@ and needs only numpy and HersheyFonts; the housemachine conda env has both:
       -o outputs/snapper-plotter.svg --png
 
 Use graph3d.py --viewer to find a view, then pass the same --azimuth --elevation --camera.
-Layers: layer_attention, layer_trail, layer_jumps, layer_sequence, layer_labels, layer_title. The output is
+Layers: layer_map, layer_attention, layer_trail, layer_jumps, layer_sequence, layer_labels, layer_title. The output is
 in millimetres of paper. Check it before plotting with send_svg_axidraw.py --inspect --overdraw.
 """
 import os
@@ -229,7 +229,7 @@ def overdraw(layers,w,h,cell=0.5):
 def main():
     ap=argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--graph", required=True, help="the .json graph3d.py writes")
-    ap.add_argument("--attn", required=True, help="attention and surprise cache (.json)")
+    ap.add_argument("--attn", default=None, help="attention and surprise cache (.json), needed for --surprise and --attention")
     ap.add_argument("-o","--out", default="plotter-drawing.svg")
     ap.add_argument("--azimuth", type=float); ap.add_argument("--elevation", type=float); ap.add_argument("--camera", type=float)
     ap.add_argument("--paper", default="30x22", help="WxH in inches (default 30x22)")
@@ -245,6 +245,11 @@ def main():
                     help="with several recordings, mark each trail with cross-strokes (default off)")
     ap.add_argument("--leader", choices=("solid","dotted"), default="dotted", help="line from text to its circle (default dotted)")
     ap.add_argument("--leader-gap", type=float, default=2.5, help="mm between dots in a dotted leader (default 2.5)")
+    ap.add_argument("--backdrop", action=argparse.BooleanOptionalAction, default=True,
+                    help="on a fixed map, draw every exchange as a faint mark and name the regions (default on)")
+    ap.add_argument("--mark", choices=("plus","slash","dash"), default="plus",
+                    help="symbol for each exchange in the map backdrop (default plus, two pen drops each)")
+    ap.add_argument("--no-marks", action="store_true", help="leave out the backdrop's exchange marks but keep the region names")
     ap.add_argument("--strand-pct", type=float, default=0.5, help="attention per strand, in percent (default 0.5)")
     ap.add_argument("--stroke-mm", type=float, default=0.3); ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--title", default="snapper and robert")
@@ -259,18 +264,23 @@ def main():
     ap.add_argument("--png", action="store_true", help="also write a proof PNG (needs inkscape)")
     a=ap.parse_args()
     a.full_text=not (a.excerpt or a.speaker)
-    G=json.load(open(a.graph)); R=json.load(open(a.attn))
+    if (a.surprise or a.attention) and not a.attn: sys.exit("--surprise and --attention need --attn")
+    G=json.load(open(a.graph)); R=json.load(open(a.attn)) if a.attn else dict(exchanges=[])
     sub=when(G) if a.date else ""; sub_h=0.1*MM; sub_gap=sub_h*1.9 if sub else 0   # date line under the title
     az,el,cam=[v if v is not None else d for v,d in zip((a.azimuth,a.elevation,a.camera),G["view"])]
     Wi,Hi=[float(v) for v in a.paper.lower().split("x")]; W,H=Wi*MM,Hi*MM; unit=W/762.0
     nodes={n["i"]:n for n in G["nodes"]}; seq=sorted(nodes); live=[i for i in seq if not nodes[i]["parked"]]
     # the form floats right of centre; the outside knot sits level with it, in the left margin
-    Q=np.array([project(nodes[i]["p"],az,el,cam) for i in live]); lo,hi=Q.min(0),Q.max(0); span=np.maximum(hi-lo,1e-9)
+    Q=np.array([project(nodes[i]["p"],az,el,cam) for i in live]); lo,hi=Q.min(0),Q.max(0)
+    if G.get("extent"):                            # a fixed map: scale to the map, not to this conversation
+        e=G["extent"]; K=np.array([project((u,v,0),az,el,cam) for u in (e[0],e[2]) for v in (e[1],e[3])]); lo,hi=K.min(0),K.max(0)
+    span=np.maximum(hi-lo,1e-9)
     x0,x1,y0,y1=(0.22 if len(live)<len(seq) else 0.08)*W,0.92*W,0.09*H,0.86*H; s=min((x1-x0)/span[0],(y1-y0)/span[1])
     cx,cy=(x0+x1)/2,(y0+y1)/2; mid=(lo+hi)/2
     pos={i:(cx+s*(q[0]-mid[0]),cy-s*(q[1]-mid[1])) for i,q in zip(live,Q)}
     SS=G.get("sessions") or []; nG=max(1,len(SS)); ses=lambda i:nodes[i].get("session",0)
     homes={g:(0.095*W,cy if nG==1 else H*(0.1+0.8*g/nG)) for g in range(nG)}   # one stack per recording
+    to_page=lambda p:np.array([cx+s*(q_-mid[0]) if n_==0 else cy-s*(q_-mid[1]) for n_,q_ in enumerate(project((p[0],p[1],0),az,el,cam))])
     home=homes[0]; off=[i for i in seq if i not in pos]; gap=3.2*unit; groups={g:[i for i in off if ses(i)==g] for g in range(nG)}
     for g,ids in groups.items():
         for k,i in enumerate(ids):                 # with circles, each one its own place to land
@@ -327,6 +337,16 @@ def main():
                     strands.append(strand(rng_for(a.seed,"strand",i,dst,n),pos[i],pos[dst],rad[i],rad[dst],bow,L))
     # labels at the knots and the title in the lower right, as on the housemachine sheets
     font=HersheyFonts(); font.load_default_font("futural"); labels=[]; lh=0.12*MM   # a fixed physical size, as on the housemachine sheets
+    backdrop=[]; region_boxes=[]
+    if a.backdrop and G.get("backdrop"):           # the room the conversation walks through
+        for q_ in ([] if a.no_marks else G["backdrop"]):
+            c_=to_page(q_); m_=0.6
+            if a.mark=="plus": backdrop+=[np.array([c_-[m_,0],c_+[m_,0]]),np.array([c_-[0,m_],c_+[0,m_]])]
+            elif a.mark=="slash": backdrop.append(np.array([c_+[-m_*.6,m_],c_+[m_*.6,-m_]]))
+            else: backdrop.append(np.array([c_,c_+[0.5,0.0]]))
+        for r_ in G.get("regions",[]):
+            c_=to_page(r_["p"]); ps,(bx,by,ex,ey)=block(font,[r_["name"].upper()],lh*0.8,0); w_=ex-bx
+            d_=c_-np.array([bx+w_/2,(by+ey)/2]); backdrop+=[p_+d_ for p_ in ps]; region_boxes.append((bx+d_[0]-1,by+d_[1]-1,ex+d_[0]+1,ey+d_[1]+1))
     size=lh*(0.62 if a.full_text else 0.75); step=size*1.5; hx,hy=home; n_out=[i for i in seq if i not in live]
     wrapped=lambda i:textwrap.wrap(num(i,nodes[i]["text"]),width=34) if a.full_text else [num(i,excerpt(nodes[i]["text"],a.excerpt))]
     if a.speaker:
@@ -337,7 +357,7 @@ def main():
     else:
         def samples(paths):
             return np.vstack([p[::max(1,len(p)//400)] for p in paths]) if paths else np.zeros((0,2))
-        ink=np.vstack([samples(trails),samples(jumps)]); boxes=[]
+        ink=np.vstack([samples(trails),samples(jumps)]); boxes=list(region_boxes)
         outer=lambda i:rad[i]+(ring if not a.knots and dogvoice(i) else 0)
         discs=[(pos[i][0]-outer(i)-1.5,pos[i][1]-outer(i)-1.5,pos[i][0]+outer(i)+1.5,pos[i][1]+outer(i)+1.5) for i in live]
         keep=(0.02*W,0.03*H,0.985*W,0.945*H)
@@ -384,7 +404,7 @@ def main():
     seqmarks=(order(arrows) if a.sequence else [])+tick
     if marks: trails_=trails_+order(marks)
     d=lambda p:"M"+" L".join(f"{x:.2f},{y:.2f}" for x,y in p)
-    layers=[("layer_attention",strands),("layer_trail",trails_),("layer_jumps",jumps),("layer_sequence",seqmarks),("layer_labels",labels),("layer_title",title)]
+    layers=[("layer_map",order(backdrop)),("layer_attention",strands),("layer_trail",trails_),("layer_jumps",jumps),("layer_sequence",seqmarks),("layer_labels",labels),("layer_title",title)]
     o=[f'<svg xmlns="http://www.w3.org/2000/svg" version="1.2" width="{Wi:g}in" height="{Hi:g}in" viewBox="0 0 {W:.2f} {H:.2f}" overflow="visible">',
        f'<metadata><desc id="invocation">{" ".join(sys.argv).replace("&","&amp;").replace("<","&lt;")}</desc></metadata>']
     for name,paths in layers:
