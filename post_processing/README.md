@@ -213,6 +213,9 @@ $BFF post_processing/conversation_map.py place $B/KEY__session-20260720-195543__
 $HM post_processing/plotter_drawing.py --graph outputs/snapper-multi-exchange-map.json --excerpt 6 -o outputs/snapper-multi-exchange-map-plotter-excerpt.svg --png
 ```
 
+`--by-day` groups several recordings from one date under a single letter, without joining them.
+Sessions in the older `chat_session` format work too; they have no audio, so their circles are one size.
+
 `fit` is done once and saved in `outputs/map/`; refitting changes the map. `place` puts each turn on
 it separately, so the path steps between question and reply, and resets stay in the stack. The drawing
 scales to the whole map and shows every exchange as a faint mark with region names (`--no-backdrop`

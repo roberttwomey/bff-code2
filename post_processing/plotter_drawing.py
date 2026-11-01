@@ -307,7 +307,7 @@ def main():
             if dogvoice(i): marks.append(circle(pos[i],rad[i]+ring*0.7))
         if k+1==len(seq): break
         j=seq[k+1]
-        if ses(i)!=ses(j):                         # recordings are separate: no line from one to the next
+        if ses(i)!=ses(j) or nodes[i].get("recording")!=nodes[j].get("recording"):   # recordings are separate: no line between them
             if len(cur)>1: trails.append(np.array(cur))
             cur=[]; continue
         if i in live and j in live and (i,j) not in wiped:
